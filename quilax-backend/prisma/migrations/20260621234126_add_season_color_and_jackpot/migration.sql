@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Season" ADD COLUMN     "color" TEXT DEFAULT '#6366f1',
+ADD COLUMN     "jackpotPool" INTEGER NOT NULL DEFAULT 0;

@@ -1,0 +1,10 @@
+{
+  "task.allowAutomaticTasks": "on",
+  "terminal.integrated.gpuAcceleration": "off",
+  "terminal.integrated.minimumContrastRatio": 4.5,
+  "workbench.colorCustomizations": {
+    "terminal.background": "#0f1115",
+    "terminal.foreground": "#e6edf3",
+    "terminalCursor.foreground": "#e6edf3"
+  }
+}

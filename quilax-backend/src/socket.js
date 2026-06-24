@@ -1,0 +1,147 @@
+import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
+import prisma from "./lib/prisma.js";
+
+let io = null;
+
+export function initSocket(httpServer) {
+  io = new Server(httpServer, {
+    cors: { origin: "*" },
+  });
+
+  io.use((socket, next) => {
+    try {
+      const token = socket.handshake.auth?.token;
+
+      if (!token || !process.env.JWT_SECRET) {
+        return next(new Error("No autorizado"));
+      }
+
+      const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+      if (!payload?.id) {
+        return next(new Error("No autorizado"));
+      }
+
+      socket.userId = Number(payload.id);
+      return next();
+    } catch (err) {
+      return next(new Error("No autorizado"));
+    }
+  });
+
+  io.on("connection", (socket) => {
+    console.log("🟢 Socket conectado", socket.id);
+
+socket.on("join", () => {
+  socket.join(`user:${socket.userId}`);
+  console.log(`👤 User ${socket.userId} unido a su room`);
+});
+
+    /*
+    ============================
+    QUIZ JOIN
+    ============================
+    */
+    socket.on("quiz:join", async (quizRunId) => {
+      const room = `quiz-${quizRunId}`;
+      socket.join(room);
+
+      try {
+        const run = await prisma.quizRun.findUnique({
+          where: { id: quizRunId },
+        });
+
+        if (run) {
+          socket.emit("quiz:state", {
+            quizRunId: run.id,
+            phase: run.phase,
+            currentIndex: run.currentIndex,
+            phaseEndsAt: run.phaseEndsAt,
+          });
+        }
+      } catch (err) {
+        console.error("❌ quiz:join error:", err);
+      }
+    });
+
+    /*
+    ============================
+    SEND MESSAGE (REALTIME)
+    ============================
+    */
+    socket.on("send_message", async ({ toUserId, content }) => {
+      try {
+        const fromUserId = socket.userId;
+
+        if (!fromUserId || !toUserId || typeof content !== "string" || !content.trim()) {
+          return;
+        }
+
+        const blocked = await prisma.userBlock.findFirst({
+          where: {
+            OR: [
+              { blockerId: toUserId, blockedId: fromUserId },
+              { blockerId: fromUserId, blockedId: toUserId },
+            ],
+          },
+        });
+
+        if (blocked) return;
+
+        const message = await prisma.message.create({
+          data: {
+            fromUserId,
+            toUserId,
+            content,
+          },
+        });
+
+        // enviar al receptor
+        io.to(`user:${toUserId}`).emit("new_message", message);
+
+        // enviar al emisor (sync UI)
+        io.to(`user:${fromUserId}`).emit("message_sent", message);
+      } catch (err) {
+        console.error("❌ send_message error:", err);
+      }
+    });
+
+    /*
+    ============================
+    MARK READ
+    ============================
+    */
+    socket.on("mark_read", async ({ otherUserId }) => {
+      try {
+        const userId = socket.userId;
+
+        if (!userId || !otherUserId) {
+          return;
+        }
+
+        await prisma.message.updateMany({
+          where: {
+            fromUserId: otherUserId,
+            toUserId: userId,
+            isRead: false,
+          },
+          data: { isRead: true },
+        });
+      } catch (err) {
+        console.error("❌ mark_read error:", err);
+      }
+    });
+
+    socket.on("disconnect", () => {
+      console.log("🔴 Socket desconectado", socket.id);
+    });
+  });
+
+  return io;
+}
+
+export function getIO() {
+  if (!io) throw new Error("Socket.io no inicializado");
+  return io;
+}
