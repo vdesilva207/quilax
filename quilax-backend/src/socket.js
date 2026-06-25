@@ -5,8 +5,23 @@ import prisma from "./lib/prisma.js";
 let io = null;
 
 export function initSocket(httpServer) {
+  const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+    : ['http://localhost:5173', 'http://localhost:3000'];
+
   io = new Server(httpServer, {
-    cors: { origin: "*" },
+    cors: {
+      origin: function (origin, callback) {
+        // Permitir requests sin origin (como mobile apps o curl)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) !== -1) {
+          callback(null, true);
+        } else {
+          callback(new Error('CORS policy: Origin not allowed'));
+        }
+      },
+    },
   });
 
   io.use((socket, next) => {

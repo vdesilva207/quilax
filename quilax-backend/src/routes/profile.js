@@ -785,14 +785,13 @@ router.get('/language', auth, async (req, res) => {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
-        // Añadir campo language al modelo si no existe
+        language: true
       }
     });
 
-    // Por ahora, devolvemos un idioma por defecto
     res.json({
       success: true,
-      language: 'es'
+      language: user?.language || 'es'
     });
   } catch (error) {
     console.error('Error getting language:', error);
@@ -811,8 +810,11 @@ router.put('/language', auth, async (req, res) => {
       return res.status(400).json({ error: 'Idioma no soportado' });
     }
 
-    // Aquí deberías actualizar el campo language en el modelo User
-    // Por ahora, solo devolvemos éxito
+    await prisma.user.update({
+      where: { id: userId },
+      data: { language }
+    });
+
     res.json({
       success: true,
       message: 'Idioma actualizado',
@@ -883,19 +885,24 @@ router.get('/statistics/win-rate', auth, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const quizRuns = await prisma.quizRun.findMany({
+    const participants = await prisma.quizParticipant.findMany({
       where: { userId },
       include: {
-        quiz: {
-          select: {
-            title: true,
-            category: true
+        quizRun: {
+          include: {
+            quiz: {
+              select: {
+                title: true,
+                category: true
+              }
+            }
           }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
 
+    const quizRuns = participants.map(p => p.quizRun).filter(Boolean);
     const totalQuizRuns = quizRuns.length;
     const finishedQuizRuns = quizRuns.filter(run => run.phase === 'FINISHED');
     const wonQuizRuns = finishedQuizRuns.filter(run => run.prize > 0);

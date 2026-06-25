@@ -1,9 +1,10 @@
 import express from "express";
 import { register, login } from "../controllers/authController.js";
 import { auth } from "../middleware/auth.js";
-import { authRateLimit, sensitiveRateLimit } from "../middleware/rateLimit.js";
+import { rateLimiters } from "../middleware/rateLimiter.js";
 import prisma from "../lib/prisma.js";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import { generateVerificationCode, sendVerificationEmail, sendPasswordResetEmail } from "../services/emailService.js";
 import { getAvailableCurrencies, getExchangeRate } from "../services/currencyService.js";
 
@@ -13,7 +14,7 @@ router.post("/register", (req, res, next) => {
   console.log("📝 /auth/register endpoint hit");
   next();
 }, register);
-router.post("/login", authRateLimit, login);
+router.post("/login", rateLimiters.login, login);
 
 router.get("/me", auth, (req, res) => {
   res.json({
@@ -161,7 +162,7 @@ router.post("/verify-email", async (req, res) => {
 });
 
 // Solicitar reset de password
-router.post("/forgot-password", sensitiveRateLimit, async (req, res) => {
+router.post("/forgot-password", rateLimiters.sensitive, async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -211,12 +212,24 @@ router.post("/forgot-password", sensitiveRateLimit, async (req, res) => {
 });
 
 // Resetear password
-router.post("/reset-password", sensitiveRateLimit, async (req, res) => {
+router.post("/reset-password", rateLimiters.sensitive, async (req, res) => {
   try {
     const { token, newPassword } = req.body;
 
     if (!token || !newPassword) {
       return res.status(400).json({ error: "Token y nueva contraseña son requeridos" });
+    }
+
+    // Validar contraseña: al menos 8 caracteres y 1 mayúscula
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        error: "La contraseña debe tener al menos 8 caracteres",
+      });
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      return res.status(400).json({
+        error: "La contraseña debe tener al menos 1 mayúscula",
+      });
     }
 
     const user = await prisma.user.findFirst({
@@ -230,12 +243,13 @@ router.post("/reset-password", sensitiveRateLimit, async (req, res) => {
       return res.status(400).json({ error: "Token inválido o expirado" });
     }
 
-    // Aquí deberías hashear la nueva contraseña
-    // Por ahora, la guardamos directamente (NO RECOMENDADO PARA PRODUCCIÓN)
+    // Hashear la nueva contraseña
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        password: newPassword, // TODO: Hashear contraseña
+        password: hashedPassword,
         resetPasswordToken: null,
         resetPasswordExpires: null
       }
@@ -261,6 +275,18 @@ router.post("/change-password", auth, async (req, res) => {
       return res.status(400).json({ error: "Contraseña actual y nueva son requeridas" });
     }
 
+    // Validar nueva contraseña: al menos 8 caracteres y 1 mayúscula
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        error: "La contraseña debe tener al menos 8 caracteres",
+      });
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      return res.status(400).json({
+        error: "La contraseña debe tener al menos 1 mayúscula",
+      });
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -269,15 +295,19 @@ router.post("/change-password", auth, async (req, res) => {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    // Verificar contraseña actual
-    if (user.password !== currentPassword) { // TODO: Usar bcrypt.compare
+    // Verificar contraseña actual usando bcrypt.compare
+    const validPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!validPassword) {
       return res.status(400).json({ error: "Contraseña actual incorrecta" });
     }
+
+    // Hashear nueva contraseña
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Actualizar contraseña
     await prisma.user.update({
       where: { id: userId },
-      data: { password: newPassword } // TODO: Hashear contraseña
+      data: { password: hashedPassword }
     });
 
     res.json({

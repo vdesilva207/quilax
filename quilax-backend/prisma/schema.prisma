@@ -24,6 +24,29 @@ model User {
   emailVerificationToken String?             // Token de verificación de email
   twoFactorSecret       String?              // Secreto para Google Authenticator
   twoFactorEnabled      Boolean              @default(false) // Si 2FA está habilitado
+  
+  // Campos de verificación y KYC
+  guardianPhotoUrl      String?              // Foto del tutor (para menores)
+  verificationVideoUrl  String?              // Video de verificación
+  idDocumentUrl         String?              // URL del documento de identidad
+  idDocumentType        String?              // Tipo de documento (DNI, PASSPORT, etc)
+  idVerified            Boolean              @default(false) // Si el documento está verificado
+  idVerifiedAt          DateTime?            // Cuándo se verificó el documento
+  
+  // Configuración de privacidad
+  profilePublic         Boolean              @default(false) // Si el perfil es público
+  showQuizHistory       Boolean              @default(true) // Si mostrar historial de quizzes
+  showPrizes            Boolean              @default(true) // Si mostrar premios ganados
+  language              String               @default("es") // Idioma preferido del usuario
+  
+  // Datos bancarios (encriptados)
+  isBankVerified        Boolean              @default(false) // Si la cuenta bancaria está verificada
+  bankAccountIban       String?              // IBAN encriptado
+  bankAccountName       String?              // Nombre del titular encriptado
+  bankAccountBic        String?              // BIC/SWIFT encriptado
+  
+  // Estado del usuario
+  isBanned              Boolean              @default(false) // Si el usuario está baneado
 
   // Relaciones existentes
   sentMessages          Message[]            @relation("SentMessages")

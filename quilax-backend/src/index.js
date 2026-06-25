@@ -56,6 +56,18 @@ import "./workers/answerWorker.js";
 
 dotenv.config();
 
+// Validar que los secrets sean suficientemente seguros en producción
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    console.error('❌ JWT_SECRET debe tener al menos 32 caracteres en producción');
+    process.exit(1);
+  }
+  if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length < 32) {
+    console.error('❌ ENCRYPTION_KEY debe tener al menos 32 caracteres en producción');
+    process.exit(1);
+  }
+}
+
 const app = express();
 
 
@@ -73,7 +85,20 @@ app.use(
 
 app.use(
   cors({
-    origin: "*",
+    origin: function (origin, callback) {
+      // Permitir requests sin origin (como mobile apps o curl)
+      if (!origin) return callback(null, true);
+
+      const allowedOrigins = process.env.CORS_ORIGINS
+        ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+        : ['http://localhost:5173', 'http://localhost:3000'];
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS policy: Origin not allowed'));
+      }
+    },
     credentials: true,
   })
 );
@@ -162,7 +187,7 @@ app.use((err, req, res, next) => {
 if (process.env.NODE_ENV !== "test") {
   startQuizScheduler();
   startSeasonWorker();
-  // startNotificationWorker(); // Temporalmente desactivado por schema mismatch
+  startNotificationWorker();
   startWithdrawScheduler();
   startPasswordChangeScheduler();
 }
@@ -186,27 +211,15 @@ server.on("error", (err) => {
   console.error("❌ Server error:", err);
 });
 
-
-// Temporalmente desactivado para evitar errores de conexión a DB
-// if (process.env.NODE_ENV !== "test") {
-//   setInterval(async () => {
-//     try {
-//       await advanceExpiredQuizRuns();
-//     } catch (err) {
-//       console.error("❌ Quiz loop error:", err);
-//     }
-//   }, 1000);
-// }
-
 export default app;
 
 // Configuración de clustering para 2M usuarios
 const numCPUs = os.cpus().length;
 
-// Clustering desactivado para desarrollo
-if (false) {
+// Clustering activado para producción
+if (process.env.NODE_ENV === 'production' && process.env.ENABLE_CLUSTERING === 'true') {
   console.log(`🎯 Master ${process.pid} is running`);
-  console.log(`🚀 Starting ${numCPUs} workers for 2M concurrent users`);
+  console.log(`🚀 Starting ${numCPUs} workers for high concurrency`);
 
   // Fork workers
   for (let i = 0; i < numCPUs; i++) {

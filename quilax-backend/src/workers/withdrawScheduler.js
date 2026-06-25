@@ -15,17 +15,16 @@ export function startWithdrawScheduler() {
 
   console.log("🔄 Starting withdraw scheduler...");
 
-  // Temporarily disabled to prevent DB connection errors during development
   // Ejecutar cada 5 minutos
-  // schedulerInterval = setInterval(async () => {
-  //   try {
-  //     await processScheduledWithdraws();
-  //   } catch (error) {
-  //     console.error("❌ Error in withdraw scheduler:", error);
-  //   }
-  // }, 5 * 60 * 1000); // 5 minutos
+  schedulerInterval = setInterval(async () => {
+    try {
+      await processScheduledWithdraws();
+    } catch (error) {
+      console.error("❌ Error in withdraw scheduler:", error);
+    }
+  }, 5 * 60 * 1000); // 5 minutos
 
-  console.log("✅ Withdraw scheduler started (runs every 5 minutes) - DISABLED");
+  console.log("✅ Withdraw scheduler started (runs every 5 minutes)");
 }
 
 /**

@@ -168,42 +168,42 @@ export async function submitAnswer({
   responseTimeMs,
   ipAddress,
 }) {
-  const questionsRaw = await redis.get(`quizRun:${quizRunId}:questions`);
+  // 🔥 preguntas desde Redis (cache)
+  let questions = [];
+  let run = null;
 
-if (!questionsRaw) {
-  return { allowed: false, reason: "RUN_NOT_READY" };
-}
-
-if (!run) throw new Error("QuizRun not found");
-
-// 🔥 preguntas desde Redis (cache)
-let questions = [];
-
-try {
-  const questionsRaw = await redis.get(`quizRun:${quizRunId}:questions`);
-  if (questionsRaw) {
-    questions = JSON.parse(questionsRaw);
+  try {
+    const questionsRaw = await redis.get(`quizRun:${quizRunId}:questions`);
+    if (questionsRaw) {
+      questions = JSON.parse(questionsRaw);
+    }
+  } catch (err) {
+    console.error("Redis questions error", err);
   }
-} catch (err) {
-  console.error("Redis questions error", err);
-}
 
-// fallback a DB si Redis falla
-if (!questions.length) {
-  questions = run.quiz?.questions || [];
-}
+  // Si Redis falla, obtener el run desde DB
+  if (!questions.length) {
+    run = await prisma.quizRun.findUnique({
+      where: { id: quizRunId },
+      include: { quiz: { include: { questions: true } } },
+    });
 
-const question = questions[run.currentIndex];
+    if (!run) {
+      return { allowed: false, reason: "RUN_NOT_READY" };
+    }
 
-// ⚡ fase ultra rápida desde Redis
-let phase = await redis.get(`quizRun:${quizRunId}:phase`);
-if (!phase) phase = run.phase;
+    questions = run.quiz?.questions || [];
+  }
 
-if (phase !== "QUESTION_ANSWER") {
-  return { allowed: false, reason: "LATE_OR_INVALID_PHASE" };
-}
+  // ⚡ fase ultra rápida desde Redis
+  let phase = await redis.get(`quizRun:${quizRunId}:phase`);
+  if (!phase && run) phase = run.phase;
 
-detectFastResponse({ responseTimeMs, userId, quizRunId });
+  if (phase !== "QUESTION_ANSWER") {
+    return { allowed: false, reason: "LATE_OR_INVALID_PHASE" };
+  }
+
+  detectFastResponse({ responseTimeMs, userId, quizRunId });
 
   // ⚡ check participante ultra rápido (Redis primero)
   const isParticipant = await redis.sismember(
@@ -215,6 +215,18 @@ detectFastResponse({ responseTimeMs, userId, quizRunId });
     return { allowed: false, reason: "NOT_PARTICIPANT" };
   }
 
+  // Obtener el run si no lo tenemos aún (para anti-cheat)
+  if (!run) {
+    run = await prisma.quizRun.findUnique({
+      where: { id: quizRunId },
+      include: { quiz: { include: { questions: true } } },
+    });
+
+    if (!run) {
+      return { allowed: false, reason: "RUN_NOT_READY" };
+    }
+  }
+
   const antiCheat = await runAntiCheatChecks({
     run,
     userId,
@@ -223,19 +235,19 @@ detectFastResponse({ responseTimeMs, userId, quizRunId });
 
   if (!antiCheat.allowed) return antiCheat;
 
+  const question = questions[run.currentIndex];
 
   if (!question || question.id !== questionId) {
     return { allowed: false, reason: "INVALID_QUESTION" };
   }
 
- const correct = question.answers.find(a => a.isCorrect);
+  const correct = question.answers.find(a => a.isCorrect);
+  const correctAnswer = correct?.answer ?? null;
 
-const correctAnswer = correct?.answer ?? null;
-
-const isCorrect =
-  correctAnswer &&
-  String(answer).trim().toLowerCase() ===
-  String(correctAnswer).trim().toLowerCase();
+  const isCorrect =
+    correctAnswer &&
+    String(answer).trim().toLowerCase() ===
+    String(correctAnswer).trim().toLowerCase();
 
   const score = calculateSecureScore({
     responseTimeMs,

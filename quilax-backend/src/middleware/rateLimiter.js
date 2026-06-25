@@ -80,6 +80,13 @@ const rateLimiters = {
     max: 5000, // 5000 reads por minuto
     message: 'Demasiadas operaciones de lectura. Por favor, espera un momento.',
   }),
+
+  // Sensitive operations - muy restrictivo (password reset, etc)
+  sensitive: createRateLimiter({
+    windowMs: 60 * 60 * 1000, // 1 hora
+    max: 3, // 3 intentos por hora
+    message: 'Demasiados intentos. Por favor, contacta al soporte si necesitas ayuda.',
+  }),
 };
 
 // Middleware para aplicar rate limiting basado en el tipo de usuario
