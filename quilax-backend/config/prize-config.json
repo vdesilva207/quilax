@@ -1,0 +1,26 @@
+{
+  "quizDistribution": {
+    "adminJackpotPercentage": 5,
+    "adminProfitPercentage": 5,
+    "creatorPercentage": 10,
+    "positionRules": [
+      { "fromPosition": 1, "toPosition": 1, "percentage": 40 },
+      { "fromPosition": 2, "toPosition": 2, "percentage": 25 },
+      { "fromPosition": 3, "toPosition": 3, "percentage": 15 },
+      { "fromPosition": 4, "toPosition": 4, "percentage": 5 }
+    ]
+  },
+  "seasonJackpotDistribution": {
+    "adminJackpotPercentage": 0,
+    "positionRules": [
+      { "fromPosition": 1, "toPosition": 1, "percentage": 30 },
+      { "fromPosition": 2, "toPosition": 2, "percentage": 20 },
+      { "fromPosition": 3, "toPosition": 3, "percentage": 15 },
+      { "fromPosition": 4, "toPosition": 4, "percentage": 10 },
+      { "fromPosition": 5, "toPosition": 5, "percentage": 8 },
+      { "fromPosition": 6, "toPosition": 6, "percentage": 7 },
+      { "fromPosition": 7, "toPosition": 7, "percentage": 5 },
+      { "fromPosition": 8, "toPosition": 8, "percentage": 5 }
+    ]
+  }
+}

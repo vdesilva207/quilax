@@ -39,7 +39,9 @@ import socialRouter from "./routes/social.js";
 import faqRouter from "./routes/faq.js";
 import legalRouter from "./routes/legal.js";
 import reportsRouter from "./routes/reports.js";
+import walletAccessRouter from "./routes/walletAccess.js";
 import redis from "./lib/redis.js";
+import { platformMiddleware } from "./middleware/platform.js";
 import scalabilityManager from "./utils/scalabilityManager.js";
 import { metricsMiddleware, metricsEndpoint } from "./config/monitoring.js";
 import { rateLimiters } from "./middleware/rateLimiter.js";
@@ -106,6 +108,8 @@ app.use(
 
 app.use(express.json({ limit: "100kb" }));
 
+app.use(platformMiddleware);
+
 // Middleware de monitoreo Prometheus
 app.use(metricsMiddleware);
 
@@ -147,6 +151,7 @@ app.use("/social", socialRouter);
 app.use("/faq", faqRouter);
 app.use("/legal", legalRouter);
 app.use("/reports", reportsRouter);
+app.use("/wallet-access", walletAccessRouter);
 app.use("/admin", adminRoutes);
 
 await redis.set("test", "quilax");

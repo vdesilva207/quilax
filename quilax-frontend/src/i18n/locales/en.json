@@ -1,0 +1,16 @@
+{
+  "common": {
+    "appName": "Quilax",
+    "back": "Back",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "auth": {
+    "login": "Log in",
+    "register": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "resetPassword": "Reset password"
+  }
+}

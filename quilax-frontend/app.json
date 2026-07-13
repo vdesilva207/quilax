@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Quilax",
+    "slug": "quilax-frontend",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "quilax",
+    "userInterfaceStyle": "automatic",
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-localization",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

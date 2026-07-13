@@ -59,10 +59,12 @@ router.get("/:id/analytics", auth, async (req, res) => {
 
     if (now > sevenDaysAfterEnd) {
       // Verificar si el usuario ha jugado 10 quizzes desde que envió este quiz
-      const quizzesPlayedSince = await prisma.quizRun.count({
+      const quizzesPlayedSince = await prisma.quizParticipant.count({
         where: {
           userId,
-          createdAt: { gte: quiz.scheduledEnd }
+          quizRun: {
+            createdAt: { gte: quiz.scheduledEnd }
+          }
         }
       });
 
@@ -79,10 +81,14 @@ router.get("/:id/analytics", auth, async (req, res) => {
     const quizRuns = await prisma.quizRun.findMany({
       where: { quizId },
       include: {
-        user: {
-          select: {
-            id: true,
-            username: true
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true
+              }
+            }
           }
         },
         answers: true
@@ -140,12 +146,15 @@ router.get("/:id/analytics", auth, async (req, res) => {
     // Lista de ganadores
     const winners = quizRuns
       .filter(run => run.prize > 0)
-      .map(run => ({
-        userId: run.userId,
-        username: run.user.username,
-        prize: run.prize,
-        score: run.score
-      }))
+      .map(run => {
+        const participant = run.participants[0];
+        return {
+          userId: participant?.userId,
+          username: participant?.user?.username,
+          prize: run.prize,
+          score: participant?.score || 0
+        };
+      })
       .sort((a, b) => b.prize - a.prize);
 
     res.json({

@@ -100,6 +100,23 @@ router.get('/:quizId', async (req, res) => {
       });
     }
 
+    const activeRun = await prisma.quizRun.findFirst({
+      where: {
+        quizId: parseInt(quizId),
+        phase: {
+          in: ['PRE_START', 'QUESTION_READ', 'QUESTION_ANSWER', 'QUESTION_CORRECTION', 'QUESTION_RANKING'],
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        phase: true,
+        phaseEndsAt: true,
+        currentIndex: true,
+        totalPrizeCredits: true,
+      },
+    });
+
     res.json({
       success: true,
       quiz: {
@@ -110,6 +127,7 @@ router.get('/:quizId', async (req, res) => {
           totalPrizeDistributed: stats._sum.totalPrizeCredits || 0
         },
         userParticipation,
+        activeRun,
         canJoin: quiz.status === 'PUBLISHED' && (!userParticipation || userParticipation.quizRun.phase === 'FINISHED'),
         isAgeRestricted: quiz.minAge ? true : false,
         hasCapacityLimit: quiz.maxParticipants ? true : false

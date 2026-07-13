@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+
+# Expo / React Native
+.expo/
+dist/
+web-build/
+
+# Logs
+logs/
+*.log
+
+# Build / cache
+build/
+.cache/
+coverage/
+
+# IDE (opcional)
+.idea/
+
+# Tauri
+src-tauri/target/
+
+# Local tooling on Almacen (no es parte del monorepo)
+../quilax-github-backup/
+../git-local/
+../node-local/
+../homebrew/
+../.expo/
+../quilax-env.sh

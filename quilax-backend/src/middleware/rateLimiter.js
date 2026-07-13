@@ -1,5 +1,21 @@
 import { rateLimit } from 'express-rate-limit';
 
+const isLocalRequest = (req) => {
+  const ip = req.ip || req.socket?.remoteAddress || '';
+  return (
+    ip === '127.0.0.1' ||
+    ip === '::1' ||
+    ip === '::ffff:127.0.0.1' ||
+    ip.endsWith('127.0.0.1')
+  );
+};
+
+const shouldSkipRateLimit = (req) => {
+  if (isLocalRequest(req)) return true;
+  if (process.env.NODE_ENV === 'development') return true;
+  return req.user?.role === 'ADMIN';
+};
+
 // Configuración de rate limiting distribuido para 2M usuarios
 const createRateLimiter = (options = {}) => {
   const defaultOptions = {
@@ -7,10 +23,7 @@ const createRateLimiter = (options = {}) => {
     max: 1000, // 1000 requests por minuto por IP
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => {
-      // No limitar requests de localhost o admin
-      return req.ip === '127.0.0.1' || req.ip === '::1' || req.user?.role === 'ADMIN';
-    },
+    skip: shouldSkipRateLimit,
     handler: (req, res) => {
       res.status(429).json({
         error: 'Too many requests',
