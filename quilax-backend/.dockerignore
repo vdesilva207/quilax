@@ -1,0 +1,16 @@
+node_modules
+.env
+.env.*
+logs
+*.log
+.DS_Store
+.expo
+.vscode
+docs
+scripts
+tests
+backup.sql
+*.md
+docker-compose.yml
+nginx.conf
+postgres.conf
