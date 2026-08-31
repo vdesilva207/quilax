@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Quilax — Quizzes en vivo. Premios reales.">
+  <meta name="theme-color" content="#3B82F6">
+  <title>Quilax</title>
+
+  <!-- Smart App Banner (iOS Safari) — set apple-app-id when App Store listing exists -->
+  <!-- <meta name="apple-itunes-app" content="app-id=YOUR_APP_ID, app-argument=quilax://open"> -->
+
+  <link rel="icon" href="assets/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="gradient-bar" aria-hidden="true"></div>
+
+  <header class="header">
+    <div class="container header-inner">
+      <a class="brand" href="#">
+        <img src="assets/logo-glow.png" alt="Quilax" width="36" height="36" class="brand-logo">
+        <span class="brand-name">QUILAX</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="#features" data-i18n="nav.features">Qué es</a>
+        <a href="#how" data-i18n="nav.how">Cómo funciona</a>
+        <a href="#seasons" data-i18n="nav.seasons">Temporadas</a>
+      </nav>
+      <div class="header-actions">
+        <label class="lang-select-wrap">
+          <span class="sr-only" data-i18n="lang.label">Idioma</span>
+          <select id="lang-select" class="lang-select" aria-label="Language">
+            <option value="es">Español</option>
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+            <option value="pt">Português</option>
+            <option value="nl">Nederlands</option>
+            <option value="it">Italiano</option>
+          </select>
+        </label>
+        <a href="#download" class="btn btn-sm btn-primary" data-i18n="nav.download">Descargar</a>
+      </div>
+      <button type="button" class="menu-toggle" id="menu-toggle" aria-expanded="false" aria-controls="mobile-nav">
+        <span class="sr-only">Menu</span>
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <nav class="mobile-nav" id="mobile-nav" hidden>
+      <a href="#features" data-i18n="nav.features">Qué es</a>
+      <a href="#how" data-i18n="nav.how">Cómo funciona</a>
+      <a href="#seasons" data-i18n="nav.seasons">Temporadas</a>
+      <a href="#download" data-i18n="nav.download">Descargar</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="badge" data-i18n="hero.badge">Quizzes competitivos en tiempo real</p>
+          <h1>
+            <span data-i18n="hero.title">Quizzes en vivo.</span>
+            <span class="gradient-text" data-i18n="hero.titleAccent">Premios reales.</span>
+          </h1>
+          <p class="hero-subtitle" data-i18n="hero.subtitle">
+            Miles de jugadores, las mismas preguntas, el mismo reloj.
+          </p>
+          <div class="hero-cta" id="download">
+            <button type="button" class="btn btn-lg btn-primary" id="cta-primary">
+              Descargar en App Store
+            </button>
+            <p class="cta-hint" id="cta-hint" data-i18n="cta.desktopHint">Disponible en iOS y Android</p>
+          </div>
+          <div class="store-badges" id="store-badges">
+            <a href="#" class="store-badge" id="badge-appstore" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              App Store
+            </a>
+            <a href="#" class="store-badge" id="badge-playstore" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20.5v-17c0-.83.94-1.3 1.6-.8l14 8.5c.6.36.6 1.24 0 1.6l-14 8.5c-.66.4-1.6-.07-1.6-.8z"/></svg>
+              Google Play
+            </a>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div class="phone-mock">
+            <div class="phone-screen">
+              <div class="mock-header">
+                <span class="mock-dot live"></span>
+                <span>LIVE QUIZ</span>
+              </div>
+              <div class="mock-question">¿Cuál es la capital de Portugal?</div>
+              <div class="mock-timer">0:12</div>
+              <div class="mock-options">
+                <div class="mock-option selected">Lisboa</div>
+                <div class="mock-option">Oporto</div>
+                <div class="mock-option">Coimbra</div>
+                <div class="mock-option">Faro</div>
+              </div>
+              <div class="mock-rank">
+                <span>#12</span>
+                <span class="mock-pot">Pot: 847 cr</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="container">
+        <div class="section-head">
+          <h2 data-i18n="features.title">Qué es Quilax</h2>
+          <p data-i18n="features.subtitle">Una app de skill gaming donde la velocidad y el conocimiento deciden quién gana.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <div class="feature-icon live">⚡</div>
+            <h3 data-i18n="features.live.title">Partidas en vivo</h3>
+            <p data-i18n="features.live.body"></p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-icon prizes">🏆</div>
+            <h3 data-i18n="features.prizes.title">Bote de premios real</h3>
+            <p data-i18n="features.prizes.body"></p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-icon early">🚀</div>
+            <h3 data-i18n="features.early.title">Ventaja por apuntarte pronto</h3>
+            <p data-i18n="features.early.body"></p>
+          </article>
+          <article class="feature-card" id="seasons">
+            <div class="feature-icon seasons">📊</div>
+            <h3 data-i18n="features.seasons.title">Temporadas y jackpot</h3>
+            <p data-i18n="features.seasons.body"></p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-icon create">✏️</div>
+            <h3 data-i18n="features.create.title">Crea tus quizzes</h3>
+            <p data-i18n="features.create.body"></p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-icon secure">🔒</div>
+            <h3 data-i18n="features.secure.title">Seguro y verificado</h3>
+            <p data-i18n="features.secure.body"></p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="how">
+      <div class="container">
+        <div class="section-head">
+          <h2 data-i18n="how.title">Cómo funciona una partida</h2>
+        </div>
+        <ol class="steps">
+          <li class="step">
+            <span class="step-num">1</span>
+            <div>
+              <h3 data-i18n="how.steps.0.title">Encuentra un quiz</h3>
+              <p data-i18n="how.steps.0.body"></p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-num">2</span>
+            <div>
+              <h3 data-i18n="how.steps.1.title">Compite en vivo</h3>
+              <p data-i18n="how.steps.1.body"></p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-num">3</span>
+            <div>
+              <h3 data-i18n="how.steps.2.title">Gana créditos</h3>
+              <p data-i18n="how.steps.2.body"></p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-num">4</span>
+            <div>
+              <h3 data-i18n="how.steps.3.title">Gestiona tu dinero</h3>
+              <p data-i18n="how.steps.3.body"></p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section wallet-banner">
+      <div class="container wallet-inner">
+        <div class="wallet-icon">💳</div>
+        <div>
+          <h2 data-i18n="wallet.title">Dinero en la web de Gestión</h2>
+          <p data-i18n="wallet.body"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section final-cta">
+      <div class="container final-inner">
+        <h2 data-i18n="final.title">¿Listo para competir?</h2>
+        <p data-i18n="final.subtitle">Regístrate, verifica tu cuenta y únete a tu primer quiz en minutos.</p>
+        <button type="button" class="btn btn-lg btn-primary" id="cta-secondary">
+          Descargar en App Store
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <img src="assets/logo-glow.png" alt="" width="28" height="28">
+        <span>QUILAX</span>
+      </div>
+      <p class="footer-copy">© <span id="year"></span> Quilax. <span data-i18n="footer.rights">Todos los derechos reservados.</span></p>
+      <a href="mailto:quilax@appquilax.com" class="footer-link" data-i18n="footer.contact">Contacto</a>
+    </div>
+  </footer>
+
+  <script src="js/locales.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
