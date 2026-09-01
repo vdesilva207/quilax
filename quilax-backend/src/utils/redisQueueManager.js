@@ -1,6 +1,6 @@
-import Redis from 'ioredis';
 import Bull from 'bull';
 import { EventEmitter } from 'events';
+import { createRedisClient, getBullRedisOptions } from '../lib/redisClient.js';
 
 class RedisQueueManager extends EventEmitter {
   constructor() {
@@ -21,22 +21,29 @@ class RedisQueueManager extends EventEmitter {
 
     try {
       // Configuración de Redis
-      this.redis = new Redis({
-        host: process.env.REDIS_HOST || 'localhost',
-        port: process.env.REDIS_PORT || 6379,
-        db: process.env.REDIS_DB || 0,
-        retryDelayOnFailover: 100,
-        maxRetriesPerRequest: 1,
-        lazyConnect: true,
-        keepAlive: 30000,
-        family: 4,
-        keyPrefix: 'quilax:',
-        enableReadyCheck: false,
-        maxLoadingTimeout: 2000,
-        connectTimeout: 5000,
-        commandTimeout: 3000,
-        lazyConnect: true
-      });
+      const redisOptions = getRedisConnectionOptions();
+      this.redis = typeof redisOptions === 'string'
+        ? createRedisClient({
+            keyPrefix: 'quilax:',
+            enableReadyCheck: false,
+            maxLoadingTimeout: 2000,
+            connectTimeout: 5000,
+            commandTimeout: 3000,
+            lazyConnect: true,
+          })
+        : createRedisClient({
+            db: process.env.REDIS_DB || 0,
+            keyPrefix: 'quilax:',
+            enableReadyCheck: false,
+            maxLoadingTimeout: 2000,
+            connectTimeout: 5000,
+            commandTimeout: 3000,
+            lazyConnect: true,
+            retryDelayOnFailover: 100,
+            maxRetriesPerRequest: 1,
+            keepAlive: 30000,
+            family: 4,
+          });
 
       this.redis.on('connect', () => {
         this.isConnected = true;
@@ -46,7 +53,7 @@ class RedisQueueManager extends EventEmitter {
 
       this.redis.on('error', (error) => {
         this.isConnected = false;
-        this.emit('error', error);
+        console.error('🔴 Redis Queue Manager error:', error.message);
       });
 
       this.redis.on('close', () => {
@@ -141,13 +148,7 @@ class RedisQueueManager extends EventEmitter {
   createQueue(name, options = {}) {
     try {
       const queue = new Bull(name, {
-        redis: {
-          host: process.env.REDIS_HOST || 'localhost',
-          port: process.env.REDIS_PORT || 6379,
-          db: process.env.REDIS_DB || 0,
-          keyPrefix: 'bull:',
-          maxRetriesPerRequest: 1 // Reducido
-        },
+        redis: getBullRedisOptions(),
         defaultJobOptions: {
           removeOnComplete: 50, // Reducido
           removeOnFail: 25,     // Reducido

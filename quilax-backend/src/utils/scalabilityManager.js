@@ -65,6 +65,10 @@ class ScalabilityManager extends EventEmitter {
         this.metrics.errorRate++;
         this.emit('jobFailed', { queue, job, error });
       });
+
+      this.queueManager.on('error', (error) => {
+        console.error('🔴 Redis Queue Manager error:', error.message);
+      });
     }
 
     // Eventos del handler de WebSocket
