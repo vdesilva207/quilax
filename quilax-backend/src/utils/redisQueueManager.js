@@ -21,29 +21,19 @@ class RedisQueueManager extends EventEmitter {
 
     try {
       // Configuración de Redis
-      const redisOptions = getRedisConnectionOptions();
-      this.redis = typeof redisOptions === 'string'
-        ? createRedisClient({
-            keyPrefix: 'quilax:',
-            enableReadyCheck: false,
-            maxLoadingTimeout: 2000,
-            connectTimeout: 5000,
-            commandTimeout: 3000,
-            lazyConnect: true,
-          })
-        : createRedisClient({
-            db: process.env.REDIS_DB || 0,
-            keyPrefix: 'quilax:',
-            enableReadyCheck: false,
-            maxLoadingTimeout: 2000,
-            connectTimeout: 5000,
-            commandTimeout: 3000,
-            lazyConnect: true,
-            retryDelayOnFailover: 100,
-            maxRetriesPerRequest: 1,
-            keepAlive: 30000,
-            family: 4,
-          });
+      this.redis = createRedisClient({
+        db: Number.parseInt(process.env.REDIS_DB, 10) || 0,
+        keyPrefix: 'quilax:',
+        enableReadyCheck: false,
+        maxLoadingTimeout: 2000,
+        connectTimeout: 5000,
+        commandTimeout: 3000,
+        lazyConnect: true,
+        retryDelayOnFailover: 100,
+        maxRetriesPerRequest: 1,
+        keepAlive: 30000,
+        family: 4,
+      });
 
       this.redis.on('connect', () => {
         this.isConnected = true;
