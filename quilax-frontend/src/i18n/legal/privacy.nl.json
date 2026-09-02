@@ -1,0 +1,42 @@
+[
+  {
+    "title": "1. Data controller",
+    "body": "Vicente de Silva Ortiz (natural person), Quilax pre-launch operator. Tax ID and address will be completed when the company is formed. Contact: Settings → Support / tickets."
+  },
+  {
+    "title": "2. Data we process",
+    "body": "Identity and contact (name, email), game data, KYC (ID and selfie), banking/payments via Stripe, messages/support, and technical security data."
+  },
+  {
+    "title": "3. Purposes",
+    "body": "Providing the service, preventing fraud, prizes, deposits/withdrawals, support and legal obligations."
+  },
+  {
+    "title": "4. Legal basis",
+    "body": "Contract performance, legitimate interest in anti-fraud security and, where applicable, consent or legal obligation."
+  },
+  {
+    "title": "5. Processors and third parties",
+    "body": "We don't sell your data. We share what's necessary with Stripe, hosting, identity verification and authorities when required."
+  },
+  {
+    "title": "6. Retention and deletion",
+    "body": "Export or delete your account in Settings → Personal info. Deletion anonymizes personal data; some game/payment records may be kept without identifying you for legal periods."
+  },
+  {
+    "title": "7. Your rights (GDPR)",
+    "body": "Access, rectification, erasure, objection, restriction and portability in-app (export / delete) or via support. You may also complain to your DPA."
+  },
+  {
+    "title": "8. Minors",
+    "body": "Quilax is 18+ only. Registration and money operations are enforced server-side."
+  },
+  {
+    "title": "9. Security",
+    "body": "HTTPS, access controls and 2FA on deposit/withdraw in Gestión (if you enable it)."
+  },
+  {
+    "title": "10. Changes",
+    "body": "We may update this policy and will notify you of material changes in the app."
+  }
+]

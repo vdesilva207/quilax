@@ -1,0 +1,42 @@
+[
+  {
+    "title": "1. Controlador de dados",
+    "body": "Vicente de Silva Ortiz (pessoa física), operador de pré-lançamento Quilax. O número de identificação fiscal e o endereço serão preenchidos quando a empresa for constituída. Contato: Configurações → Suporte/tickets."
+  },
+  {
+    "title": "2. Dados que processamos",
+    "body": "Identidade e contato (nome, email), dados do jogo, KYC (ID e selfie), serviços bancários/pagamentos via Stripe, mensagens/suporte e dados técnicos de segurança."
+  },
+  {
+    "title": "3. Finalidades",
+    "body": "Prestar o serviço, prevenindo fraudes, prêmios, depósitos/saques, suporte e obrigações legais."
+  },
+  {
+    "title": "4. Base jurídica",
+    "body": "Execução do contrato, interesse legítimo na segurança antifraude e, quando aplicável, consentimento ou obrigação legal."
+  },
+  {
+    "title": "5. Processadores e terceiros",
+    "body": "Não vendemos seus dados. Compartilhamos o que for necessário com Stripe, hospedagem, verificação de identidade e autoridades quando necessário."
+  },
+  {
+    "title": "6. Retenção e exclusão",
+    "body": "Exporte ou exclua sua conta em Configurações → Informações pessoais. A exclusão anonimiza os dados pessoais; alguns registros de jogos/pagamentos podem ser mantidos sem identificá-lo por períodos legais."
+  },
+  {
+    "title": "7. Seus direitos (RGPD)",
+    "body": "Acesso, retificação, apagamento, objeção, restrição e portabilidade in-app (exportar/excluir) ou via suporte. Você também pode reclamar com seu DPA."
+  },
+  {
+    "title": "8. Menores",
+    "body": "Quilax tem apenas 18 anos ou mais. As operações de registro e dinheiro são aplicadas no lado do servidor."
+  },
+  {
+    "title": "9. Segurança",
+    "body": "HTTPS, controles de acesso e 2FA no depósito/saque no Gestión (se você habilitá-lo)."
+  },
+  {
+    "title": "10. Mudanças",
+    "body": "Poderemos atualizar esta política e notificá-lo sobre alterações materiais no aplicativo."
+  }
+]

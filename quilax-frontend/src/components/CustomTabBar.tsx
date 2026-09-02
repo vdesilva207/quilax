@@ -1,66 +1,107 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Colors, Spacing, BottomTabInset } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
+import { Colors, Spacing, MaxContentWidth } from '@/constants/theme';
 import CustomIcon from '@/components/CustomIcon';
 import { APP_TAB_SECTIONS } from '@/constants/appSections';
+import { useQuizPlayUi } from '@/context/QuizPlayUiContext';
+import { PressScale } from '@/components/motion';
+import Animated, { FadeInUp, Easing } from 'react-native-reanimated';
+import { useChromeInsets } from '@/hooks/useChromeInsets';
 
-export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+  const { width } = useWindowDimensions();
+  const barWidth = Math.min(width, MaxContentWidth);
+  const { hideTabBar } = useQuizPlayUi();
+  const { t } = useTranslation();
+  const chrome = useChromeInsets();
+
+  if (hideTabBar) return null;
+
   return (
-    <View style={[styles.container, { paddingBottom: Platform.OS === 'ios' ? BottomTabInset : Spacing.two }]}>
-      {state.routes.map((route, index) => {
-        const section = APP_TAB_SECTIONS.find((item) => item.name === route.name);
-        if (!section) return null;
+    <Animated.View entering={FadeInUp.duration(280).easing(Easing.out(Easing.cubic))} style={styles.outer}>
+      <View
+        style={[
+          styles.container,
+          {
+            width: barWidth,
+            paddingBottom: chrome.bottomPadding,
+          },
+        ]}
+      >
+        {APP_TAB_SECTIONS.map((section) => {
+          const routeIndex = state.routes.findIndex((r) => r.name === section.name);
+          if (routeIndex < 0) return null;
+          const route = state.routes[routeIndex];
+          const isFocused = state.index === routeIndex;
+          const label = t(section.labelKey);
 
-        const isFocused = state.index === index;
-        const onPress = () => {
-          const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
-          }
-        };
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (event.defaultPrevented) return;
 
-        return (
-          <Pressable
-            key={route.key}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            onPress={onPress}
-            style={styles.tab}
-            testID={section.testID}
-          >
-            <CustomIcon
-              name={section.icon}
-              size={22}
-              color={isFocused ? Colors.light.primary : Colors.light.textSecondary}
-            />
-            <Text style={[styles.label, isFocused && styles.labelActive]}>{section.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
+            // Misma pestaña otra vez → volver al hub (p. ej. Config desde Términos)
+            if (isFocused) {
+              navigation.navigate(route.name as never, { screen: 'index' } as never);
+              return;
+            }
+
+            if (section.name === 'quiz') {
+              navigation.navigate('quiz', { screen: 'create' });
+            } else {
+              navigation.navigate(route.name);
+            }
+          };
+
+          return (
+            <PressScale
+              key={route.key}
+              accessibilityRole="button"
+              accessibilityLabel={label}
+              accessibilityState={isFocused ? { selected: true } : {}}
+              onPress={onPress}
+              style={styles.tab}
+              testID={section.testID}
+              scaleTo={0.96}
+            >
+              <CustomIcon
+                name={section.icon}
+                size={22}
+                color={isFocused ? Colors.light.primary : Colors.light.textSecondary}
+              />
+            </PressScale>
+          );
+        })}
+      </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  outer: {
+    backgroundColor: Colors.light.backgroundElement,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.backgroundSelected,
+    alignItems: 'center',
+  },
   container: {
     flexDirection: 'row',
-    backgroundColor: Colors.light.background,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(99,102,241,0.12)',
-    paddingTop: Spacing.two,
+    justifyContent: 'space-evenly',
+    paddingTop: Spacing.three,
+    paddingHorizontal: Spacing.two,
+    maxWidth: MaxContentWidth,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
-  },
-  label: {
-    fontSize: 11,
-    color: Colors.light.textSecondary,
-    fontWeight: '600',
-  },
-  labelActive: {
-    color: Colors.light.primary,
+    justifyContent: 'center',
+    minWidth: 0,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.one,
   },
 });

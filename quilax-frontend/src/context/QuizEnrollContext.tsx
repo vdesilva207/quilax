@@ -37,7 +37,7 @@ export function QuizEnrollProvider({ children }: { children: React.ReactNode }) 
 
 export function useQuizEnroll() {
   const ctx = useContext(QuizEnrollContext);
-  if (!ctx) throw new Error('useQuizEnroll debe usarse dentro de QuizEnrollProvider');
+  if (!ctx) throw new Error('useQuizEnroll must be used within QuizEnrollProvider');
   return ctx;
 }
 

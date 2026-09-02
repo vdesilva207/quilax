@@ -1,151 +1,188 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Text, StyleSheet, TextInput, Alert, Pressable, Share, Platform } from 'react-native';
 import { Colors, Spacing } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import CustomIcon from '@/components/CustomIcon';
-
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
+import settingsService from '@/services/settingsService';
+import apiClient from '@/lib/api';
+import { AppScreen, AppHeader, AppSection } from '@/components/ui/AppScreen';
+import { GradientButton, FieldLabel } from '@/components/ui/ScreenChrome';
+import PasswordInput from '@/components/ui/PasswordInput';
 
 export default function AccountSettingsScreen() {
   const router = useRouter();
-  const { user, updateUser } = useAuth();
+  const { t } = useTranslation();
+  const { user, updateUser, logout } = useAuth();
   const [name, setName] = useState(user?.fullName || '');
-  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState(
+    user?.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : '',
+  );
   const [bio, setBio] = useState(user?.bio || '');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const handleSave = async () => {
-    const result = await updateUser({ fullName: name, bio, dateOfBirth: dateOfBirth || undefined });
+    const result = await updateUser({
+      fullName: name,
+      bio,
+      dateOfBirth: dateOfBirth || undefined,
+    });
     if (result.success) {
-      Alert.alert('Guardado', 'Información personal actualizada correctamente');
-      router.back();
+      Alert.alert(t('settings.account.savedTitle'), t('settings.account.savedBody'));
+      router.navigate('/(app)/settings' as any);
     } else {
-      Alert.alert('Error', result.error || 'No se pudo guardar');
+      Alert.alert(t('common.error'), result.error || t('settings.account.saveError'));
     }
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const data = await apiClient.get('/profile/data-export');
+      const payload = JSON.stringify(data.data || data, null, 2);
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(payload);
+        Alert.alert(t('common.done'), t('settings.account.exportCopied'));
+      } else {
+        await Share.share({ message: payload, title: t('settings.account.exportShareTitle') });
+      }
+    } catch (e: any) {
+      Alert.alert(t('common.error'), e?.message || t('settings.account.exportError'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const confirmDelete = () => {
+    if (!deletePassword) {
+      Alert.alert(t('common.error'), t('settings.account.deleteNeedPassword'));
+      return;
+    }
+    Alert.alert(t('settings.account.deleteConfirmTitle'), t('settings.account.deleteConfirmBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.account.deleteConfirmAction'),
+        style: 'destructive',
+        onPress: async () => {
+          setDeleting(true);
+          const result = await settingsService.deleteAccount(deletePassword);
+          setDeleting(false);
+          if (result.success) {
+            await logout();
+            router.replace('/(auth)/welcome' as any);
+          } else {
+            Alert.alert(t('common.error'), result.error || t('settings.account.deleteError'));
+          }
+        },
+      },
+    ]);
+  };
+
   return (
-    <ScrollView style={styles.container}>
-      <LinearGradient
-        colors={[Colors.light.gradientStart, Colors.light.gradientEnd]}
-        style={styles.gradientHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <CustomIcon name="back" size={24} color={Colors.light.text} />
-          </Pressable>
-          <Text style={styles.title}>Información Personal</Text>
-        </View>
-      </LinearGradient>
+    <AppScreen>
+      <AppHeader title={t('settings.account.title')} showBack backHref="/(app)/settings" />
+      <AppSection title={t('settings.account.detailsSection')} accentIndex={0}>
+        <FieldLabel>{t('settings.account.nameLabel')}</FieldLabel>
+        <TextInput
+          style={styles.input}
+          placeholder={t('settings.account.namePlaceholder')}
+          placeholderTextColor={Colors.light.textSecondary}
+          value={name}
+          onChangeText={setName}
+        />
+        <FieldLabel>{t('settings.account.dobLabel')}</FieldLabel>
+        <TextInput
+          style={styles.input}
+          placeholder={t('settings.account.dobPlaceholder')}
+          placeholderTextColor={Colors.light.textSecondary}
+          value={dateOfBirth}
+          onChangeText={setDateOfBirth}
+        />
+        <FieldLabel>{t('settings.account.bioLabel')}</FieldLabel>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          placeholder={t('settings.account.bioPlaceholder')}
+          placeholderTextColor={Colors.light.textSecondary}
+          multiline
+          numberOfLines={4}
+          value={bio}
+          onChangeText={setBio}
+        />
+        <GradientButton label={t('settings.account.saveButton')} onPress={handleSave} />
+      </AppSection>
 
-      <View style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.label}>Nombre</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Tu nombre"
-            placeholderTextColor={Colors.light.textSecondary}
-            value={name}
-            onChangeText={setName}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Fecha de Nacimiento</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="DD/MM/YYYY"
-            placeholderTextColor={Colors.light.textSecondary}
-            value={dateOfBirth}
-            onChangeText={setDateOfBirth}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Biografía</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Cuéntanos sobre ti..."
-            placeholderTextColor={Colors.light.textSecondary}
-            multiline
-            numberOfLines={4}
-            value={bio}
-            onChangeText={setBio}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Pressable style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Guardar Cambios</Text>
-          </Pressable>
-        </View>
-      </View>
-    </ScrollView>
+      <AppSection title={t('settings.account.deleteSection')} accentIndex={3}>
+        <Text style={styles.deleteLead}>{t('settings.account.deleteLead')}</Text>
+        <Pressable
+          style={[styles.exportBtn, exporting && styles.deleteBtnDisabled]}
+          onPress={handleExport}
+          disabled={exporting}
+        >
+          <Text style={styles.exportBtnText}>
+            {exporting ? t('common.loading') : t('settings.account.exportButton')}
+          </Text>
+        </Pressable>
+        <FieldLabel>{t('settings.account.deletePasswordLabel')}</FieldLabel>
+        <PasswordInput
+          containerStyle={styles.fieldGap}
+          placeholder={t('settings.account.deletePasswordPlaceholder')}
+          value={deletePassword}
+          onChangeText={setDeletePassword}
+        />
+        <Pressable
+          style={[styles.deleteBtn, deleting && styles.deleteBtnDisabled]}
+          onPress={confirmDelete}
+          disabled={deleting}
+        >
+          <Text style={styles.deleteBtnText}>
+            {deleting ? t('common.saving') : t('settings.account.deleteButton')}
+          </Text>
+        </Pressable>
+      </AppSection>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  gradientHeader: {
-    paddingTop: Spacing.six,
-    paddingBottom: Spacing.four,
-    paddingHorizontal: Spacing.six,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    padding: Spacing.two,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  content: {
-    padding: Spacing.four,
-  },
-  section: {
-    marginBottom: Spacing.four,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.light.text,
-    marginBottom: Spacing.two,
-  },
   input: {
     backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 8,
+    padding: Spacing.three,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.light.backgroundSelected,
     fontSize: 16,
+    color: Colors.light.text,
+    marginBottom: Spacing.three,
   },
   textArea: {
     minHeight: 120,
     textAlignVertical: 'top',
   },
-  saveButton: {
-    backgroundColor: Colors.light.gradientStart,
-    padding: Spacing.four,
-    borderRadius: 8,
+  fieldGap: { marginBottom: Spacing.three },
+  deleteLead: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: Colors.light.textSecondary,
+    marginBottom: Spacing.three,
+  },
+  deleteBtn: {
+    backgroundColor: '#B42318',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
   },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+  exportBtn: {
+    backgroundColor: Colors.light.backgroundElement,
+    borderWidth: 1,
+    borderColor: Colors.light.backgroundSelected,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: Spacing.three,
   },
+  exportBtnText: { color: Colors.light.text, fontWeight: '700', fontSize: 15 },
+  deleteBtnDisabled: { opacity: 0.6 },
+  deleteBtnText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
 });

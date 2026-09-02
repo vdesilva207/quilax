@@ -1,6 +1,6 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor } from '@/constants/theme';
+import { ThemeColor, sora } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -32,29 +32,29 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 
 const styles = StyleSheet.create({
   small: {
+    ...sora(500),
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 500,
   },
   smallBold: {
+    ...sora(700),
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 700,
   },
   default: {
+    ...sora(500),
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 500,
   },
   title: {
+    ...sora(600),
     fontSize: 48,
-    fontWeight: 600,
     lineHeight: 52,
   },
   subtitle: {
+    ...sora(600),
     fontSize: 32,
     lineHeight: 44,
-    fontWeight: 600,
   },
   link: {
     lineHeight: 30,
@@ -66,8 +66,7 @@ const styles = StyleSheet.create({
     color: '#3c87f7',
   },
   code: {
-    fontFamily: Fonts.mono,
-    fontWeight: Platform.select({ android: 700 }) ?? 500,
+    ...sora(Platform.OS === 'android' ? 700 : 500),
     fontSize: 12,
   },
 });

@@ -1,0 +1,42 @@
+[
+  {
+    "title": "1. Datenverantwortlicher",
+    "body": "Vicente de Silva Ortiz (natürliche Person), Quilax-Pre-Launch-Betreiber. Steuer-ID und Adresse werden bei der Gründung des Unternehmens vervollständigt. Kontakt: Einstellungen → Support / Tickets."
+  },
+  {
+    "title": "2. Von uns verarbeitete Daten",
+    "body": "Identität und Kontakt (Name, E-Mail), Spieldaten, KYC (ID und Selfie), Banking/Zahlungen über Stripe, Nachrichten/Support und technische Sicherheitsdaten."
+  },
+  {
+    "title": "3. Zwecke",
+    "body": "Bereitstellung des Dienstes, Betrugsprävention, Gewinne, Ein-/Auszahlungen, Support und rechtliche Verpflichtungen."
+  },
+  {
+    "title": "4. Rechtsgrundlage",
+    "body": "Vertragserfüllung, berechtigtes Interesse an der Betrugssicherheit und ggf. Einwilligung oder rechtliche Verpflichtung."
+  },
+  {
+    "title": "5. Auftragsverarbeiter und Dritte",
+    "body": "Wir verkaufen Ihre Daten nicht. Bei Bedarf teilen wir das Notwendige mit Stripe, Hosting, Identitätsprüfung und Behörden."
+  },
+  {
+    "title": "6. Aufbewahrung und Löschung",
+    "body": "Exportieren oder löschen Sie Ihr Konto unter Einstellungen → Persönliche Daten. Durch die Löschung werden personenbezogene Daten anonymisiert; Einige Spiel-/Zahlungsaufzeichnungen können für gesetzliche Zeiträume ohne Identifizierung Ihrer Person aufbewahrt werden."
+  },
+  {
+    "title": "7. Ihre Rechte (DSGVO)",
+    "body": "Zugriff, Berichtigung, Löschung, Widerspruch, Einschränkung und Portabilität in der App (Export/Löschen) oder über den Support. Sie können sich auch bei Ihrer Datenschutzbehörde beschweren."
+  },
+  {
+    "title": "8. Minderjährige",
+    "body": "Quilax ist erst ab 18 Jahren zugelassen. Registrierung und Geldvorgänge werden serverseitig erzwungen."
+  },
+  {
+    "title": "9. Sicherheit",
+    "body": "HTTPS, Zugriffskontrollen und 2FA bei Ein-/Auszahlungen in Gestión (sofern Sie es aktivieren)."
+  },
+  {
+    "title": "10. Änderungen",
+    "body": "Wir können diese Richtlinie aktualisieren und werden Sie über wesentliche Änderungen in der App informieren."
+  }
+]

@@ -1,3 +1,9 @@
-export function getWalletAppUrl(baseHost = '127.0.0.1') {
-  return process.env.EXPO_PUBLIC_WALLET_URL || `http://${baseHost}:8082`;
+import { WALLET_APP_URL } from '@/lib/api';
+
+/** URL de Gestión. Si hay token de intercambio, lo añade como ?token= */
+export function getWalletAppUrl(token) {
+  const base = String(WALLET_APP_URL || '').replace(/\/$/, '');
+  if (!token) return base;
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}token=${encodeURIComponent(token)}`;
 }

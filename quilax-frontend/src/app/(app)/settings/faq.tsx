@@ -1,30 +1,77 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Colors, Spacing } from '@/constants/theme';
+import { AppScreen, AppHeader, AppSection, AppCard } from '@/components/ui/AppScreen';
+import apiClient from '@/lib/api';
 
-const FAQ_ITEMS = [
-  { q: '¿Cuánto cuesta entrar a un quiz?', a: 'Cada quiz cuesta 1 crédito (≈1 EUR). El crédito no se devuelve.' },
-  { q: '¿Cómo retiro mis premios?', a: 'Desde la sección de gestión/wallet puedes solicitar retiro a tu cuenta bancaria verificada.' },
-  { q: '¿Puedo crear quizzes?', a: 'Sí, si has participado en el número mínimo de quizzes requerido.' },
-];
+type FaqItem = { q: string; a: string };
+
+type HelpArticle = {
+  id: number;
+  question: string;
+  answer: string;
+  category?: string;
+};
 
 export default function FaqScreen() {
+  const { t, i18n } = useTranslation();
+  const fallbackItems = t('settings.faqPage.items', { returnObjects: true }) as FaqItem[];
+  const [items, setItems] = useState<FaqItem[]>(Array.isArray(fallbackItems) ? fallbackItems : []);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const isSpanish = (i18n.language || 'es').toLowerCase().startsWith('es');
+    const localItems = t('settings.faqPage.items', { returnObjects: true }) as FaqItem[];
+    (async () => {
+      try {
+        // Help articles in DB are Spanish-only today; keep i18n copy for other locales.
+        if (!isSpanish) {
+          setItems(Array.isArray(localItems) ? localItems : []);
+          return;
+        }
+        const data = await apiClient.get('/help/articles?limit=100');
+        const articles = (data?.articles || []) as HelpArticle[];
+        if (articles.length) {
+          setItems(
+            articles.map((a) => ({
+              q: a.question,
+              a: a.answer,
+            })),
+          );
+        } else if (Array.isArray(localItems)) {
+          setItems(localItems);
+        }
+      } catch {
+        if (Array.isArray(localItems)) setItems(localItems);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [i18n.language, t]);
+
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Preguntas frecuentes</Text>
-      {FAQ_ITEMS.map((item) => (
-        <View key={item.q} style={styles.item}>
-          <Text style={styles.question}>{item.q}</Text>
-          <Text style={styles.answer}>{item.a}</Text>
-        </View>
-      ))}
-    </ScrollView>
+    <AppScreen>
+      <AppHeader title={t('settings.faqPage.title')} showBack backHref="/(app)/settings" />
+      {loading ? (
+        <ActivityIndicator color={Colors.light.primary} style={{ marginTop: Spacing.four }} />
+      ) : (
+        items.map((item, index) => (
+          <AppSection key={`${item.q}-${index}`} title={item.q} accentIndex={index % 4}>
+            <AppCard>
+              <Text style={styles.answer}>{item.a}</Text>
+            </AppCard>
+          </AppSection>
+        ))
+      )}
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: Spacing.four, backgroundColor: Colors.light.background },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: Spacing.four },
-  item: { marginBottom: Spacing.four },
-  question: { fontSize: 16, fontWeight: '700', marginBottom: Spacing.one },
-  answer: { fontSize: 15, color: Colors.light.textSecondary, lineHeight: 22 },
+  answer: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: Colors.light.textSecondary,
+  },
 });

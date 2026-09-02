@@ -1,143 +1,118 @@
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Spacing } from '@/constants/theme';
-import { useRouter } from 'expo-router';
-import CustomIcon from '@/components/CustomIcon';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Colors, Spacing, titleTypeface } from '@/constants/theme';
+import { AppScreen, AppHeader, AppSection, AppCard } from '@/components/ui/AppScreen';
+import apiClient from '@/lib/api';
+import { normalizeAppLanguage, type AppLanguage } from '@/i18n';
+
+import privacyEs from '@/i18n/legal/privacy.es.json';
+import privacyEn from '@/i18n/legal/privacy.en.json';
+import privacyFr from '@/i18n/legal/privacy.fr.json';
+import privacyDe from '@/i18n/legal/privacy.de.json';
+import privacyPt from '@/i18n/legal/privacy.pt.json';
+
+type Section = { title: string; body: string };
+
+const PRIVACY_BY_LANG: Record<AppLanguage, Section[]> = {
+  es: privacyEs as Section[],
+  en: privacyEn as Section[],
+  fr: privacyFr as Section[],
+  de: privacyDe as Section[],
+  pt: privacyPt as Section[],
+};
+
+function parseMarkdownSections(content: string, fallback: Section[]) {
+  const lines = String(content || '').split('\n');
+  const sections: Section[] = [];
+  let title = '';
+  let body: string[] = [];
+  const flush = () => {
+    if (title) sections.push({ title, body: body.join(' ').trim() });
+    title = '';
+    body = [];
+  };
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (line.startsWith('## ')) {
+      flush();
+      title = line.replace(/^##\s+/, '');
+    } else if (line.startsWith('# ')) {
+      // skip
+    } else if (line.startsWith('- ')) {
+      body.push(line.replace(/^- /, '• '));
+    } else if (line) {
+      body.push(line);
+    }
+  }
+  flush();
+  return sections.length ? sections : fallback;
+}
 
 export default function PrivacyPolicyScreen() {
-  const router = useRouter();
+  const { t, i18n } = useTranslation();
+  const lang = useMemo(() => normalizeAppLanguage(i18n.language), [i18n.language]);
+  const fallbackSections = PRIVACY_BY_LANG[lang];
+  const [sections, setSections] = useState<Section[]>(fallbackSections);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    // API only serves Spanish markdown; use translated fallbacks for other languages.
+    if (lang !== 'es') {
+      setSections(PRIVACY_BY_LANG[lang]);
+      setLoading(false);
+      return;
+    }
+    try {
+      const data = await apiClient.get('/legal/privacy-policy');
+      if (data?.content) setSections(parseMarkdownSections(data.content, PRIVACY_BY_LANG.es));
+      else setSections(PRIVACY_BY_LANG.es);
+    } catch {
+      setSections(PRIVACY_BY_LANG.es);
+    } finally {
+      setLoading(false);
+    }
+  }, [lang]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
-    <ScrollView style={styles.container}>
-      <LinearGradient
-        colors={[Colors.light.gradientStart, Colors.light.gradientEnd]}
-        style={styles.gradientHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <CustomIcon name="back" size={24} color={Colors.light.text} />
-          </Pressable>
-          <Text style={styles.title}>Política de Privacidad</Text>
-        </View>
-      </LinearGradient>
-
-      <View style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>1. Información que Recopilamos</Text>
-          <Text style={styles.text}>
-            Recopilamos información personal que nos proporcionas directamente, como tu nombre, email, fecha de nacimiento y información de pago. También recopilamos información sobre tu uso de la aplicación.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>2. Cómo Usamos tu Información</Text>
-          <Text style={styles.text}>
-            Usamos tu información para proporcionar y mejorar nuestros servicios, procesar pagos, enviar notificaciones importantes, y proteger la seguridad de la plataforma.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>3. Compartición de Información</Text>
-          <Text style={styles.text}>
-            No vendemos tu información personal. Solo compartimos tu información con terceros cuando es necesario para proporcionar nuestros servicios, como procesadores de pago, o cuando lo requiere la ley.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>4. Seguridad de Datos</Text>
-          <Text style={styles.text}>
-            Implementamos medidas de seguridad robustas para proteger tu información personal, incluyendo encriptación de datos y protocolos de seguridad estándar de la industria.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>5. Tus Derechos</Text>
-          <Text style={styles.text}>
-            Tienes derecho a acceder, corregir o eliminar tu información personal. También puedes optar por no recibir ciertas comunicaciones de nuestra parte.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>6. Cookies y Tecnologías Similares</Text>
-          <Text style={styles.text}>
-            Utilizamos cookies y tecnologías similares para mejorar tu experiencia en la aplicación, analizar el uso y personalizar el contenido.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>7. Información de Menores</Text>
-          <Text style={styles.text}>
-            Nuestros servicios no están destinados a menores de 18 años. No recopilamos conscientemente información personal de menores.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>8. Cambios a esta Política</Text>
-          <Text style={styles.text}>
-            Podemos actualizar esta política de privacidad de vez en cuando. Te notificaremos sobre cualquier cambio importante publicando la nueva política en la aplicación.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>9. Contacto</Text>
-          <Text style={styles.text}>
-            Si tienes preguntas sobre esta política de privacidad o sobre cómo manejamos tu información personal, por favor contáctanos a través de la sección de Ayuda y Soporte.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>10. Cumplimiento Legal</Text>
-          <Text style={styles.text}>
-            Cumplimos con el Reglamento General de Protección de Datos (GDPR) y otras leyes de protección de datos aplicables.
-          </Text>
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Última actualización: Junio 2026</Text>
-        </View>
-      </View>
-    </ScrollView>
+    <AppScreen>
+      <AppHeader title={t('settings.privacyPage.title')} showBack backHref="/(app)/settings" />
+      <AppSection title={t('settings.privacyPage.introSection')} accentIndex={0}>
+        <Text style={styles.intro}>{t('settings.privacyPage.intro')}</Text>
+        {loading ? (
+          <ActivityIndicator color={Colors.light.primary} style={{ marginVertical: Spacing.four }} />
+        ) : (
+          sections.map((section) => (
+            <AppCard key={section.title}>
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+              <Text style={styles.text}>{section.body}</Text>
+            </AppCard>
+          ))
+        )}
+        <Text style={styles.footer}>
+          {t('settings.privacyPage.footer', { date: t('settings.privacyPage.footerDate') })}
+        </Text>
+      </AppSection>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  gradientHeader: {
-    paddingTop: Spacing.six,
-    paddingBottom: Spacing.four,
-    paddingHorizontal: Spacing.six,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    padding: Spacing.two,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  content: {
-    padding: Spacing.four,
-  },
-  section: {
-    marginBottom: Spacing.four,
+  intro: {
+    fontSize: 14,
+    color: Colors.light.textSecondary,
+    lineHeight: 20,
+    marginBottom: Spacing.two,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    ...titleTypeface,
+    fontSize: 16,
+    fontWeight: '700',
     color: Colors.light.text,
     marginBottom: Spacing.two,
   },
@@ -147,12 +122,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   footer: {
-    marginTop: Spacing.four,
-    padding: Spacing.four,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.backgroundSelected,
-  },
-  footerText: {
+    marginTop: Spacing.three,
     fontSize: 12,
     color: Colors.light.textSecondary,
     textAlign: 'center',

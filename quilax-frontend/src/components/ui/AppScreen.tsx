@@ -9,13 +9,17 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Spacing } from '@/constants/theme';
+import { useRouter, useSegments } from 'expo-router';
+import { Colors, Spacing, MaxContentWidth, sora } from '@/constants/theme';
 import {
-  APP_GRADIENT,
   SCREEN_BACKGROUND,
   SECTION_ACCENTS,
-  GRADIENT_VERTICAL,
+  brandGradientProps,
 } from '@/constants/gradients';
+import CustomIcon from '@/components/CustomIcon';
+import { goToParent } from '@/lib/navigation';
+import { FadeBlock, HeroEnter, PressScale, ScreenEnter } from '@/components/motion';
+import { useChromeInsets } from '@/hooks/useChromeInsets';
 
 type AppScreenProps = ScrollViewProps & {
   children: React.ReactNode;
@@ -26,36 +30,76 @@ export function AppScreen({ children, style, contentContainerStyle, ...rest }: A
     <ScrollView
       style={[styles.screen, style]}
       contentContainerStyle={[styles.screenContent, contentContainerStyle]}
+      keyboardShouldPersistTaps="handled"
       {...rest}
     >
-      {children}
+      <ScreenEnter style={styles.phoneColumn}>{children}</ScreenEnter>
     </ScrollView>
   );
 }
 
 type AppHeaderProps = {
+  /** Nombre de la pantalla (Inicio, Perfil, Config…) */
   title: string;
   subtitle?: string;
   badge?: string;
+  /** Marca grande encima del título. Por defecto QUILAX. */
+  brand?: string | null;
+  showBack?: boolean;
+  /** Si se indica, el atrás va aquí en lugar de router.back() */
+  backHref?: string;
+  onBack?: () => void;
   children?: React.ReactNode;
 };
 
-export function AppHeader({ title, subtitle, badge, children }: AppHeaderProps) {
+export function AppHeader({
+  title,
+  subtitle,
+  badge,
+  brand = 'QUILAX',
+  showBack,
+  backHref,
+  onBack,
+  children,
+}: AppHeaderProps) {
+  const router = useRouter();
+  const segments = useSegments() as string[];
+  const chrome = useChromeInsets();
+
+  const handleBack =
+    onBack ??
+    (() => {
+      goToParent(router, segments, backHref);
+    });
+
+  const showBrand = Boolean(brand) && brand!.toUpperCase() !== title.toUpperCase();
+
   return (
-    <LinearGradient
-      colors={[...APP_GRADIENT]}
-      style={styles.header}
-      {...GRADIENT_VERTICAL}
-    >
-      <Text style={styles.headerTitle}>{title}</Text>
-      {badge ? (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{badge}</Text>
+    <HeroEnter>
+      <LinearGradient
+        {...brandGradientProps}
+        style={[styles.header, { paddingTop: chrome.headerPaddingTop }]}
+      >
+        <View style={styles.headerRow}>
+          {showBack ? (
+            <PressScale onPress={handleBack} style={styles.backButton} hitSlop={8} scaleTo={0.92}>
+              <CustomIcon name="back" size={24} color="#FFFFFF" />
+            </PressScale>
+          ) : null}
+          <View style={styles.headerText}>
+            {showBrand ? <Text style={styles.headerBrand}>{brand}</Text> : null}
+            <Text style={[styles.headerTitle, showBrand && styles.headerTitleUnderBrand]}>{title}</Text>
+            {badge ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{badge}</Text>
+              </View>
+            ) : null}
+            {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
+          </View>
         </View>
-      ) : null}
-      {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
-      {children}
-    </LinearGradient>
+        {children}
+      </LinearGradient>
+    </HeroEnter>
   );
 }
 
@@ -69,61 +113,58 @@ type AppSectionProps = {
 export function AppSection({ title, accentIndex = 0, children, style }: AppSectionProps) {
   const accent = SECTION_ACCENTS[accentIndex % SECTION_ACCENTS.length];
   return (
-    <View style={[styles.section, style]}>
+    <FadeBlock delay={60 + accentIndex * 40} style={[styles.section, style]}>
       <View style={styles.sectionTitleRow}>
         <View style={[styles.sectionAccent, { backgroundColor: accent }]} />
         <Text style={styles.sectionTitle}>{title}</Text>
       </View>
       {children}
-    </View>
+    </FadeBlock>
   );
 }
 
 type AppCardProps = {
   children: React.ReactNode;
   onPress?: () => void;
-  tint?: 'default' | 'warm' | 'cool';
   style?: ViewStyle;
 };
 
-const CARD_BACKGROUNDS = {
-  default: '#FFFFFF',
-  warm: '#FFF7ED',
-  cool: '#EEF2FF',
-};
-
-export function AppCard({ children, onPress, tint = 'default', style }: AppCardProps) {
-  const content = (
-    <View style={[styles.card, { backgroundColor: CARD_BACKGROUNDS[tint] }, style]}>
-      <LinearGradient
-        colors={[`${Colors.light.gradientStart}18`, `${Colors.light.gradientEnd}08`]}
-        style={styles.cardSheen}
-        {...GRADIENT_VERTICAL}
-      />
-      {children}
-    </View>
-  );
+export function AppCard({ children, onPress, style }: AppCardProps) {
+  const content = <View style={[styles.card, style]}>{children}</View>;
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [pressed && styles.cardPressed]}>
+      <PressScale onPress={onPress} style={styles.cardPressedWrap}>
         {content}
-      </Pressable>
+      </PressScale>
     );
   }
 
   return content;
 }
 
-export function AppPlaceholder({ text }: { text: string }) {
+export function AppPlaceholder({
+  text,
+  actionLabel,
+  onAction,
+}: {
+  text: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
   return (
-    <LinearGradient
-      colors={['#EEF2FF', '#F8FAFC']}
-      style={styles.placeholder}
-      {...GRADIENT_VERTICAL}
-    >
+    <View style={styles.placeholder}>
       <Text style={styles.placeholderText}>{text}</Text>
-    </LinearGradient>
+      {actionLabel && onAction ? (
+        <Pressable
+          onPress={onAction}
+          style={({ pressed }) => [styles.placeholderAction, pressed && styles.placeholderActionPressed]}
+          accessibilityRole="button"
+        >
+          <Text style={styles.placeholderActionText}>{actionLabel}</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -134,39 +175,63 @@ const styles = StyleSheet.create({
   },
   screenContent: {
     paddingBottom: Spacing.six,
-  },
-  header: {
-    paddingTop: Spacing.six,
-    paddingBottom: Spacing.four,
-    paddingHorizontal: Spacing.four,
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 36,
-    fontWeight: '800',
+  phoneColumn: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+  },
+  header: {
+    paddingBottom: Spacing.four,
+    paddingHorizontal: Spacing.four,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  backButton: {
+    padding: Spacing.two,
+  },
+  headerText: {
+    flex: 1,
+  },
+  headerBrand: {
+    ...sora(800),
+    fontSize: 28,
     color: '#FFFFFF',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
+  },
+  headerTitle: {
+    ...sora(800),
+    fontSize: 22,
+    color: '#FFFFFF',
+  },
+  headerTitleUnderBrand: {
+    ...sora(700),
+    marginTop: 4,
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.95)',
+    letterSpacing: 0.2,
   },
   headerSubtitle: {
-    marginTop: Spacing.two,
-    fontSize: 15,
+    marginTop: Spacing.one,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.92)',
-    textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   badge: {
     marginTop: Spacing.two,
+    alignSelf: 'flex-start',
     backgroundColor: 'rgba(255,255,255,0.22)',
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 12,
   },
   badgeText: {
+    ...sora(700),
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
   },
   section: {
     paddingHorizontal: Spacing.four,
@@ -180,46 +245,65 @@ const styles = StyleSheet.create({
   },
   sectionAccent: {
     width: 4,
-    height: 22,
-    borderRadius: 4,
+    height: 20,
+    borderRadius: 2,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    ...sora(800),
+    fontSize: 18,
     color: Colors.light.text,
   },
   card: {
-    borderRadius: 16,
+    borderRadius: 12,
     padding: Spacing.four,
-    marginBottom: Spacing.three,
+    marginBottom: Spacing.two,
     borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.12)',
-    overflow: 'hidden',
-    shadowColor: Colors.light.gradientStart,
-    shadowOffset: { width: 0, height: 4 },
+    borderColor: Colors.light.backgroundSelected,
+    backgroundColor: Colors.light.background,
+    shadowColor: '#000',
     shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
-  cardSheen: {
-    ...StyleSheet.absoluteFillObject,
+  cardPressedWrap: {
+    marginBottom: 0,
   },
   cardPressed: {
     opacity: 0.92,
-    transform: [{ scale: 0.99 }],
   },
   placeholder: {
     padding: Spacing.five,
-    borderRadius: 16,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 100,
+    minHeight: 88,
+    backgroundColor: Colors.light.backgroundElement,
     borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.1)',
+    borderColor: Colors.light.backgroundSelected,
+    gap: Spacing.three,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   placeholderText: {
+    ...sora(500),
     color: Colors.light.textSecondary,
     fontSize: 15,
-    fontWeight: '500',
+    textAlign: 'center',
+  },
+  placeholderAction: {
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
+    borderRadius: 12,
+    backgroundColor: Colors.light.primary,
+  },
+  placeholderActionPressed: { opacity: 0.88 },
+  placeholderActionText: {
+    ...sora(700),
+    color: '#FFFFFF',
+    fontSize: 14,
   },
 });

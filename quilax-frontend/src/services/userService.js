@@ -15,7 +15,7 @@ export const userService = {
   // Actualizar perfil del usuario
   updateProfile: async (userData) => {
     try {
-      const response = await apiClient.put('/auth/profile', userData);
+      const response = await apiClient.put('/profile/me', userData);
       return { success: true, data: response };
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -67,13 +67,55 @@ export const userService = {
     }
   },
 
-  // Obtener logros del usuario
-  getAchievements: async (userId) => {
+  getFollowStatus: async (userId) => {
     try {
-      const response = await apiClient.get(`/users/${userId}/achievements`);
+      const response = await apiClient.get(`/social/follow-status/${userId}`);
       return { success: true, data: response };
     } catch (error) {
-      console.error('Error fetching achievements:', error);
+      console.error('Error fetching follow status:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Bloquear usuario
+  blockUser: async (userId) => {
+    try {
+      const response = await apiClient.post(`/social/block/${userId}`);
+      return { success: true, data: response };
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Desbloquear usuario
+  unblockUser: async (userId) => {
+    try {
+      const response = await apiClient.delete(`/social/block/${userId}`);
+      return { success: true, data: response };
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Obtener usuarios bloqueados
+  getBlockedUsers: async () => {
+    try {
+      const response = await apiClient.get('/social/blocked');
+      return { success: true, data: response };
+    } catch (error) {
+      console.error('Error fetching blocked users:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Obtener vista pública de un perfil (limitada por privacidad)
+  getPublicProfileShare: async (userId) => {
+    try {
+      const response = await apiClient.get(`/profile/${userId}/share`);
+      return { success: true, data: response };
+    } catch (error) {
       return { success: false, error: error.message };
     }
   },

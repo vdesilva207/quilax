@@ -1,196 +1,146 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Spacing } from '@/constants/theme';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Text, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import CustomIcon from '@/components/CustomIcon';
+import { useTranslation } from 'react-i18next';
+import { Colors, Spacing, titleTypeface } from '@/constants/theme';
+import helpService from '@/services/helpService';
+import { AppScreen, AppHeader, AppSection, AppCard, AppPlaceholder } from '@/components/ui/AppScreen';
+import { GradientButton } from '@/components/ui/ScreenChrome';
 
 export default function HelpCenterScreen() {
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
+  const [articles, setArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const helpCategories = [
-    { id: 1, title: 'Cuenta y Registro', description: 'Problemas con tu cuenta' },
-    { id: 2, title: 'Quizzes y Juego', description: 'Preguntas sobre quizzes' },
-    { id: 3, title: 'Pagos y Retiros', description: 'Gestión de fondos' },
-    { id: 4, title: 'Creación de Quizzes', description: 'Cómo crear quizzes' },
-    { id: 5, title: 'Premios y Ganancias', description: 'Información sobre premios' },
-    { id: 6, title: 'Seguridad y Privacidad', description: 'Protección de datos' },
-    { id: 7, title: 'Problemas Técnicos', description: 'Errores y bugs' },
-  ];
+  useEffect(() => {
+    (async () => {
+      const isSpanish = (i18n.language || 'es').toLowerCase().startsWith('es');
+      if (!isSpanish) {
+        const faq = t('settings.faqPage.items', { returnObjects: true }) as Array<{ q: string; a: string }>;
+        if (Array.isArray(faq) && faq.length) {
+          setArticles(
+            faq.map((item, index) => ({
+              id: index + 1,
+              question: item.q,
+              answer: item.a,
+            })),
+          );
+        }
+        setLoading(false);
+        return;
+      }
+      const result = await helpService.getArticles();
+      if (result.success) {
+        setArticles(result.data?.articles || []);
+      }
+      setLoading(false);
+    })();
+  }, [i18n.language, t]);
+
+  const filteredArticles = useMemo(() => {
+    if (!searchQuery.trim()) return articles;
+    const q = searchQuery.trim().toLowerCase();
+    return articles.filter(
+      (a) =>
+        a.question?.toLowerCase().includes(q) ||
+        a.answer?.toLowerCase().includes(q) ||
+        a.keywords?.toLowerCase().includes(q),
+    );
+  }, [articles, searchQuery]);
 
   return (
-    <ScrollView style={styles.container}>
-      <LinearGradient
-        colors={[Colors.light.gradientStart, Colors.light.gradientEnd]}
-        style={styles.gradientHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <CustomIcon name="back" size={24} color={Colors.light.text} />
-          </Pressable>
-          <Text style={styles.title}>Centro de Ayuda</Text>
-        </View>
-      </LinearGradient>
+    <AppScreen>
+      <AppHeader
+        title={t('settings.help.title')}
+        subtitle={t('settings.help.subtitle')}
+        showBack
+        backHref="/(app)/settings"
+      />
 
-      <View style={styles.content}>
-        <View style={styles.searchSection}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar ayuda..."
-            placeholderTextColor={Colors.light.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
+      <AppSection title={t('settings.help.searchSection')} accentIndex={0}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder={t('settings.help.searchPlaceholder')}
+          placeholderTextColor={Colors.light.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </AppSection>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Categorías de Ayuda</Text>
-          {helpCategories.map((category) => (
-            <Pressable
-              key={category.id}
-              style={styles.categoryItem}
-              onPress={() => router.push(`/(app)/settings/help-category/${category.id}`)}
-            >
-              <View style={styles.categoryInfo}>
-                <Text style={styles.categoryTitle}>{category.title}</Text>
-                <Text style={styles.categoryDescription}>{category.description}</Text>
-              </View>
-              <Text style={styles.categoryArrow}>›</Text>
-            </Pressable>
-          ))}
-        </View>
+      <AppSection title={t('settings.help.articlesSection')} accentIndex={1}>
+        {loading ? (
+          <ActivityIndicator color={Colors.light.primary} />
+        ) : filteredArticles.length === 0 ? (
+          <AppPlaceholder text={t('settings.help.noArticles')} />
+        ) : (
+          filteredArticles.map((article) => {
+            const expanded = expandedId === article.id;
+            return (
+              <AppCard key={article.id} onPress={() => setExpandedId(expanded ? null : article.id)}>
+                <Text style={styles.articleTitle}>{article.question}</Text>
+                {article.category ? (
+                  <Text style={styles.articleCat}>{article.category}</Text>
+                ) : null}
+                {expanded ? <Text style={styles.articleAnswer}>{article.answer}</Text> : (
+                  <Text style={styles.tapHint}>{t('settings.help.tapToRead')}</Text>
+                )}
+              </AppCard>
+            );
+          })
+        )}
+      </AppSection>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Artículos Destacados</Text>
-          <Pressable style={styles.articleItem}>
-            <Text style={styles.articleTitle}>Cómo crear tu primer quiz</Text>
-            <Text style={styles.articleDescription}>Guía paso a paso para creadores</Text>
-          </Pressable>
-          <Pressable style={styles.articleItem}>
-            <Text style={styles.articleTitle}>Cómo retirar tus ganancias</Text>
-            <Text style={styles.articleDescription}>Proceso de retiro de fondos</Text>
-          </Pressable>
-          <Pressable style={styles.articleItem}>
-            <Text style={styles.articleTitle}>Protección de tu cuenta</Text>
-            <Text style={styles.articleDescription}>Consejos de seguridad</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.section}>
-          <Pressable style={styles.contactButton}>
-            <Text style={styles.contactButtonText}>Contactar Soporte</Text>
-          </Pressable>
-        </View>
-      </View>
-    </ScrollView>
+      <AppSection title={t('settings.help.stillUnresolvedSection')} accentIndex={3}>
+        <Text style={styles.ctaHint}>{t('settings.help.ctaHint')}</Text>
+        <GradientButton
+          label={t('settings.help.contactSupport')}
+          onPress={() => router.push('/(app)/settings/tickets')}
+        />
+      </AppSection>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  gradientHeader: {
-    paddingTop: Spacing.six,
-    paddingBottom: Spacing.four,
-    paddingHorizontal: Spacing.six,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    padding: Spacing.two,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  content: {
-    padding: Spacing.four,
-  },
-  searchSection: {
-    marginBottom: Spacing.four,
-  },
   searchInput: {
     backgroundColor: Colors.light.backgroundElement,
     padding: Spacing.four,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.light.backgroundSelected,
     fontSize: 16,
-  },
-  section: {
-    marginBottom: Spacing.four,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
     color: Colors.light.text,
-    marginBottom: Spacing.three,
-  },
-  categoryItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 12,
-    marginBottom: Spacing.two,
-  },
-  categoryInfo: {
-    flex: 1,
-  },
-  categoryTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.light.text,
-    marginBottom: Spacing.one,
-  },
-  categoryDescription: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
-  },
-  categoryArrow: {
-    fontSize: 24,
-    color: Colors.light.textSecondary,
-    fontWeight: 'bold',
-  },
-  articleItem: {
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 12,
-    marginBottom: Spacing.two,
   },
   articleTitle: {
+    ...titleTypeface,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.light.text,
-    marginBottom: Spacing.one,
   },
-  articleDescription: {
+  articleCat: {
+    marginTop: 4,
+    fontSize: 12,
+    color: Colors.light.primary,
+    fontWeight: '600',
+  },
+  articleAnswer: {
     fontSize: 14,
     color: Colors.light.textSecondary,
+    marginTop: Spacing.two,
+    lineHeight: 21,
   },
-  contactButton: {
-    backgroundColor: Colors.light.gradientStart,
-    padding: Spacing.four,
-    borderRadius: 8,
-    alignItems: 'center',
+  tapHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: Colors.light.textSecondary,
   },
-  contactButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+  ctaHint: {
+    color: Colors.light.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: Spacing.three,
   },
 });

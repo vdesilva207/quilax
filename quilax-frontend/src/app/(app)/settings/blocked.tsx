@@ -1,180 +1,109 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useState } from 'react';
+import { Text, StyleSheet, View, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Colors, Spacing } from '@/constants/theme';
-import { useRouter } from 'expo-router';
-import CustomIcon from '@/components/CustomIcon';
+import userService from '@/services/userService';
+import { AppScreen, AppHeader, AppSection, AppCard, AppPlaceholder } from '@/components/ui/AppScreen';
 
 export default function BlockedUsersScreen() {
-  const router = useRouter();
+  const { t } = useTranslation();
+  const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [unblockingId, setUnblockingId] = useState<number | null>(null);
 
-  const blockedUsers = [
-    { id: 1, username: 'usuario1', blockedDate: '01/06/2026', reason: 'Spam' },
-    { id: 2, username: 'usuario2', blockedDate: '28/05/2026', reason: 'Comportamiento inapropiado' },
-  ];
+  useEffect(() => {
+    load();
+  }, []);
 
-  const handleUnblock = (username: string) => {
+  const load = async () => {
+    setLoading(true);
+    const result = await userService.getBlockedUsers();
+    if (result.success) {
+      const list = result.data?.blockedUsers || [];
+      setBlockedUsers(Array.isArray(list) ? list : []);
+    } else {
+      setBlockedUsers([]);
+    }
+    setLoading(false);
+  };
+
+  const handleUnblock = (person: any) => {
+    const name = person.username || person.fullName || t('settings.blocked.userFallback', { id: person.id });
     Alert.alert(
-      'Desbloquear Usuario',
-      `¿Estás seguro de que quieres desbloquear a ${username}?`,
+      t('settings.blocked.unblockTitle'),
+      t('settings.blocked.unblockConfirm', { name }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Desbloquear',
-          onPress: () => {
-            Alert.alert('Usuario Desbloqueado', `${username} ha sido desbloqueado correctamente`);
+          text: t('settings.blocked.unblockButton'),
+          onPress: async () => {
+            setUnblockingId(person.id);
+            const result = await userService.unblockUser(person.id);
+            setUnblockingId(null);
+            if (result.success) {
+              setBlockedUsers((prev) => prev.filter((p) => p.id !== person.id));
+            } else {
+              Alert.alert(t('common.error'), result.error || t('settings.blocked.unblockError'));
+            }
           },
         },
-      ],
+      ]
     );
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <LinearGradient
-        colors={[Colors.light.gradientStart, Colors.light.gradientEnd]}
-        style={styles.gradientHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <CustomIcon name="back" size={24} color={Colors.light.text} />
-          </Pressable>
-          <Text style={styles.title}>Usuarios Bloqueados</Text>
-        </View>
-      </LinearGradient>
+    <AppScreen>
+      <AppHeader title={t('settings.blocked.title')} showBack backHref="/(app)/settings" />
 
-      <View style={styles.content}>
-        {blockedUsers.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No tienes usuarios bloqueados</Text>
-          </View>
+      <AppSection title={t('settings.blocked.sectionTitle')} accentIndex={3}>
+        {loading ? (
+          <ActivityIndicator color={Colors.light.primary} />
+        ) : blockedUsers.length === 0 ? (
+          <AppPlaceholder text={t('settings.blocked.noneBlocked')} />
         ) : (
-          <View style={styles.section}>
-            {blockedUsers.map((user) => (
-              <View key={user.id} style={styles.userItem}>
-                <View style={styles.userInfo}>
-                  <Text style={styles.username}>@{user.username}</Text>
-                  <Text style={styles.blockedDate}>Bloqueado el {user.blockedDate}</Text>
-                  {user.reason && <Text style={styles.reason}>Motivo: {user.reason}</Text>}
+          blockedUsers.map((person) => (
+            <AppCard key={person.id}>
+              <View style={styles.row}>
+                <View style={styles.info}>
+                  <Text style={styles.username}>
+                    {person.username || person.fullName || t('settings.blocked.userFallback', { id: person.id })}
+                  </Text>
                 </View>
                 <Pressable
                   style={styles.unblockButton}
-                  onPress={() => handleUnblock(user.username)}
+                  onPress={() => handleUnblock(person)}
+                  disabled={unblockingId === person.id}
                 >
-                  <Text style={styles.unblockButtonText}>Desbloquear</Text>
+                  <Text style={styles.unblockButtonText}>
+                    {unblockingId === person.id ? '...' : t('settings.blocked.unblockButton')}
+                  </Text>
                 </Pressable>
               </View>
-            ))}
-          </View>
+            </AppCard>
+          ))
         )}
 
-        <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>Información</Text>
-          <Text style={styles.infoText}>
-            Los usuarios bloqueados no podrán enviarte mensajes ni ver tu perfil. Puedes desbloquearlos en cualquier momento desde esta pantalla.
-          </Text>
-        </View>
-      </View>
-    </ScrollView>
+        <Text style={styles.infoText}>{t('settings.blocked.infoText')}</Text>
+      </AppSection>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  gradientHeader: {
-    paddingTop: Spacing.six,
-    paddingBottom: Spacing.four,
-    paddingHorizontal: Spacing.six,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    padding: Spacing.two,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  content: {
-    padding: Spacing.four,
-  },
-  section: {
-    marginBottom: Spacing.four,
-  },
-  emptyState: {
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.six,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: Colors.light.textSecondary,
-  },
-  userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 12,
-    marginBottom: Spacing.three,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  username: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.light.text,
-    marginBottom: Spacing.one,
-  },
-  blockedDate: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
-    marginBottom: Spacing.one,
-  },
-  reason: {
-    fontSize: 14,
-    color: Colors.light.error,
-  },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  info: { flex: 1 },
+  username: { fontSize: 16, fontWeight: '600', color: Colors.light.text },
   unblockButton: {
     backgroundColor: Colors.light.gradientStart,
     paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
+    paddingVertical: Spacing.two,
     borderRadius: 8,
   },
-  unblockButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  infoSection: {
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 8,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.light.text,
-    marginBottom: Spacing.two,
-  },
+  unblockButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   infoText: {
-    fontSize: 14,
+    marginTop: Spacing.three,
+    fontSize: 13,
     color: Colors.light.textSecondary,
-    lineHeight: 20,
+    lineHeight: 19,
   },
 });

@@ -1,9 +1,13 @@
 import apiClient from '@/lib/api';
 
 export const searchService = {
-  search: async (query, type = 'all') => {
+  search: async (query, type = 'all', category) => {
     try {
-      const data = await apiClient.get(`/search?q=${encodeURIComponent(query)}&type=${type}`);
+      const params = new URLSearchParams();
+      if (query) params.set('q', query);
+      if (type && type !== 'all') params.set('type', type);
+      if (category) params.set('category', category);
+      const data = await apiClient.get(`/search?${params.toString()}`);
       const results = data?.results || data?.data?.results || data;
       return { success: true, data: results };
     } catch (error) {

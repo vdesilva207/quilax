@@ -1,0 +1,42 @@
+[
+  {
+    "title": "1. Responsable",
+    "body": "Vicente de Silva Ortiz (persona física), en fase de prelanzamiento de Quilax. NIF/CIF y domicilio fiscal se completarán al constituir la entidad. Contacto: Configuración → Soporte / tickets."
+  },
+  {
+    "title": "2. Datos que tratamos",
+    "body": "Identidad y contacto (nombre, email), datos de juego (partidas, puntuaciones), verificación KYC (documento y selfie), datos bancarios/pagos vía Stripe, mensajes/soporte y datos técnicos de uso y seguridad."
+  },
+  {
+    "title": "3. Finalidades",
+    "body": "Prestar el servicio, prevenir fraude, repartir premios, procesar depósitos/retiros, atender soporte y cumplir obligaciones legales (incluyendo prevención de blanqueo cuando aplique)."
+  },
+  {
+    "title": "4. Base legal",
+    "body": "Ejecución del contrato, interés legítimo en seguridad anti-fraude y, cuando corresponda, consentimiento u obligación legal."
+  },
+  {
+    "title": "5. Encargados y terceros",
+    "body": "No vendemos tus datos. Compartimos lo necesario con procesadores de pago (p. ej. Stripe), hosting e infraestructura, verificación de identidad y autoridades cuando la ley lo exija."
+  },
+  {
+    "title": "6. Conservación y borrado",
+    "body": "Puedes exportar o eliminar tu cuenta en Configuración → Información personal. Al borrar, anonimizamos datos personales; el historial contable/juego puede conservarse sin identificarte por plazos legales."
+  },
+  {
+    "title": "7. Tus derechos (RGPD)",
+    "body": "Acceso, rectificación, borrado, oposición, limitación y portabilidad desde la app (exportar / eliminar cuenta) o por ticket de soporte. También puedes reclamar ante la AEPD."
+  },
+  {
+    "title": "8. Menores",
+    "body": "Quilax es solo para mayores de 18 años. El registro y las operaciones con dinero lo comprueban en el servidor."
+  },
+  {
+    "title": "9. Seguridad",
+    "body": "Cifrado en tránsito, controles de acceso y 2FA en depósito/retiro (Gestión), si lo activas."
+  },
+  {
+    "title": "10. Cambios",
+    "body": "Podemos actualizar esta política; te avisaremos de cambios relevantes en la app."
+  }
+]

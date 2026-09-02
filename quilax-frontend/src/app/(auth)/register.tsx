@@ -1,149 +1,184 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Pressable,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useTranslation } from 'react-i18next';
+import React, { useState, useMemo } from 'react';
+import { Text, TextInput, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
+import { Colors } from '@/constants/theme';
+import { authFormStyles as styles } from '@/constants/authForm';
 import { useAuth } from '@/context/AuthContext';
+import {
+  AuthFlowLayout,
+  AuthPrimaryButton,
+  AuthSecondaryButton,
+} from '@/components/ui/AuthFlowLayout';
+import PasswordInput from '@/components/ui/PasswordInput';
+import BirthDateFields from '@/components/ui/BirthDateFields';
 
+function isPasswordValid(pw: string) {
+  return pw.length >= 8 && /[A-Z]/.test(pw);
+}
+
+/**
+ * Single registration screen: all account fields at once.
+ * Nationality is chosen later in onboarding (/(auth)/nationality).
+ */
 export default function RegisterScreen() {
-  const { t } = useTranslation();
   const router = useRouter();
+  const { t } = useTranslation();
   const { register } = useAuth();
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+  const passwordOk = useMemo(() => isPasswordValid(password), [password]);
+  const showPasswordHint = passwordTouched && password.length > 0 && !passwordOk;
+
+  const showErr = (msg: string) => {
+    setError(msg);
+  };
 
   const handleRegister = async () => {
-    if (!email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+    setError('');
+    if (!fullName.trim() || !email.trim() || !password || !confirmPassword || !dateOfBirth.trim()) {
+      showErr(t('auth.registerScreen.missingFields'));
       return;
     }
-
-    if (password.length < 8) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres');
+    if (password.length < 8 || !/[A-Z]/.test(password)) {
+      showErr(t('auth.registerScreen.passwordRequirements'));
       return;
     }
-
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      showErr(t('auth.passwordMismatch'));
+      return;
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth.trim())) {
+      showErr(t('auth.registerScreen.dobInvalid'));
+      return;
+    }
+    const [y, m, d] = dateOfBirth.trim().split('-').map(Number);
+    const birth = new Date(y, m - 1, d);
+    if (Number.isNaN(birth.getTime()) || birth.getFullYear() !== y || birth.getMonth() !== m - 1 || birth.getDate() !== d) {
+      showErr(t('auth.registerScreen.dobInvalid'));
+      return;
+    }
+    const age = Math.floor((Date.now() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    if (age < 18) {
+      showErr(t('auth.registerScreen.mustBe18'));
       return;
     }
 
     setLoading(true);
-    const result = await register(email.trim(), password);
-    setLoading(false);
+    try {
+      const result = await register({
+        email: email.trim(),
+        password,
+        fullName: fullName.trim(),
+        dateOfBirth: dateOfBirth.trim(),
+      });
 
-    if (result.success) {
-      router.replace('/(auth)/verify-email');
-    } else {
-      Alert.alert('Error', result.error || 'Error al registrarse');
+      if (result.success) {
+        const { getOnboardingHref } = await import('@/utils/onboardingGate');
+        const href = getOnboardingHref(result.user) || '/(app)';
+        router.replace(href as any);
+        return;
+      }
+
+      const raw = String(result.error || '');
+      if (/ya existe|already exists|already registered/i.test(raw)) {
+        showErr(t('auth.registerScreen.alreadyExists'));
+      } else {
+        showErr(raw || t('auth.registerScreen.genericError'));
+      }
+    } catch (e: any) {
+      showErr(e?.message || t('auth.registerScreen.genericError'));
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container} testID="register-screen">
-      <LinearGradient
-        colors={[Colors.light.gradientStart, Colors.light.gradientEnd, Colors.light.error]}
-        style={styles.gradientHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}>
-        <Text style={styles.title}>QUILAX</Text>
-        <Text style={styles.subtitle}>{t('auth.register')}</Text>
-      </LinearGradient>
-
-      <View style={styles.form}>
-        <TextInput
-          testID="email-input"
-          style={styles.input}
-          placeholder={t('auth.email')}
-          placeholderTextColor={Colors.light.textSecondary}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          testID="password-input"
-          style={styles.input}
-          placeholder={t('auth.password')}
-          placeholderTextColor={Colors.light.textSecondary}
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-        <TextInput
-          testID="confirm-password-input"
-          style={styles.input}
-          placeholder="Confirmar contraseña"
-          placeholderTextColor={Colors.light.textSecondary}
-          secureTextEntry
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-        />
-
-        <Pressable
-          testID="submit-register-button"
-          style={[styles.button, loading && styles.disabledButton]}
-          onPress={handleRegister}
-          disabled={loading}>
+    <AuthFlowLayout
+      title={t('auth.registerScreen.title')}
+      subtitle={t('auth.registerScreen.subtitle')}
+      showBack
+      footer={
+        <>
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={Colors.light.primary} />
           ) : (
-            <Text style={styles.buttonText}>{t('auth.register')}</Text>
+            <AuthPrimaryButton label={t('auth.registerScreen.submit')} onPress={handleRegister} />
           )}
-        </Pressable>
+          <AuthSecondaryButton
+            label={t('auth.registerScreen.haveAccount')}
+            onPress={() => router.push('/(auth)/login')}
+          />
+        </>
+      }
+    >
+      <Text style={styles.label}>{t('auth.registerScreen.fullNameLabel')}</Text>
+      <TextInput
+        style={styles.input}
+        value={fullName}
+        onChangeText={setFullName}
+        placeholder={t('auth.registerScreen.fullNamePlaceholder')}
+        placeholderTextColor={Colors.light.textSecondary}
+        autoCapitalize="words"
+      />
 
-        <Pressable onPress={() => router.push('/(auth)/login')}>
-          <Text style={styles.loginLink}>{t('auth.login')}</Text>
-        </Pressable>
-      </View>
-    </View>
+      <Text style={styles.label}>{t('auth.email')}</Text>
+      <TextInput
+        testID="email-input"
+        style={styles.input}
+        value={email}
+        onChangeText={setEmail}
+        placeholder={t('common.emailPlaceholder')}
+        placeholderTextColor={Colors.light.textSecondary}
+        keyboardType="email-address"
+        autoCapitalize="none"
+      />
+
+      <Text style={styles.label}>{t('auth.password')}</Text>
+      <PasswordInput
+        testID="password-input"
+        value={password}
+        onChangeText={(text: string) => {
+          setPassword(text);
+          if (!passwordTouched) setPasswordTouched(true);
+          if (error) setError('');
+        }}
+        placeholder={t('auth.registerScreen.passwordPlaceholder')}
+      />
+      {showPasswordHint ? (
+        <Text style={styles.errorText}>
+          {t('auth.registerScreen.passwordRequirements')}
+        </Text>
+      ) : null}
+
+      <Text style={styles.label}>{t('auth.registerScreen.confirmPasswordLabel')}</Text>
+      <PasswordInput
+        testID="confirm-password-input"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        placeholder={t('auth.registerScreen.confirmPasswordPlaceholder')}
+      />
+
+      <Text style={styles.label}>{t('auth.registerScreen.dobLabel')}</Text>
+      <Text style={styles.hint}>{t('auth.registerScreen.dobHint')}</Text>
+      <BirthDateFields
+        value={dateOfBirth}
+        onChange={setDateOfBirth}
+        dayPlaceholder={t('auth.registerScreen.dobDay')}
+        monthPlaceholder={t('auth.registerScreen.dobMonth')}
+        yearPlaceholder={t('auth.registerScreen.dobYear')}
+      />
+
+      <Text style={styles.note}>{t('auth.registerScreen.webOnlyNote')}</Text>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </AuthFlowLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
-  gradientHeader: {
-    paddingTop: Spacing.six,
-    paddingBottom: Spacing.four,
-    paddingHorizontal: Spacing.six,
-    alignItems: 'center',
-  },
-  title: { fontSize: 56, fontWeight: 'bold', color: '#FFFFFF', marginBottom: Spacing.two },
-  subtitle: { fontSize: 24, fontWeight: '600', color: '#FFFFFF' },
-  form: { padding: Spacing.six, gap: Spacing.three },
-  input: {
-    backgroundColor: Colors.light.background,
-    padding: Spacing.four,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: Colors.light.backgroundSelected,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: Colors.light.gradientStart,
-    padding: Spacing.four,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: Spacing.two,
-  },
-  disabledButton: { opacity: 0.6 },
-  buttonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
-  loginLink: {
-    textAlign: 'center',
-    color: Colors.light.primary,
-    fontSize: 16,
-    fontWeight: '600',
-    padding: Spacing.four,
-  },
-});

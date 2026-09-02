@@ -1,63 +1,61 @@
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing } from '@/constants/theme';
-import CustomIcon from '@/components/CustomIcon';
-
-const SETTINGS_LINKS = [
-  { title: 'Información personal', href: '/(app)/settings/account', icon: 'user' },
-  { title: 'Privacidad', href: '/(app)/settings/privacy', icon: 'shield' },
-  { title: 'Seguridad', href: '/(app)/settings/security', icon: 'lock' },
-  { title: 'Notificaciones', href: '/(app)/settings/notifications', icon: 'bell' },
-  { title: 'Centro de ayuda', href: '/(app)/settings/help', icon: 'help' },
-  { title: 'FAQ', href: '/(app)/settings/faq', icon: 'faq' },
-  { title: 'Términos', href: '/(app)/settings/terms', icon: 'document' },
-  { title: 'Contacto', href: '/(app)/settings/contact', icon: 'mail' },
-];
+import { useTranslation } from 'react-i18next';
+import { Colors } from '@/constants/theme';
+import { AppScreen, AppHeader, AppSection, AppCard } from '@/components/ui/AppScreen';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
+
+  const SETTINGS_LINKS = [
+    { title: t('settings.personalInfo'), href: '/(app)/settings/account' },
+    { title: t('settings.bankAccount'), href: '/(app)/settings/bank' },
+    {
+      title: t('settings.currency'),
+      href: '/(app)/settings/currency',
+      hint: t('settings.currencyHint'),
+    },
+    { title: t('settings.privacy'), href: '/(app)/settings/privacy' },
+    { title: t('settings.security'), href: '/(app)/settings/security' },
+    { title: t('settings.notifications'), href: '/(app)/settings/notifications' },
+    { title: t('settings.language'), href: '/(app)/settings/language' },
+    { title: t('settings.blockedUsers'), href: '/(app)/settings/blocked' },
+    { title: t('settings.helpCenter'), href: '/(app)/settings/help', hint: t('settings.helpHint') },
+    { title: t('settings.faq'), href: '/(app)/settings/faq' },
+    {
+      title: t('settings.support'),
+      href: '/(app)/settings/tickets',
+      hint: t('settings.supportHint'),
+    },
+    {
+      title: t('settings.terms'),
+      href: '/(app)/settings/terms',
+      hint: t('settings.termsHint'),
+    },
+  ];
 
   return (
-    <ScrollView style={styles.container}>
-      <LinearGradient
-        colors={[Colors.light.gradientStart, Colors.light.gradientEnd]}
-        style={styles.header}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <Text style={styles.title}>Ajustes</Text>
-      </LinearGradient>
+    <AppScreen>
+      <AppHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
 
-      <View style={styles.content}>
+      <AppSection title={t('settings.options')} accentIndex={0}>
         {SETTINGS_LINKS.map((link) => (
-          <Pressable
-            key={link.href}
-            style={styles.item}
-            onPress={() => router.push(link.href)}
-          >
-            <Text style={styles.itemTitle}>{link.title}</Text>
-            <Text style={styles.arrow}>›</Text>
+          <Pressable key={link.href} onPress={() => router.push(link.href as any)}>
+            <AppCard>
+              <Text style={styles.itemTitle}>{link.title}</Text>
+              {'hint' in link && link.hint ? (
+                <Text style={styles.itemHint}>{link.hint}</Text>
+              ) : null}
+            </AppCard>
           </Pressable>
         ))}
-      </View>
-    </ScrollView>
+      </AppSection>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
-  header: { padding: Spacing.six, paddingTop: 60 },
-  title: { fontSize: 28, fontWeight: '700', color: '#fff' },
-  content: { padding: Spacing.four, gap: Spacing.two },
-  item: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: Spacing.three,
-    backgroundColor: Colors.light.backgroundElement,
-    borderRadius: 12,
-  },
-  itemTitle: { fontSize: 16, fontWeight: '600' },
-  arrow: { fontSize: 20, color: Colors.light.textSecondary },
+  itemTitle: { fontSize: 16, fontWeight: '600', color: Colors.light.text },
+  itemHint: { marginTop: 4, fontSize: 12, color: Colors.light.textSecondary },
 });

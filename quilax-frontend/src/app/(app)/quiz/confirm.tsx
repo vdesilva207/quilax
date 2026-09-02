@@ -1,214 +1,166 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
-import { useState, useEffect } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useMemo } from 'react';
 import { Colors, Spacing } from '@/constants/theme';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import CustomIcon from '@/components/CustomIcon';
-import { API_BASE_URL } from '@/lib/api';
+import apiClient from '@/lib/api';
+import quizService from '@/services/quizService';
+import { AppScreen, AppHeader, AppSection, AppCard } from '@/components/ui/AppScreen';
+import { GradientButton, InfoBar } from '@/components/ui/ScreenChrome';
+import { formatQuizStart, resolveViewerTimezone } from '@/utils/timezone';
 
 export default function ConfirmScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const quizId = params.quizId as string;
   const difficulty = params.difficulty as string;
-  const date = params.date as string;
+  const scheduledAt = (params.scheduledAt || params.date) as string;
   const questionsCount = params.questionsCount as string;
   const [canMessageAdmin, setCanMessageAdmin] = useState(false);
   const [adminMessageReason, setAdminMessageReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const formattedDate = useMemo(() => {
+    if (!scheduledAt) return t('confirmQuiz.notScheduled');
+    const d = new Date(scheduledAt);
+    if (Number.isNaN(d.getTime())) return String(scheduledAt);
+    return formatQuizStart(scheduledAt, resolveViewerTimezone()).fullLabel;
+  }, [scheduledAt, t]);
 
   useEffect(() => {
-    checkAdminMessagingPermission();
+    (async () => {
+      try {
+        const data = await apiClient.get('/quiz-creation/can-message-admin');
+        setCanMessageAdmin(Boolean(data?.canMessage));
+        setAdminMessageReason(data?.reason || '');
+      } catch (error) {
+        console.error('Error checking admin messaging permission:', error);
+      }
+    })();
   }, []);
 
-  const checkAdminMessagingPermission = async () => {
+  const handleConfirm = async () => {
+    if (!quizId) {
+      Alert.alert(t('common.error'), t('confirmQuiz.missingQuizError'));
+      return;
+    }
+    if (!scheduledAt) {
+      Alert.alert(t('common.error'), t('confirmQuiz.missingDateError'));
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin-quizzes/can-message-admin`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      const data = await response.json();
-      setCanMessageAdmin(data.canMessage);
-      setAdminMessageReason(data.reason);
-    } catch (error) {
-      console.error('Error checking admin messaging permission:', error);
+      if (difficulty) {
+        const difficultyResult = await quizService.updateQuiz(Number(quizId), {
+          difficulty: Number(difficulty),
+        });
+        if (!difficultyResult.success) {
+          throw new Error(difficultyResult.error || t('confirmQuiz.difficultyUpdateError'));
+        }
+      }
+
+      const publishResult = await quizService.publishQuiz(Number(quizId), scheduledAt);
+      if (!publishResult.success) {
+        throw new Error(publishResult.error || t('confirmQuiz.publishError'));
+      }
+
+      Alert.alert(t('confirmQuiz.submittedTitle'), t('confirmQuiz.submittedBody'));
+      router.push('/(app)');
+    } catch (error: any) {
+      const message = error.message || t('confirmQuiz.submitGenericError');
+      setSubmitError(message);
+      Alert.alert(t('common.error'), message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleConfirm = () => {
-    Alert.alert('Quiz Enviado', 'Tu quiz ha sido enviado a revisión correctamente.');
-    router.push('/(app)/home');
-  };
-
-  const handleMessageAdmin = () => {
-    Alert.alert('Mensaje a Admin', 'Función de mensajes a admin habilitada por 72 horas.');
-  };
-
   return (
-    <ScrollView style={styles.container}>
-      <LinearGradient
-        colors={[Colors.light.gradientStart, Colors.light.gradientEnd, Colors.light.error]}
-        style={styles.gradientHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <CustomIcon name="back" size={24} color={Colors.light.text} />
-          </Pressable>
-          <Text style={styles.title}>Enviar Quiz</Text>
-        </View>
-      </LinearGradient>
-
-      <View style={styles.content}>
-        <View style={styles.confirmationCard}>
-          <CustomIcon name="check" size={48} color={Colors.light.gradientStart} />
-          <Text style={styles.confirmationTitle}>¡Quiz listo para enviar!</Text>
-          <Text style={styles.confirmationText}>
-            Tu quiz ha sido configurado correctamente y está listo para ser enviado a revisión.
+    <AppScreen>
+      <AppHeader title={t('confirmQuiz.title')} showBack subtitle={t('confirmQuiz.subtitle')} />
+      <AppSection title={t('confirmQuiz.summarySection')} accentIndex={0}>
+        <InfoBar>
+          <Text style={styles.readyTitle}>{t('confirmQuiz.readyTitle')}</Text>
+          <Text style={styles.readyText}>
+            {t('confirmQuiz.readyText')}
           </Text>
-        </View>
-
-        <View style={styles.infoCard}>
+        </InfoBar>
+        <AppCard>
           <View style={styles.infoItem}>
             <CustomIcon name="rules" size={20} color={Colors.light.text} />
-            <Text style={styles.infoText}>Dificultad: {difficulty || 'No seleccionada'}</Text>
+            <Text style={styles.infoText}>
+              {t('confirmQuiz.difficultyInfo', { value: difficulty || t('confirmQuiz.difficultyNotSelected') })}
+            </Text>
           </View>
           <View style={styles.infoItem}>
             <CustomIcon name="time" size={20} color={Colors.light.text} />
-            <Text style={styles.infoText}>Fecha: {date || 'No programada'}</Text>
+            <Text style={styles.infoText}>{t('confirmQuiz.dateInfo', { date: formattedDate })}</Text>
           </View>
-          <View style={styles.infoItem}>
+          <View style={[styles.infoItem, styles.infoItemLast]}>
             <CustomIcon name="edit" size={20} color={Colors.light.text} />
-            <Text style={styles.infoText}>Preguntas: {questionsCount || '0'}</Text>
+            <Text style={styles.infoText}>{t('confirmQuiz.questionsInfo', { n: questionsCount || '0' })}</Text>
           </View>
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <Pressable
-            style={styles.confirmButton}
-            onPress={handleConfirm}
-          >
-            <Text style={styles.confirmButtonText}>Enviar quiz a revisión</Text>
-          </Pressable>
-          <Text style={styles.disclaimerText}>
-            Una vez mandado a revisión, tu quiz podrá ser publicado o rechazado.
-          </Text>
-          {canMessageAdmin && (
-            <Pressable
-              style={styles.adminMessageButton}
-              onPress={handleMessageAdmin}
-            >
-              <CustomIcon name="message" size={16} color="#FFFFFF" />
-              <Text style={styles.adminMessageButtonText}>Enviar mensaje a admin</Text>
-              <Text style={styles.adminMessageReasonText}>({adminMessageReason})</Text>
-            </Pressable>
-          )}
-        </View>
-      </View>
-    </ScrollView>
+        </AppCard>
+        {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
+        {submitting ? (
+          <ActivityIndicator color={Colors.light.primary} />
+        ) : (
+          <GradientButton label={t('confirmQuiz.submitButton')} onPress={handleConfirm} />
+        )}
+        <Text style={styles.disclaimer}>
+          {t('confirmQuiz.disclaimer')}
+        </Text>
+        {canMessageAdmin ? (
+          <GradientButton
+            label={
+              adminMessageReason
+                ? t('confirmQuiz.writeToPanelWithReason', { reason: adminMessageReason })
+                : t('confirmQuiz.writeToPanel')
+            }
+            onPress={() => router.push('/(app)/messages/admin')}
+          />
+        ) : null}
+      </AppSection>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  gradientHeader: {
-    paddingTop: 64,
-    paddingBottom: 24,
-    paddingHorizontal: Spacing.four,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.four,
-  },
-  backButton: {
-    padding: Spacing.two,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  content: {
-    padding: Spacing.four,
-  },
-  confirmationCard: {
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.six,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginBottom: Spacing.four,
-  },
-  confirmationTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.light.text,
-    marginTop: Spacing.four,
-    marginBottom: Spacing.two,
-  },
-  confirmationText: {
+  readyTitle: {
     fontSize: 16,
+    fontWeight: '800',
     color: Colors.light.text,
-    textAlign: 'center',
+    marginBottom: Spacing.one,
   },
-  infoCard: {
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 12,
-    marginBottom: Spacing.six,
+  readyText: {
+    fontSize: 14,
+    color: Colors.light.textSecondary,
+    lineHeight: 20,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
-    marginBottom: Spacing.three,
+    gap: Spacing.two,
+    marginBottom: Spacing.two,
   },
-  infoText: {
-    fontSize: 16,
-    color: Colors.light.text,
-  },
-  buttonContainer: {
-    marginTop: Spacing.four,
-  },
-  confirmButton: {
-    backgroundColor: Colors.light.gradientStart,
-    padding: Spacing.four,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  confirmButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  infoItemLast: { marginBottom: 0 },
+  infoText: { fontSize: 15, color: Colors.light.text, flex: 1 },
+  error: {
+    color: Colors.light.error,
+    fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: Spacing.two,
   },
-  disclaimerText: {
+  disclaimer: {
     color: Colors.light.textSecondary,
     fontSize: 14,
     textAlign: 'center',
-    marginTop: Spacing.three,
-  },
-  adminMessageButton: {
-    backgroundColor: Colors.light.gradientStart,
-    padding: Spacing.three,
-    borderRadius: 12,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: Spacing.two,
-    marginTop: Spacing.four,
-  },
-  adminMessageButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  adminMessageReasonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontStyle: 'italic',
+    marginVertical: Spacing.two,
   },
 });

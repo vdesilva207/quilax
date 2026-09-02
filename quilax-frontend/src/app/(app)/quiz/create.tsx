@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Modal, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
-import { Colors, Spacing } from '@/constants/theme';
+import { Colors, Spacing, titleTypeface, MaxContentWidth } from '@/constants/theme';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useChromeInsets } from '@/hooks/useChromeInsets';
 import * as ImagePicker from 'expo-image-picker';
 import CustomIcon from '@/components/CustomIcon';
 import quizService from '@/services/quizService';
 import { useAuth } from '@/context/AuthContext';
-
-const QUIZ_CATEGORIES = [
-  'Ciencias', 'Matemáticas', 'Historia', 'Geografía', 'Literatura',
-  'Arte', 'Música', 'Cine', 'Deportes', 'Tecnología',
-  'Programación', 'Física', 'Química', 'Biología', 'Medicina',
-  'Economía', 'Política', 'Filosofía', 'Religión', 'Mitología',
-  'Naturaleza', 'Animales', 'Astronomía', 'Arquitectura', 'Gastronomía',
-  'Idiomas', 'Cultura', 'Videojuegos', 'Anime', 'Cómics'
-];
+import CreateGate from '@/components/quiz/CreateGate';
+import { brandGradientProps } from '@/constants/gradients';
+import { GradientButton } from '@/components/ui/ScreenChrome';
+import { MobileModalFrame } from '@/components/ui/MobileModalFrame';
+import { QUIZ_CATEGORIES, getCategoryStyle, getCategoryLabel } from '@/constants/quizCategories';
+import {
+  QUIZ_CONTENT_LANGUAGES,
+  type QuizContentLanguage,
+} from '@/constants/quizLanguages';
+import { QuizLanguageBadge } from '@/components/QuizLanguageBadge';
+import { spellcheckText, spellOverrideKey } from '@/utils/spellcheck';
 
 const MAX_QUESTIONS = 50;
 const MIN_QUESTIONS = 5;
@@ -43,9 +47,13 @@ interface Question {
 export default function CreateQuizScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const chrome = useChromeInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
+  const [quizLanguage, setQuizLanguage] = useState<QuizContentLanguage>('es');
   const [description, setDescription] = useState('');
   const [tips, setTips] = useState('');
   const [syllabus, setSyllabus] = useState('');
@@ -56,15 +64,22 @@ export default function CreateQuizScreen() {
   const [applyToAll, setApplyToAll] = useState(false);
   const [showWritingAssistant, setShowWritingAssistant] = useState(false);
   const [suggestedDifficulty, setSuggestedDifficulty] = useState('');
+  const [spellOverrides, setSpellOverrides] = useState<Record<string, string[]>>({});
+  const [lastSpellApplied, setLastSpellApplied] = useState<
+    Record<string, { from: string; to: string }>
+  >({});
+  const [spellCheckingId, setSpellCheckingId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([
     { id: '1', text: '', options: ['', '', '', ''], correctOption: 0, questionReadDuration: 10, questionAnswerDuration: 30, questionType: 'multiple_choice', points: 100 }
   ]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
+  const [quizId, setQuizId] = useState<number | null>(null);
 
   const handleAddQuestion = () => {
     if (questions.length >= MAX_QUESTIONS) {
-      Alert.alert('Límite alcanzado', `Máximo ${MAX_QUESTIONS} preguntas`);
+      Alert.alert(t('createQuiz.limitReachedTitle'), t('createQuiz.limitReachedBody', { count: MAX_QUESTIONS }));
       return;
     }
     
@@ -74,7 +89,7 @@ export default function CreateQuizScreen() {
     const newTotalMinutes = newTotalDuration / 60;
     
     if (newTotalMinutes > MAX_DURATION_MINUTES) {
-      Alert.alert('Límite de tiempo', `No puedes añadir más preguntas. El tiempo total excedería los ${MAX_DURATION_MINUTES} minutos.`);
+      Alert.alert(t('createQuiz.timeLimitTitle'), t('createQuiz.timeLimitBody', { minutes: MAX_DURATION_MINUTES }));
       return;
     }
     
@@ -86,14 +101,92 @@ export default function CreateQuizScreen() {
 
   const handleRemoveQuestion = (id: string) => {
     if (questions.length <= MIN_QUESTIONS) {
-      Alert.alert('Mínimo requerido', `Mínimo ${MIN_QUESTIONS} preguntas`);
+      Alert.alert(t('createQuiz.minRequiredTitle'), t('createQuiz.minRequiredBody', { count: MIN_QUESTIONS }));
       return;
     }
     setQuestions(questions.filter(q => q.id !== id));
   };
 
   const handleQuestionChange = (id: string, text: string) => {
-    setQuestions(questions.map(q => q.id === id ? { ...q, text } : q));
+    const prev = questions.find((q) => q.id === id);
+    const applied = lastSpellApplied[id];
+    // Si tras aplicar el corrector el usuario vuelve a su redacción original, respetarla
+    if (applied && prev?.text === applied.to && text === applied.from) {
+      const key = spellOverrideKey(applied.from, applied.to);
+      setSpellOverrides((map) => {
+        const list = map[id] || [];
+        if (list.includes(key)) return map;
+        return { ...map, [id]: [...list, key] };
+      });
+    }
+    setQuestions(questions.map((q) => (q.id === id ? { ...q, text } : q)));
+  };
+
+  const rememberOverride = (questionId: string, from: string, to: string) => {
+    const key = spellOverrideKey(from, to);
+    setSpellOverrides((map) => {
+      const list = map[questionId] || [];
+      if (list.includes(key)) return map;
+      return { ...map, [questionId]: [...list, key] };
+    });
+  };
+
+  const handleImproveWriting = async (questionId: string) => {
+    const question = questions.find((q) => q.id === questionId);
+    const text = question?.text?.trim() || '';
+    if (!text) {
+      Alert.alert(t('createQuiz.autocorrectorTitle'), t('createQuiz.spellEmpty'));
+      return;
+    }
+
+    setSpellCheckingId(questionId);
+    try {
+      const data = await spellcheckText(text, quizLanguage);
+      const corrected = typeof data.corrected === 'string' ? data.corrected : text;
+      const changed = !!data.changed && corrected !== text;
+      const overrideKey = spellOverrideKey(text, corrected);
+
+      if (!changed) {
+        Alert.alert(t('createQuiz.autocorrectorTitle'), t('createQuiz.spellNoChanges'));
+        return;
+      }
+
+      if ((spellOverrides[questionId] || []).includes(overrideKey)) {
+        Alert.alert(t('createQuiz.autocorrectorTitle'), t('createQuiz.spellKeptUserVersion'));
+        return;
+      }
+
+      Alert.alert(
+        t('createQuiz.autocorrectorTitle'),
+        t('createQuiz.spellSuggestBody', {
+          count: data.count || 1,
+          preview: corrected.length > 180 ? `${corrected.slice(0, 180)}…` : corrected,
+        }),
+        [
+          {
+            text: t('createQuiz.spellKeepMine'),
+            style: 'cancel',
+            onPress: () => rememberOverride(questionId, text, corrected),
+          },
+          {
+            text: t('createQuiz.spellApply'),
+            onPress: () => {
+              setQuestions((qs) =>
+                qs.map((q) => (q.id === questionId ? { ...q, text: corrected } : q)),
+              );
+              setLastSpellApplied((map) => ({
+                ...map,
+                [questionId]: { from: text, to: corrected },
+              }));
+            },
+          },
+        ],
+      );
+    } catch (e: any) {
+      Alert.alert(t('common.error'), e?.message || t('createQuiz.spellError'));
+    } finally {
+      setSpellCheckingId(null);
+    }
   };
 
   const handleOptionChange = (questionId: string, optionIndex: number, text: string) => {
@@ -112,25 +205,19 @@ export default function CreateQuizScreen() {
 
   const handleDurationChange = (questionId: string, field: 'questionReadDuration' | 'questionAnswerDuration' | 'points', value: string) => {
     const numValue = parseInt(value) || 0;
-    setQuestions(questions.map(q => {
-      if (q.id === questionId) {
-        const updatedQuestion = { ...q, [field]: numValue };
-        // Si applyToAll está activo, aplicar a todas las preguntas
-        if (applyToAll) {
-          setQuestions(questions.map(q => ({ ...q, [field]: numValue })));
-          return q;
-        }
-        return updatedQuestion;
+    setQuestions((prev) => {
+      if (applyToAll) {
+        return prev.map((q) => ({ ...q, [field]: numValue }));
       }
-      return q;
-    }));
+      return prev.map((q) => (q.id === questionId ? { ...q, [field]: numValue } : q));
+    });
   };
 
   const handleQuestionTypeChange = (questionId: string, type: 'true_false' | 'multiple_choice') => {
     setQuestions(questions.map(q => {
       if (q.id === questionId) {
         if (type === 'true_false') {
-          return { ...q, questionType: type, options: ['Verdadero', 'Falso'], correctOption: 0 };
+          return { ...q, questionType: type, options: [t('createQuiz.true'), t('createQuiz.false')], correctOption: 0 };
         } else {
           return { ...q, questionType: type, options: ['', '', '', ''], correctOption: 0 };
         }
@@ -153,32 +240,22 @@ export default function CreateQuizScreen() {
     return startTime + fixedTimesPerQuestion + questionTimes;
   };
 
-  const calculatePoints = (answerDuration: number) => {
-    // Cálculo automático de puntos basado en tiempo ANSWER
-    // Calcula puntos para que al final del tiempo sean 0 puntos
-    // Valor base: 100 puntos por pregunta
-    const basePoints = 100;
-    return basePoints;
-  };
-
   const handleSuggestDifficulty = () => {
-    // Sugerir dificultad después de crear todas las preguntas
+    if (!questions.length) {
+      Alert.alert(t('common.error'), t('createQuiz.suggestNeedQuestions'));
+      return;
+    }
     const avgAnswerTime = questions.reduce((sum, q) => sum + q.questionAnswerDuration, 0) / questions.length;
     let difficulty = '';
     if (avgAnswerTime < 15) {
-      difficulty = 'Fácil';
+      difficulty = t('createQuiz.difficultyEasy');
     } else if (avgAnswerTime < 30) {
-      difficulty = 'Medio';
+      difficulty = t('createQuiz.difficultyMedium');
     } else {
-      difficulty = 'Difícil';
+      difficulty = t('createQuiz.difficultyHard');
     }
     setSuggestedDifficulty(difficulty);
     setDifficultySuggested(true);
-  };
-
-  const handleImproveWriting = (questionId: string) => {
-    // Autocorrector ortográfico
-    Alert.alert('Autocorrector', 'Esta función corregirá automáticamente la ortografía de tu pregunta.');
   };
 
   const totalDurationSeconds = calculateTotalDuration();
@@ -194,12 +271,18 @@ export default function CreateQuizScreen() {
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      if (asset.uri && (asset.uri.endsWith('.jpg') || asset.uri.endsWith('.jpeg'))) {
+      const uri = (asset.uri || '').toLowerCase();
+      const mime = (asset.mimeType || '').toLowerCase();
+      const ok =
+        mime.startsWith('image/') ||
+        /\.(jpe?g|png|webp|gif)$/i.test(uri) ||
+        uri.startsWith('data:image/');
+      if (asset.uri && ok) {
         setQuestions(questions.map(q => 
           q.id === questionId ? { ...q, imageUrl: asset.uri } : q
         ));
       } else {
-        Alert.alert('Formato no válido', 'Solo se permiten archivos JPG o JPEG');
+        Alert.alert(t('createQuiz.invalidFormatTitle'), t('createQuiz.invalidFormatBody'));
       }
     }
   };
@@ -215,15 +298,19 @@ export default function CreateQuizScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [16, 9],
-      quality: 1,
+      quality: 0.7,
+      base64: true,
     });
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      if (asset.uri && (asset.uri.endsWith('.jpg') || asset.uri.endsWith('.jpeg'))) {
+      const mime = asset.mimeType || 'image/jpeg';
+      if (asset.base64) {
+        setCoverImage(`data:${mime};base64,${asset.base64}`);
+      } else if (asset.uri) {
         setCoverImage(asset.uri);
       } else {
-        Alert.alert('Formato no válido', 'Solo se permiten archivos JPG o JPEG');
+        Alert.alert(t('common.error'), t('createQuiz.imageReadError'));
       }
     }
   };
@@ -232,71 +319,136 @@ export default function CreateQuizScreen() {
     setCoverImage('');
   };
 
+  const buildQuizPayload = () => ({
+    title: title.trim(),
+    category: category || undefined,
+    language: quizLanguage,
+    coverImage: coverImage || undefined,
+    description: description.trim() || undefined,
+    tips: tips.trim() || undefined,
+    questions: questions.map((q) => ({
+      text: q.text,
+      timeReadMs: (q.questionReadDuration || 5) * 1000,
+      timeAnswerMs: (q.questionAnswerDuration || 10) * 1000,
+      answers: (q.options || []).map((opt: string, idx: number) => ({
+        text: opt,
+        isCorrect: idx === q.correctOption,
+      })),
+    })),
+  });
+
   const handleSaveDraft = async () => {
     if (!title.trim()) {
-      Alert.alert('Error', 'El título es obligatorio');
+      Alert.alert(t('common.error'), t('createQuiz.titleRequiredError'));
+      return;
+    }
+
+    if (!category) {
+      Alert.alert(t('common.error'), t('createQuiz.categoryRequiredError'));
       return;
     }
 
     if (questions.length < MIN_QUESTIONS) {
-      Alert.alert('Error', `Mínimo ${MIN_QUESTIONS} preguntas requeridas`);
+      Alert.alert(t('common.error'), t('createQuiz.minQuestionsError', { count: MIN_QUESTIONS }));
       return;
     }
 
     try {
       setSaving(true);
 
-      const quizData = {
-        title,
-        category,
-        description,
-        tips,
-        syllabus,
-        warnings,
-        creatorMessage,
-        coverImage,
-        difficulty: suggestedDifficulty || 'Medio',
-        questions: questions.map(q => ({
-          question: q.text,
-          options: q.options,
-          correctOption: q.correctOption,
-          questionReadDuration: q.questionReadDuration,
-          questionAnswerDuration: q.questionAnswerDuration,
-          questionType: q.questionType,
-          points: q.points,
-          imageUrl: q.imageUrl,
-        })),
-      };
-
-      const result = await quizService.createQuiz(quizData);
+      const quizData = buildQuizPayload();
+      const result = quizId
+        ? await quizService.updateQuiz(quizId, quizData)
+        : await quizService.createQuiz(quizData);
 
       if (result.success) {
-        Alert.alert('Éxito', 'Quiz guardado como borrador');
+        if (result.data?.id) setQuizId(result.data.id);
+        Alert.alert(t('common.success'), t('createQuiz.draftSavedBody'));
         router.back();
       } else {
-        Alert.alert('Error', result.error || 'Error al guardar el quiz');
+        Alert.alert(t('common.error'), result.error || t('createQuiz.saveErrorBody'));
       }
     } catch (error) {
       console.error('Error saving draft:', error);
-      Alert.alert('Error', 'Error al guardar el quiz');
+      Alert.alert(t('common.error'), t('createQuiz.saveErrorBody'));
     } finally {
       setSaving(false);
     }
   };
 
+  const handleNext = async () => {
+    if (questions.length < MIN_QUESTIONS) {
+      Alert.alert(t('common.error'), t('createQuiz.minQuestionsError', { count: MIN_QUESTIONS }));
+      return;
+    }
+
+    if (!title.trim()) {
+      Alert.alert(t('common.error'), t('createQuiz.titleRequiredError'));
+      return;
+    }
+
+    if (!category) {
+      Alert.alert(t('common.error'), t('createQuiz.categoryRequiredError'));
+      return;
+    }
+
+    Alert.alert(t('createQuiz.spellReviewTitle'), t('createQuiz.spellReviewBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('createQuiz.spellReviewContinue'),
+        onPress: () => void advanceToDifficulty(),
+      },
+    ]);
+  };
+
+  const advanceToDifficulty = async () => {
+    try {
+      setAdvancing(true);
+
+      const quizData = buildQuizPayload();
+      const result = quizId
+        ? await quizService.updateQuiz(quizId, quizData)
+        : await quizService.createQuiz(quizData);
+
+      if (!result.success) {
+        Alert.alert(t('common.error'), result.error || t('createQuiz.nextErrorBody'));
+        return;
+      }
+
+      const nextQuizId = result.data?.id ?? quizId;
+      if (nextQuizId) setQuizId(nextQuizId);
+
+      router.push({
+        pathname: '/(app)/quiz/difficulty',
+        params: {
+          quizId: nextQuizId ? String(nextQuizId) : '',
+          questionsCount: questions.length.toString(),
+        },
+      });
+    } catch (error) {
+      console.error('Error advancing to difficulty:', error);
+      Alert.alert(t('common.error'), t('createQuiz.nextErrorBody'));
+    } finally {
+      setAdvancing(false);
+    }
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <CreateGate>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.phoneColumn}>
       <LinearGradient
-        colors={[Colors.light.gradientStart, Colors.light.gradientEnd, Colors.light.error]}
-        style={styles.gradientHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        {...brandGradientProps}
+        style={[styles.gradientHeader, { paddingTop: chrome.headerPaddingTop }]}
       >
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <CustomIcon name="back" size={24} color={Colors.light.text} />
+            <CustomIcon name="back" size={24} color="#FFFFFF" />
           </Pressable>
-          <Text style={styles.title}>Crear Quiz</Text>
+          <View style={styles.headerTextCol}>
+            <Text style={styles.brand}>QUILAX</Text>
+            <Text style={styles.title}>{t('createQuiz.title')}</Text>
+          </View>
         </View>
       </LinearGradient>
 
@@ -304,46 +456,50 @@ export default function CreateQuizScreen() {
         <View style={styles.ruleItem}>
           <CustomIcon name="rules" size={16} color={Colors.light.textSecondary} />
           <Text style={styles.rulesText}>
-            Reglas: Mínimo {MIN_QUESTIONS} preguntas, Máximo {MAX_QUESTIONS} preguntas
+            {t('createQuiz.rulesQuestions', { min: MIN_QUESTIONS, max: MAX_QUESTIONS })}
           </Text>
         </View>
         <View style={styles.ruleItem}>
           <CustomIcon name="time" size={16} color={Colors.light.textSecondary} />
           <Text style={styles.rulesText}>
-            Duración máxima: {MAX_DURATION_MINUTES} minutos
+            {t('createQuiz.rulesDuration', { minutes: MAX_DURATION_MINUTES })}
           </Text>
         </View>
         <View style={styles.ruleItem}>
           <CustomIcon name="warning" size={16} color={Colors.light.textSecondary} />
           <Text style={styles.rulesText}>
-            Vigila la ortografía, no inventes respuestas, evita contenido irrespetuoso u obsceno, y procura no poner preguntas con respuestas subjetivas (mayor probabilidad de rechazo)
+            {t('createQuiz.rulesSpelling')}
           </Text>
+        </View>
+        <View style={styles.spellBanner}>
+          <Text style={styles.spellBannerTitle}>{t('createQuiz.spellBannerTitle')}</Text>
+          <Text style={styles.spellBannerBody}>{t('createQuiz.spellBannerBody')}</Text>
         </View>
         <View style={styles.ruleItem}>
           <CustomIcon name="star" size={16} color={Colors.light.textSecondary} />
           <Text style={styles.rulesText}>
-            Los quizzes con más preguntas son más atractivos y dan más puntos a los jugadores
+            {t('createQuiz.rulesMorePoints')}
           </Text>
         </View>
       </View>
 
       <View style={styles.form}>
-        <Text style={styles.label}>Título del quiz (obligatorio)</Text>
+        <Text style={styles.label}>{t('createQuiz.titleLabel')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Escribe un título atractivo..."
+          placeholder={t('createQuiz.titlePlaceholder')}
           placeholderTextColor={Colors.light.textSecondary}
           value={title}
           onChangeText={setTitle}
         />
 
-        <Text style={styles.label}>Foto de portada (opcional)</Text>
+        <Text style={styles.label}>{t('createQuiz.coverPhotoLabel')}</Text>
         {coverImage ? (
           <View style={styles.imageContainer}>
             <CustomIcon name="photo" size={16} color={Colors.light.text} />
-            <Text style={styles.imageText}>Foto de portada añadida</Text>
+            <Text style={styles.imageText}>{t('createQuiz.coverPhotoAdded')}</Text>
             <Pressable onPress={handleRemoveCoverImage}>
-              <Text style={styles.removeImageText}>Eliminar</Text>
+              <Text style={styles.removeImageText}>{t('common.delete')}</Text>
             </Pressable>
           </View>
         ) : (
@@ -352,25 +508,64 @@ export default function CreateQuizScreen() {
             onPress={handleAddCoverImage}
           >
             <CustomIcon name="camera" size={16} color="#FFFFFF" />
-            <Text style={styles.addImageText}>Añadir foto de portada (JPG/JPEG) - opcional</Text>
+            <Text style={styles.addImageText}>{t('createQuiz.addCoverPhoto')}</Text>
           </Pressable>
         )}
 
-        <Text style={styles.label}>Categoría (obligatorio)</Text>
+        <Text style={styles.label}>{t('createQuiz.categoryLabel')}</Text>
         <Pressable 
-          style={styles.categoryButton}
+          style={[
+            styles.categoryButton,
+            category
+              ? {
+                  backgroundColor: getCategoryStyle(category).bg,
+                  borderColor: getCategoryStyle(category).border,
+                }
+              : null,
+          ]}
           onPress={() => setShowCategoryModal(true)}
         >
-          <Text style={category ? styles.categoryText : styles.categoryPlaceholder}>
-            {category || 'Selecciona una categoría'}
+          <Text
+            style={[
+              category ? styles.categoryText : styles.categoryPlaceholder,
+              category ? { color: getCategoryStyle(category).text } : null,
+            ]}
+            numberOfLines={1}
+          >
+            {category ? getCategoryLabel(category, t) : t('createQuiz.selectCategory')}
           </Text>
-          <CustomIcon name="arrow" size={16} color={Colors.light.text} />
+          <CustomIcon
+            name="arrow"
+            size={16}
+            color={category ? getCategoryStyle(category).text : Colors.light.text}
+          />
         </Pressable>
 
-        <Text style={styles.label}>Descripción (opcional)</Text>
+        <Text style={styles.label}>{t('quizLanguage.label')} *</Text>
+        <Text style={styles.langHint}>{t('quizLanguage.hint')}</Text>
+        <View style={styles.langRow}>
+          {QUIZ_CONTENT_LANGUAGES.map((lang) => {
+            const active = quizLanguage === lang.code;
+            return (
+              <Pressable
+                key={lang.code}
+                onPress={() => setQuizLanguage(lang.code)}
+                style={[styles.langOption, active && styles.langOptionActive]}
+              >
+                <QuizLanguageBadge language={lang.code} />
+                <Text style={[styles.langOptionText, active && styles.langOptionTextActive]}>
+                  {t(lang.labelKey)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={styles.langNotTranslated}>{t('quizLanguage.notTranslated')}</Text>
+
+        <Text style={styles.label}>{t('createQuiz.descriptionLabel')}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Describe de qué trata el quiz..."
+          placeholder={t('createQuiz.descriptionPlaceholder')}
           placeholderTextColor={Colors.light.textSecondary}
           multiline
           numberOfLines={3}
@@ -378,10 +573,10 @@ export default function CreateQuizScreen() {
           onChangeText={setDescription}
         />
 
-        <Text style={styles.label}>Consejos para los jugadores (opcional)</Text>
+        <Text style={styles.label}>{t('createQuiz.tipsLabel')}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Dale consejos útiles a los jugadores..."
+          placeholder={t('createQuiz.tipsPlaceholder')}
           placeholderTextColor={Colors.light.textSecondary}
           multiline
           numberOfLines={2}
@@ -389,10 +584,10 @@ export default function CreateQuizScreen() {
           onChangeText={setTips}
         />
 
-        <Text style={styles.label}>Temario (opcional)</Text>
+        <Text style={styles.label}>{t('createQuiz.syllabusLabel')}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Temas que cubre el quiz..."
+          placeholder={t('createQuiz.syllabusPlaceholder')}
           placeholderTextColor={Colors.light.textSecondary}
           multiline
           numberOfLines={2}
@@ -400,10 +595,10 @@ export default function CreateQuizScreen() {
           onChangeText={setSyllabus}
         />
 
-        <Text style={styles.label}>Advertencias (opcional)</Text>
+        <Text style={styles.label}>{t('createQuiz.warningsLabel')}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Advertencias importantes (opcional)..."
+          placeholder={t('createQuiz.warningsPlaceholder')}
           placeholderTextColor={Colors.light.textSecondary}
           multiline
           numberOfLines={2}
@@ -411,10 +606,10 @@ export default function CreateQuizScreen() {
           onChangeText={setWarnings}
         />
 
-        <Text style={styles.label}>Mensaje del creador (opcional)</Text>
+        <Text style={styles.label}>{t('createQuiz.creatorMessageLabel')}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Mensaje o indicaciones para los jugadores..."
+          placeholder={t('createQuiz.creatorMessagePlaceholder')}
           placeholderTextColor={Colors.light.textSecondary}
           multiline
           numberOfLines={2}
@@ -424,22 +619,32 @@ export default function CreateQuizScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Preguntas (Máximo {MAX_QUESTIONS})</Text>
+            <Text style={styles.sectionTitle}>{t('createQuiz.questionsSectionTitle', { max: MAX_QUESTIONS })}</Text>
           </View>
           
           {questions.map((question, index) => (
             <View key={question.id} style={styles.questionCard}>
+              <View style={styles.questionAccent} />
+              <View style={styles.questionCardInner}>
               <View style={styles.questionHeader}>
-                <Text style={styles.questionNumber}>Pregunta {index + 1}</Text>
+                <View style={styles.questionNumberBadge}>
+                  <Text style={styles.questionNumber}>
+                    {t('createQuiz.questionNumber', { n: index + 1 })}
+                  </Text>
+                </View>
                 {questions.length > MIN_QUESTIONS && (
-                  <Pressable onPress={() => handleRemoveQuestion(question.id)}>
+                  <Pressable
+                    onPress={() => handleRemoveQuestion(question.id)}
+                    style={styles.questionRemoveBtn}
+                    hitSlop={8}
+                  >
                     <CustomIcon name="close" size={16} color={Colors.light.error} />
                   </Pressable>
                 )}
               </View>
 
               <View style={styles.questionTypeContainer}>
-                <Text style={styles.questionTypeLabel}>Tipo de pregunta:</Text>
+                <Text style={styles.questionTypeLabel}>{t('createQuiz.questionTypeLabel')}</Text>
                 <View style={styles.questionTypeSelector}>
                   <Pressable
                     style={[
@@ -451,7 +656,7 @@ export default function CreateQuizScreen() {
                     <Text style={[
                       styles.questionTypeOptionText,
                       question.questionType === 'true_false' && styles.questionTypeOptionTextActive
-                    ]}>Verdadero/Falso</Text>
+                    ]}>{t('createQuiz.questionTypeTrueFalse')}</Text>
                   </Pressable>
                   <Pressable
                     style={[
@@ -463,14 +668,14 @@ export default function CreateQuizScreen() {
                     <Text style={[
                       styles.questionTypeOptionText,
                       question.questionType === 'multiple_choice' && styles.questionTypeOptionTextActive
-                    ]}>3-6 opciones</Text>
+                    ]}>{t('createQuiz.questionTypeMultiple')}</Text>
                   </Pressable>
                 </View>
               </View>
               
               <TextInput
                 style={styles.questionInput}
-                placeholder="Escribe tu pregunta..."
+                placeholder={t('createQuiz.questionPlaceholder')}
                 placeholderTextColor={Colors.light.textSecondary}
                 multiline
                 value={question.text}
@@ -478,19 +683,27 @@ export default function CreateQuizScreen() {
               />
 
               <Pressable
-                style={styles.writingAssistantButton}
+                style={[
+                  styles.writingAssistantButton,
+                  spellCheckingId === question.id && styles.writingAssistantBusy,
+                ]}
                 onPress={() => handleImproveWriting(question.id)}
+                disabled={spellCheckingId === question.id}
               >
                 <CustomIcon name="edit" size={16} color="#FFFFFF" />
-                <Text style={styles.writingAssistantText}>🔧 Autocorrector ortográfico</Text>
+                <Text style={styles.writingAssistantText}>
+                  {spellCheckingId === question.id
+                    ? t('createQuiz.spellChecking')
+                    : t('createQuiz.spellCheckButton')}
+                </Text>
               </Pressable>
 
               {question.imageUrl && (
                 <View style={styles.imageContainer}>
                   <CustomIcon name="photo" size={16} color={Colors.light.text} />
-                  <Text style={styles.imageText}>Foto añadida</Text>
+                  <Text style={styles.imageText}>{t('createQuiz.photoAdded')}</Text>
                   <Pressable onPress={() => handleRemoveImage(question.id)}>
-                    <Text style={styles.removeImageText}>Eliminar</Text>
+                    <Text style={styles.removeImageText}>{t('common.delete')}</Text>
                   </Pressable>
                 </View>
               )}
@@ -500,25 +713,25 @@ export default function CreateQuizScreen() {
                 onPress={() => handleAddImage(question.id)}
               >
                 <CustomIcon name="camera" size={16} color="#FFFFFF" />
-                <Text style={styles.addImageText}>Añadir foto (JPG/JPEG) - opcional</Text>
+                <Text style={styles.addImageText}>{t('createQuiz.addPhoto')}</Text>
               </Pressable>
 
+              {index === 0 ? (
+                <View style={styles.applyToAllContainer}>
+                  <Pressable
+                    style={styles.applyToAllCheckbox}
+                    onPress={() => setApplyToAll(!applyToAll)}
+                  >
+                    <View style={[styles.checkbox, applyToAll && styles.checkboxChecked]}>
+                      {applyToAll && <CustomIcon name="check" size={12} color="#FFFFFF" />}
+                    </View>
+                    <Text style={styles.applyToAllText}>{t('createQuiz.applyToAll')}</Text>
+                  </Pressable>
+                </View>
+              ) : null}
               <View style={styles.durationContainer}>
-                {index === 0 && (
-                  <View style={styles.applyToAllContainer}>
-                    <Pressable
-                      style={styles.applyToAllCheckbox}
-                      onPress={() => setApplyToAll(!applyToAll)}
-                    >
-                      <View style={[styles.checkbox, applyToAll && styles.checkboxChecked]}>
-                        {applyToAll && <CustomIcon name="check" size={12} color="#FFFFFF" />}
-                      </View>
-                      <Text style={styles.applyToAllText}>Aplicar a todas las preguntas</Text>
-                    </Pressable>
-                  </View>
-                )}
                 <View style={styles.durationField}>
-                  <Text style={styles.durationLabel}>Tiempo lectura (seg)</Text>
+                  <Text style={styles.durationLabel}>{t('createQuiz.readTimeLabel')}</Text>
                   <TextInput
                     style={styles.durationInput}
                     placeholder="10"
@@ -529,7 +742,7 @@ export default function CreateQuizScreen() {
                   />
                 </View>
                 <View style={styles.durationField}>
-                  <Text style={styles.durationLabel}>Tiempo respuesta (seg)</Text>
+                  <Text style={styles.durationLabel}>{t('createQuiz.answerTimeLabel')}</Text>
                   <TextInput
                     style={styles.durationInput}
                     placeholder="30"
@@ -540,17 +753,23 @@ export default function CreateQuizScreen() {
                   />
                 </View>
                 <View style={styles.durationField}>
-                  <Text style={styles.durationLabel}>Puntos a restar por décima de segundo</Text>
+                  <Text style={styles.durationLabel}>{t('createQuiz.pointsLabel')}</Text>
                   <TextInput
                     style={styles.durationInput}
-                    placeholder="Auto"
+                    placeholder={t('createQuiz.autoPlaceholder')}
                     placeholderTextColor={Colors.light.textSecondary}
                     keyboardType="number-pad"
                     value={question.points.toString()}
                     onChangeText={(text) => handleDurationChange(question.id, 'points', text)}
                   />
                   <Text style={styles.durationHint}>
-                    Recomendado: {question.questionAnswerDuration > 0 ? Math.round(1000 / (question.questionAnswerDuration * 10)) : 0} puntos (1000 ÷ {question.questionAnswerDuration * 10} décimas)
+                    {t('createQuiz.pointsRecommended', {
+                      points:
+                        question.questionAnswerDuration > 0
+                          ? Math.ceil(1000 / (question.questionAnswerDuration * 100))
+                          : 0,
+                      centiseconds: question.questionAnswerDuration * 100,
+                    })}
                   </Text>
                 </View>
               </View>
@@ -576,7 +795,7 @@ export default function CreateQuizScreen() {
                     </Pressable>
                     <TextInput
                       style={styles.optionInput}
-                      placeholder={`Opción ${String.fromCharCode(65 + optIndex)}`}
+                      placeholder={t('createQuiz.optionPlaceholder', { letter: String.fromCharCode(65 + optIndex) })}
                       placeholderTextColor={Colors.light.textSecondary}
                       value={option}
                       onChangeText={(text) => handleOptionChange(question.id, optIndex, text)}
@@ -584,51 +803,64 @@ export default function CreateQuizScreen() {
                   </View>
                 ))}
               </View>
+              </View>
             </View>
           ))}
         </View>
 
         <View style={styles.buttonContainer}>
           <Pressable style={styles.addButton} onPress={handleAddQuestion}>
-            <Text style={styles.addButtonText}>+ Añadir Pregunta</Text>
+            <Text style={styles.addButtonText}>{t('createQuiz.addQuestion')}</Text>
           </Pressable>
-          <Pressable 
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]} 
+          <GradientButton
+            label={saving ? t('common.saving') : t('createQuiz.saveDraft')}
             onPress={handleSaveDraft}
             disabled={saving}
-          >
-            <Text style={styles.saveButtonText}>{saving ? 'Guardando...' : 'Guardar borrador'}</Text>
-          </Pressable>
+          />
         </View>
 
         <View style={styles.progressBarContainer}>
-          <Text style={styles.progressBarLabel}>Duración total: {totalDurationSeconds} segundos / {MAX_DURATION_SECONDS} segundos ({MAX_DURATION_MINUTES} minutos)</Text>
+          <Text style={styles.progressBarLabel}>
+            {t('createQuiz.totalDuration', {
+              total: totalDurationSeconds,
+              max: MAX_DURATION_SECONDS,
+              minutes: MAX_DURATION_MINUTES,
+            })}
+          </Text>
           <View style={styles.progressBarBackground}>
             <LinearGradient
-              colors={[Colors.light.gradientStart, Colors.light.gradientEnd, Colors.light.error]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+              {...brandGradientProps}
               style={[styles.progressBarFill, { width: `${progressPercentage}%` }]}
             />
           </View>
           <Text style={styles.progressBarInfoText}>
-            Por cada pregunta se suman automáticamente {START_TIME + FIXED_CORRECTION_TIME + FIXED_RANKING_TIME} segundos de tiempos fijos (inicio, corrección y ranking)
+            {t('createQuiz.autoTimeInfo', {
+              seconds: START_TIME + FIXED_CORRECTION_TIME + FIXED_RANKING_TIME,
+            })}
           </Text>
         </View>
 
-        <View style={styles.buttonContainer}>
-          <Pressable
-            style={[styles.nextButton, questions.length < MIN_QUESTIONS && styles.nextButtonDisabled]}
-            onPress={() => questions.length >= MIN_QUESTIONS && router.push({
-              pathname: '/quiz/difficulty',
-              params: { questionsCount: questions.length.toString() }
-            })}
-            disabled={questions.length < MIN_QUESTIONS}
-          >
-            <Text style={[styles.nextButtonText, questions.length < MIN_QUESTIONS && styles.nextButtonTextDisabled]}>
-              Siguiente
+        <View style={styles.difficultySection}>
+          <Pressable style={styles.suggestDifficultyButton} onPress={handleSuggestDifficulty}>
+            <Text style={styles.suggestDifficultyButtonText}>
+              {t('createQuiz.suggestDifficulty')}
             </Text>
           </Pressable>
+          {difficultySuggested && suggestedDifficulty ? (
+            <View style={styles.difficultyResult}>
+              <Text style={styles.difficultyResultText}>
+                {t('createQuiz.suggestedDifficulty', { difficulty: suggestedDifficulty })}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <GradientButton
+            label={advancing ? t('common.saving') : t('createQuiz.next')}
+            onPress={handleNext}
+            disabled={questions.length < MIN_QUESTIONS || advancing}
+          />
         </View>
       </View>
 
@@ -638,33 +870,65 @@ export default function CreateQuizScreen() {
         animationType="slide"
         onRequestClose={() => setShowCategoryModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Selecciona una categoría</Text>
-            <ScrollView style={styles.categoryList}>
-              {QUIZ_CATEGORIES.map((cat) => (
-                <Pressable
-                  key={cat}
-                  style={styles.categoryItem}
-                  onPress={() => {
-                    setCategory(cat);
-                    setShowCategoryModal(false);
-                  }}
-                >
-                  <Text style={styles.categoryItemText}>{cat}</Text>
-                </Pressable>
-              ))}
+        <MobileModalFrame onBackdropPress={() => setShowCategoryModal(false)}>
+          <View
+            style={[
+              styles.modalSheet,
+              {
+                paddingBottom: Math.max(insets.bottom, Spacing.four),
+                maxHeight: Math.min(windowHeight * 0.78, 560),
+              },
+            ]}
+          >
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>{t('createQuiz.selectCategory')}</Text>
+            <ScrollView
+              style={styles.categoryList}
+              contentContainerStyle={styles.categoryListContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {QUIZ_CATEGORIES.map((cat) => {
+                const pastel = getCategoryStyle(cat);
+                const selected = category === cat;
+                return (
+                  <Pressable
+                    key={cat}
+                    style={[
+                      styles.categoryItem,
+                      {
+                        backgroundColor: pastel.bg,
+                        borderColor: selected ? pastel.text : pastel.border,
+                        borderWidth: selected ? 2 : 1,
+                      },
+                    ]}
+                    onPress={() => {
+                      setCategory(cat);
+                      setShowCategoryModal(false);
+                    }}
+                  >
+                    <Text
+                      style={[styles.categoryItemText, { color: pastel.text }]}
+                      numberOfLines={2}
+                    >
+                      {getCategoryLabel(cat, t)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
             <Pressable
               style={styles.modalCloseButton}
               onPress={() => setShowCategoryModal(false)}
             >
-              <Text style={styles.modalCloseButtonText}>Cancelar</Text>
+              <Text style={styles.modalCloseButtonText}>{t('common.cancel')}</Text>
             </Pressable>
           </View>
-        </View>
+        </MobileModalFrame>
       </Modal>
+      </View>
     </ScrollView>
+    </CreateGate>
   );
 }
 
@@ -673,8 +937,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.light.background,
   },
+  scrollContent: {
+    alignItems: 'center',
+    paddingBottom: Spacing.six,
+  },
+  phoneColumn: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+  },
   gradientHeader: {
-    paddingTop: Spacing.six,
     paddingBottom: Spacing.four,
     paddingHorizontal: Spacing.six,
   },
@@ -682,6 +953,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+  },
+  headerTextCol: {
+    flex: 1,
   },
   backButton: {
     padding: Spacing.two,
@@ -691,16 +965,25 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  brand: {
+    ...titleTypeface,
+    fontSize: 28,
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: 0.6,
+  },
+  title: {
+    ...titleTypeface,
+    marginTop: 4,
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.95)',
   },
   rulesBar: {
     backgroundColor: Colors.light.backgroundElement,
     padding: Spacing.three,
     margin: Spacing.four,
-    borderRadius: 8,
+    borderRadius: 12,
     gap: Spacing.one,
   },
   ruleItem: {
@@ -709,6 +992,8 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   rulesText: {
+    flex: 1,
+    flexShrink: 1,
     fontSize: 14,
     color: Colors.light.textSecondary,
   },
@@ -717,7 +1002,7 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     marginHorizontal: Spacing.four,
     marginBottom: Spacing.four,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   progressBarLabel: {
     fontSize: 14,
@@ -755,7 +1040,7 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: Colors.light.background,
     padding: Spacing.four,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.light.backgroundSelected,
     fontSize: 16,
@@ -767,7 +1052,7 @@ const styles = StyleSheet.create({
   categoryButton: {
     backgroundColor: Colors.light.background,
     padding: Spacing.four,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.light.backgroundSelected,
     flexDirection: 'row',
@@ -775,19 +1060,66 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoryText: {
+    flex: 1,
+    flexShrink: 1,
     fontSize: 16,
     color: Colors.light.text,
+    paddingRight: Spacing.two,
   },
   categoryPlaceholder: {
+    flex: 1,
+    flexShrink: 1,
     fontSize: 16,
     color: Colors.light.textSecondary,
+    paddingRight: Spacing.two,
   },
   categoryArrow: {
     fontSize: 12,
     color: Colors.light.textSecondary,
   },
+  langHint: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    marginTop: -8,
+    marginBottom: 4,
+  },
+  langRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  langOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.backgroundSelected,
+    backgroundColor: Colors.light.background,
+  },
+  langOptionActive: {
+    borderColor: Colors.light.primary,
+    borderWidth: 2,
+  },
+  langOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.light.text,
+  },
+  langOptionTextActive: {
+    color: Colors.light.primary,
+  },
+  langNotTranslated: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.light.textSecondary,
+    marginTop: 8,
+    marginBottom: 4,
+  },
   section: {
-    gap: Spacing.three,
+    gap: Spacing.four,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -795,30 +1127,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionTitle: {
+    ...titleTypeface,
     fontSize: 18,
     fontWeight: '600',
     color: Colors.light.text,
   },
   questionCard: {
-    backgroundColor: Colors.light.backgroundElement,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#D6D0C8',
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  questionAccent: {
+    width: 5,
+    backgroundColor: Colors.light.primary,
+  },
+  questionCardInner: {
+    flex: 1,
     padding: Spacing.four,
-    borderRadius: 12,
     gap: Spacing.three,
-    borderWidth: 2,
-    borderColor: Colors.light.backgroundSelected,
+    backgroundColor: '#FFFFFF',
   },
   questionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  questionNumberBadge: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
   questionNumber: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.light.text,
+    ...titleTypeface,
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.light.primary,
+    letterSpacing: 0.2,
+  },
+  questionRemoveBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   questionTypeContainer: {
-    marginBottom: Spacing.three,
+    marginBottom: Spacing.one,
   },
   questionTypeLabel: {
     fontSize: 14,
@@ -827,13 +1190,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   questionTypeSelector: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: Spacing.two,
   },
   questionTypeOption: {
-    flex: 1,
+    width: '100%',
     padding: Spacing.three,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.light.backgroundSelected,
     backgroundColor: Colors.light.background,
@@ -847,6 +1210,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.light.text,
     fontWeight: '600',
+    textAlign: 'center',
   },
   questionTypeOptionTextActive: {
     color: '#FFFFFF',
@@ -860,26 +1224,50 @@ const styles = StyleSheet.create({
   questionInput: {
     backgroundColor: Colors.light.background,
     padding: Spacing.four,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.light.backgroundSelected,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#D6D0C8',
     fontSize: 16,
     minHeight: 80,
     textAlignVertical: 'top',
+    color: Colors.light.text,
   },
   writingAssistantButton: {
     backgroundColor: Colors.light.backgroundSelected,
     padding: Spacing.three,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     flexDirection: 'row',
     gap: Spacing.two,
     marginBottom: Spacing.three,
   },
+  writingAssistantBusy: {
+    opacity: 0.7,
+  },
   writingAssistantText: {
     fontSize: 14,
     color: Colors.light.textSecondary,
     fontWeight: '600',
+  },
+  spellBanner: {
+    marginTop: Spacing.two,
+    marginBottom: Spacing.one,
+    padding: Spacing.three,
+    borderRadius: 10,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    gap: 4,
+  },
+  spellBannerTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  spellBannerBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#78350F',
   },
   imageContainer: {
     flexDirection: 'row',
@@ -887,7 +1275,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.light.background,
     padding: Spacing.three,
-    borderRadius: 8,
+    borderRadius: 12,
     gap: Spacing.two,
   },
   imageText: {
@@ -903,7 +1291,7 @@ const styles = StyleSheet.create({
   addImageButton: {
     backgroundColor: Colors.light.backgroundSelected,
     padding: Spacing.three,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     flexDirection: 'row',
     gap: Spacing.two,
@@ -914,11 +1302,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   durationContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: Spacing.three,
   },
   durationField: {
-    flex: 1,
+    width: '100%',
   },
   durationLabel: {
     fontSize: 14,
@@ -935,7 +1323,7 @@ const styles = StyleSheet.create({
   durationInput: {
     backgroundColor: Colors.light.background,
     padding: Spacing.three,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.light.backgroundSelected,
     fontSize: 16,
@@ -996,17 +1384,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.light.background,
     padding: Spacing.four,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.light.backgroundSelected,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#D6D0C8',
     fontSize: 16,
+    color: Colors.light.text,
   },
   buttonContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: Spacing.three,
+    width: '100%',
   },
   addButton: {
-    flex: 1,
+    width: '100%',
     backgroundColor: Colors.light.gradientStart,
     padding: Spacing.four,
     borderRadius: 12,
@@ -1052,7 +1442,7 @@ const styles = StyleSheet.create({
   suggestDifficultyButton: {
     backgroundColor: Colors.light.backgroundSelected,
     padding: Spacing.four,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
   },
   suggestDifficultyButtonText: {
@@ -1063,7 +1453,7 @@ const styles = StyleSheet.create({
   difficultyResult: {
     backgroundColor: Colors.light.backgroundElement,
     padding: Spacing.four,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginVertical: Spacing.four,
   },
@@ -1092,48 +1482,71 @@ const styles = StyleSheet.create({
   nextButtonTextDisabled: {
     color: Colors.light.textSecondary,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
+  modalSheet: {
+    width: '100%',
     backgroundColor: Colors.light.background,
-    borderRadius: 12,
-    padding: Spacing.four,
-    width: '80%',
-    maxHeight: '80%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: Colors.light.backgroundSelected,
+    zIndex: 2,
+  },
+  modalHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.light.backgroundSelected,
+    marginBottom: Spacing.three,
   },
   modalTitle: {
+    ...titleTypeface,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: Colors.light.text,
     marginBottom: Spacing.three,
     textAlign: 'center',
   },
   categoryList: {
-    maxHeight: 400,
+    flexGrow: 0,
     marginBottom: Spacing.three,
   },
+  categoryListContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: Spacing.two,
+    paddingBottom: Spacing.two,
+  },
   categoryItem: {
-    padding: Spacing.four,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.backgroundSelected,
-  },
-  categoryItemText: {
-    fontSize: 16,
-    color: Colors.light.text,
-  },
-  modalCloseButton: {
-    backgroundColor: Colors.light.gradientStart,
-    padding: Spacing.four,
-    borderRadius: 8,
+    width: '48.5%',
+    minHeight: 48,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
   },
+  categoryItemText: {
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 17,
+  },
+  modalCloseButton: {
+    backgroundColor: Colors.light.backgroundElement,
+    padding: Spacing.four,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.light.backgroundSelected,
+  },
   modalCloseButtonText: {
-    color: '#FFFFFF',
+    color: Colors.light.text,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });

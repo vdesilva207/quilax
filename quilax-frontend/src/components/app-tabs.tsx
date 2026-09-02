@@ -1,11 +1,7 @@
-import { useColorScheme } from 'react-native';
-
 import { Colors } from '@/constants/theme';
 
+/** Legacy Expo template stub — CustomTabBar is the real tab bar. Light-only. */
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const resolvedScheme = scheme === 'dark' || scheme === 'light' ? scheme : 'light';
-  const colors = Colors[resolvedScheme];
-
+  void Colors.light;
   return null;
 }

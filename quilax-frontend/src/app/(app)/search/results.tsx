@@ -1,22 +1,30 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Colors, Spacing } from '@/constants/theme';
 import { AppScreen, AppHeader, AppCard } from '@/components/ui/AppScreen';
+import { QuizCard } from '@/components/QuizCard';
 import searchService from '@/services/searchService';
 
 export default function SearchResultsScreen() {
-  const { q = '' } = useLocalSearchParams<{ q?: string }>();
+  const { q = '', category } = useLocalSearchParams<{ q?: string; category?: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<{ quizzes: any[]; users: any[] }>({ quizzes: [], users: [] });
 
+  const query = String(q || '').trim();
+  const cat = category ? String(category) : undefined;
+  const subtitle = [query, cat].filter(Boolean).join(' · ') || t('search.defaultQuery');
+
   useEffect(() => {
-    if (!q) {
+    if (!query && !cat) {
       setLoading(false);
       return;
     }
-    searchService.search(String(q)).then((result) => {
+    setLoading(true);
+    searchService.search(query, 'all', cat).then((result) => {
       if (result.success) {
         const payload = result.data?.results || result.data || {};
         setResults({
@@ -26,16 +34,16 @@ export default function SearchResultsScreen() {
       }
       setLoading(false);
     });
-  }, [q]);
+  }, [query, cat]);
 
   const data = [
-    ...results.quizzes.map((item) => ({ type: 'quiz', ...item })),
-    ...results.users.map((item) => ({ type: 'user', ...item })),
+    ...results.quizzes.map((item) => ({ type: 'quiz' as const, ...item })),
+    ...results.users.map((item) => ({ type: 'user' as const, ...item })),
   ];
 
   return (
     <AppScreen>
-      <AppHeader title="Resultados" subtitle={String(q)} />
+      <AppHeader title={t('search.resultsTitle')} subtitle={subtitle} showBack backHref="/(app)/search" />
       {loading ? (
         <ActivityIndicator style={{ marginTop: Spacing.four }} color={Colors.light.primary} />
       ) : (
@@ -43,13 +51,23 @@ export default function SearchResultsScreen() {
           contentContainerStyle={styles.list}
           data={data}
           keyExtractor={(item) => `${item.type}-${item.id}`}
-          ListEmptyComponent={<Text style={styles.empty}>Sin resultados</Text>}
-          renderItem={({ item }) => (
-            <AppCard onPress={item.type === 'quiz' ? () => router.push(`/(app)/quiz/${item.id}`) : undefined}>
-              <Text style={styles.type}>{item.type === 'quiz' ? 'Quiz' : 'Usuario'}</Text>
-              <Text style={styles.title}>{item.title || item.username || item.fullName}</Text>
-            </AppCard>
-          )}
+          ListEmptyComponent={<Text style={styles.empty}>{t('search.noResults')}</Text>}
+          renderItem={({ item, index }) =>
+            item.type === 'quiz' ? (
+              <QuizCard
+                staggerIndex={index}
+                title={item.title}
+                category={item.category}
+                language={item.language}
+                onPress={() => router.push(`/(app)/quiz/${item.id}`)}
+              />
+            ) : (
+              <AppCard onPress={() => router.push(`/(app)/profile/${item.id}` as any)}>
+                <Text style={styles.type}>{t('search.user')}</Text>
+                <Text style={styles.title}>{item.username || item.fullName}</Text>
+              </AppCard>
+            )
+          }
         />
       )}
     </AppScreen>

@@ -1,0 +1,42 @@
+[
+  {
+    "title": "1. Responsable du traitement des données",
+    "body": "Vicente de Silva Ortiz (personne physique), opérateur de pré-lancement de Quilax. Le numéro d’identification fiscale et l’adresse seront complétés lors de la création de la société. Contact : Paramètres → Assistance / tickets."
+  },
+  {
+    "title": "2. Données que nous traitons",
+    "body": "Identité et contact (nom, email), données de jeu, KYC (ID et selfie), opérations bancaires/paiements via Stripe, messages/assistance et données techniques de sécurité."
+  },
+  {
+    "title": "3. Objectifs",
+    "body": "Fournir le service, prévenir la fraude, les prix, les dépôts/retraits, le support et les obligations légales."
+  },
+  {
+    "title": "4. Base juridique",
+    "body": "Exécution du contrat, intérêt légitime dans la sécurité antifraude et, le cas échéant, consentement ou obligation légale."
+  },
+  {
+    "title": "5. Sous-traitants et tiers",
+    "body": "Nous ne vendons pas vos données. Nous partageons ce qui est nécessaire avec Stripe, l'hébergement, la vérification d'identité et les autorités lorsque cela est nécessaire."
+  },
+  {
+    "title": "6. Conservation et suppression",
+    "body": "Exportez ou supprimez votre compte dans Paramètres → Informations personnelles. La suppression anonymise les données personnelles ; certains enregistrements de jeux/paiements peuvent être conservés sans vous identifier pendant les périodes légales."
+  },
+  {
+    "title": "7. Vos droits (RGPD)",
+    "body": "Accès, rectification, effacement, objection, restriction et portabilité dans l'application (exportation/suppression) ou via le support. Vous pouvez également vous plaindre auprès de votre DPA."
+  },
+  {
+    "title": "8. Mineurs",
+    "body": "Quilax est réservé aux 18 ans et plus. Les opérations d’enregistrement et d’argent sont appliquées côté serveur."
+  },
+  {
+    "title": "9. Sécurité",
+    "body": "HTTPS, contrôles d'accès et 2FA sur dépôt/retrait dans Gestión (si vous l'activez)."
+  },
+  {
+    "title": "10. Modifications",
+    "body": "Nous pouvons mettre à jour cette politique et vous informerons des changements importants dans l'application."
+  }
+]

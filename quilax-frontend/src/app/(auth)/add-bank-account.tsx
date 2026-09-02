@@ -1,103 +1,67 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { Colors, Spacing } from '@/constants/theme';
+import { Text, ActivityIndicator, Linking } from 'react-native';
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { Colors } from '@/constants/theme';
+import { authFormStyles } from '@/constants/authForm';
+import apiClient from '@/lib/api';
+import {
+  AuthFlowLayout,
+  AuthPrimaryButton,
+  AuthSecondaryButton,
+  AuthProgressDots,
+} from '@/components/ui/AuthFlowLayout';
 
+/**
+ * Optional bank step during signup — opens Stripe Connect onboarding.
+ * Does not mark the account verified locally.
+ */
 export default function AddBankAccountScreen() {
-  const { t } = useTranslation();
   const router = useRouter();
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const goNext = () => router.push('/(auth)/complete-profile');
+
+  const openStripe = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const data = await apiClient.post('/payments/connect/onboard', {});
+      if (data?.url) {
+        await Linking.openURL(data.url);
+      } else {
+        setError(t('auth.bankAccountScreen.linkError'));
+      }
+    } catch (err: any) {
+      setError(err?.message || t('auth.bankAccountScreen.openError'));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Añadir Cuenta Bancaria</Text>
-        <Text style={styles.subtitle}>Añade tu cuenta bancaria para poder retirar tus ganancias</Text>
-      </View>
-
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Nombre del titular"
-          placeholderTextColor={Colors.light.textSecondary}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="IBAN"
-          placeholderTextColor={Colors.light.textSecondary}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="SWIFT/BIC"
-          placeholderTextColor={Colors.light.textSecondary}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Nombre del banco"
-          placeholderTextColor={Colors.light.textSecondary}
-        />
-
-        <Pressable style={styles.button} onPress={() => router.push('/(auth)/complete-profile')}>
-          <Text style={styles.buttonText}>Continuar</Text>
-        </Pressable>
-        
-        <Pressable style={styles.skipButton} onPress={() => router.push('/(auth)/complete-profile')}>
-          <Text style={styles.skipButtonText}>Saltar por ahora</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+    <AuthFlowLayout
+      title={t('auth.bankAccountScreen.title')}
+      subtitle={t('auth.bankAccountScreen.subtitle')}
+      badge={t('common.optionalLater')}
+      showBack
+      footer={
+        <>
+          {busy ? (
+            <ActivityIndicator color={Colors.light.primary} />
+          ) : (
+            <AuthPrimaryButton label={t('auth.bankAccountScreen.verifyWithStripe')} onPress={openStripe} />
+          )}
+          <AuthSecondaryButton label={t('common.later')} onPress={goNext} />
+        </>
+      }
+    >
+      <AuthProgressDots total={5} current={4} />
+      <Text style={authFormStyles.note}>{t('auth.bankAccountScreen.copy')}</Text>
+      <Text style={authFormStyles.hint}>{t('auth.bankAccountScreen.copySkip')}</Text>
+      {error ? <Text style={authFormStyles.errorText}>{error}</Text> : null}
+    </AuthFlowLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  header: {
-    padding: Spacing.six,
-    alignItems: 'center',
-    backgroundColor: Colors.light.backgroundElement,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.light.text,
-    marginBottom: Spacing.two,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
-    textAlign: 'center',
-  },
-  form: {
-    padding: Spacing.four,
-    gap: Spacing.three,
-  },
-  input: {
-    backgroundColor: Colors.light.background,
-    padding: Spacing.four,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.light.backgroundSelected,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: Colors.light.gradientStart,
-    padding: Spacing.four,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  skipButton: {
-    padding: Spacing.four,
-    alignItems: 'center',
-  },
-  skipButtonText: {
-    color: Colors.light.textSecondary,
-    fontSize: 16,
-  },
-});

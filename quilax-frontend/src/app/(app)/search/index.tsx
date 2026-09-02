@@ -1,86 +1,95 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
   Pressable,
-  FlatList,
-  ActivityIndicator,
 } from 'react-native';
-import { Colors, Spacing } from '@/constants/theme';
-import searchService from '@/services/searchService';
+import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { Colors, Spacing, bodyTypeface } from '@/constants/theme';
+import { QUIZ_CATEGORIES, getCategoryStyle, getCategoryLabel } from '@/constants/quizCategories';
+import { AppScreen, AppHeader, AppSection } from '@/components/ui/AppScreen';
 
 export default function SearchScreen() {
+  const router = useRouter();
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState({ quizzes: [], users: [] });
-  const [loading, setLoading] = useState(false);
 
-  const runSearch = async (text) => {
-    setQuery(text);
-    if (!text.trim()) {
-      setResults({ quizzes: [], users: [] });
-      return;
-    }
-
-    setLoading(true);
-    const result = await searchService.search(text);
-    if (result.success) {
-      setResults(result.data);
-    }
-    setLoading(false);
+  const goToResults = (text: string, category?: string | null) => {
+    const q = text.trim();
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (category) params.set('category', category);
+    const qs = params.toString();
+    router.push(`/(app)/search/results${qs ? `?${qs}` : ''}` as any);
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Buscar</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Quizzes, usuarios..."
-        value={query}
-        onChangeText={runSearch}
-        placeholderTextColor={Colors.light.textSecondary}
-      />
+    <AppScreen>
+      <AppHeader title={t('search.title')} subtitle={t('search.subtitle')} />
 
-      {loading ? (
-        <ActivityIndicator style={{ marginTop: Spacing.four }} />
-      ) : (
-        <FlatList
-          data={[
-            ...results.quizzes.map((q) => ({ type: 'quiz', ...q })),
-            ...results.users.map((u) => ({ type: 'user', ...u })),
-          ]}
-          keyExtractor={(item) => `${item.type}-${item.id}`}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <Text style={styles.cardType}>{item.type === 'quiz' ? 'Quiz' : 'Usuario'}</Text>
-              <Text style={styles.cardTitle}>{item.title || item.username || item.fullName || item.email}</Text>
-            </View>
-          )}
-          ListEmptyComponent={<Text style={styles.empty}>Sin resultados</Text>}
+      <View style={styles.searchWrap}>
+        <TextInput
+          style={styles.input}
+          placeholder={t('search.typeSomething')}
+          value={query}
+          onChangeText={setQuery}
+          onSubmitEditing={() => {
+            if (query.trim()) goToResults(query);
+          }}
+          returnKeyType="search"
+          placeholderTextColor={Colors.light.textSecondary}
         />
-      )}
-    </View>
+      </View>
+
+      <AppSection title={t('search.categories')} accentIndex={0}>
+        <View style={styles.grid}>
+          {QUIZ_CATEGORIES.map((cat) => {
+            const pastel = getCategoryStyle(cat);
+            return (
+              <Pressable
+                key={cat}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: pastel.bg,
+                    borderColor: pastel.border,
+                  },
+                ]}
+                onPress={() => goToResults(query, cat)}
+              >
+                <Text style={[styles.chipText, { color: pastel.text }]}>{getCategoryLabel(cat, t)}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </AppSection>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: Spacing.four, backgroundColor: Colors.light.background },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: Spacing.three },
+  searchWrap: { paddingHorizontal: Spacing.four, paddingTop: Spacing.three },
   input: {
+    ...bodyTypeface,
     borderWidth: 1,
     borderColor: Colors.light.backgroundSelected,
     borderRadius: 12,
-    padding: Spacing.three,
-    marginBottom: Spacing.three,
-  },
-  card: {
+    paddingVertical: 14,
+    paddingHorizontal: Spacing.three,
     backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.three,
-    borderRadius: 10,
-    marginBottom: Spacing.two,
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.light.text,
   },
-  cardType: { fontSize: 12, color: Colors.light.textSecondary },
-  cardTitle: { fontSize: 16, fontWeight: '600' },
-  empty: { color: Colors.light.textSecondary, textAlign: 'center', marginTop: Spacing.four },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  chip: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  chipText: { ...bodyTypeface, fontSize: 13, fontWeight: '600' },
 });

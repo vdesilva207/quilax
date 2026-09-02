@@ -1,204 +1,267 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  View,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+} from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Colors, Spacing } from '@/constants/theme';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import CustomIcon from '@/components/CustomIcon';
-
 import apiClient from '@/lib/api';
+import { AppScreen, AppHeader, AppSection } from '@/components/ui/AppScreen';
+import { GradientButton, InfoBar } from '@/components/ui/ScreenChrome';
+
+type Region = {
+  country: string;
+  name: string;
+  currency: string;
+  active: boolean;
+  comingSoon?: boolean;
+};
+
+type ConnectStatus = {
+  hasConnectAccount?: boolean;
+  bankVerificationStatus?: string;
+  isBankVerified?: boolean;
+  canWithdraw?: boolean;
+  bankLast4?: string | null;
+  country?: string | null;
+  currency?: string | null;
+  countryLocked?: boolean;
+};
 
 export default function BankAccountSettingsScreen() {
-  const router = useRouter();
-  const [iban, setIban] = useState('');
-  const [accountName, setAccountName] = useState('');
-  const [bic, setBic] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [status, setStatus] = useState<ConnectStatus | null>(null);
+  const [ibanMasked, setIbanMasked] = useState<string | null>(null);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [country, setCountry] = useState('ES');
 
-  const handleSave = async () => {
-    if (!iban || !accountName) {
-      Alert.alert('Error', 'Por favor completa todos los campos requeridos');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await apiClient.post('/payments/bank-account', { iban, accountName, bic });
-      Alert.alert('Éxito', 'Cuenta bancaria actualizada correctamente');
-      router.back();
-    } catch (error) {
-      Alert.alert('Error', error.message || 'No se pudo guardar la cuenta');
-    } finally {
-      setLoading(false);
+  const statusLabel = (statusValue?: string) => {
+    switch (statusValue) {
+      case 'VERIFIED':
+        return t('settings.bank.statusVerified');
+      case 'PENDING':
+        return t('settings.bank.statusPending');
+      case 'RESTRICTED':
+        return t('settings.bank.statusRestricted');
+      default:
+        return t('settings.bank.statusUnverified');
     }
   };
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [connect, bank, regionsRes] = await Promise.all([
+        apiClient.get('/payments/connect/status').catch(() => null),
+        apiClient.get('/payments/bank-account').catch(() => null),
+        apiClient.get('/payments/regions').catch(() => ({ regions: [] })),
+      ]);
+      setStatus(connect || null);
+      setIbanMasked(
+        bank?.ibanMasked ||
+          bank?.bankAccount?.ibanMasked ||
+          (connect?.bankLast4 ? `····${connect.bankLast4}` : null)
+      );
+      const list: Region[] = regionsRes?.regions || [];
+      setRegions(list);
+      if (connect?.country) setCountry(connect.country);
+      else {
+        const first = list.find((r) => r.active);
+        if (first) setCountry(first.country);
+      }
+    } catch (err: any) {
+      setError(err?.message || t('settings.bank.loadError'));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const openOnboarding = async (refresh = false) => {
+    setBusy(true);
+    setError('');
+    try {
+      if (!refresh && !status?.countryLocked) {
+        await apiClient.put('/payments/country', { country, syncCurrency: true });
+      }
+      const path = refresh ? '/payments/connect/refresh' : '/payments/connect/onboard';
+      const data = await apiClient.post(path, refresh ? {} : { country });
+      if (!data?.url) {
+        setError(t('settings.bank.linkError'));
+        return;
+      }
+      await Linking.openURL(data.url);
+    } catch (err: any) {
+      setError(err?.message || t('settings.bank.openError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verified =
+    status?.bankVerificationStatus === 'VERIFIED' &&
+    (status?.canWithdraw || status?.isBankVerified);
+  const locked = !!status?.countryLocked;
+  const activeRegions = regions.filter((r) => r.active);
+  const comingSoon = regions.filter((r) => r.comingSoon && !r.active);
+
   return (
-    <ScrollView style={styles.container}>
-      <LinearGradient
-        colors={[Colors.light.gradientStart, Colors.light.gradientEnd]}
-        style={styles.gradientHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <CustomIcon name="back" size={24} color={Colors.light.text} />
-          </Pressable>
-          <Text style={styles.title}>Cuenta Bancaria</Text>
-        </View>
-      </LinearGradient>
+    <AppScreen>
+      <AppHeader title={t('settings.bank.title')} showBack backHref="/(app)/settings" />
+      <AppSection>
+        {loading ? (
+          <ActivityIndicator color={Colors.light.primary} />
+        ) : (
+          <View style={styles.block}>
+            <InfoBar>
+              <Text>
+                {verified ? t('settings.bank.verifiedInfo') : t('settings.bank.chooseCountryInfo')}
+              </Text>
+            </InfoBar>
+            <Text style={styles.badge}>{statusLabel(status?.bankVerificationStatus)}</Text>
 
-      <View style={styles.content}>
-        <View style={styles.warningSection}>
-          <Text style={styles.warningTitle}>Importante</Text>
-          <Text style={styles.warningText}>
-            Al cambiar tu cuenta bancaria, se enviará una confirmación a tu nueva cuenta para verificar la asociación. La cuenta anterior se desvinculará después de la primera transacción con la nueva cuenta.
-          </Text>
-        </View>
+            <Text style={styles.label}>{t('settings.bank.countryLabel')}</Text>
+            {locked ? (
+              <Text style={styles.meta}>
+                {t('settings.bank.countryLocked', {
+                  country: status?.country,
+                  currency: status?.currency,
+                })}
+              </Text>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {activeRegions.map((r) => (
+                  <Pressable
+                    key={r.country}
+                    onPress={() => setCountry(r.country)}
+                    style={[styles.chip, country === r.country && styles.chipOn]}
+                  >
+                    <Text
+                      style={[styles.chipText, country === r.country && styles.chipTextOn]}
+                    >
+                      {r.name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
 
-        <View style={styles.section}>
-          <Text style={styles.label}>IBAN</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="ES00 0000 0000 0000 0000 0000"
-            placeholderTextColor={Colors.light.textSecondary}
-            value={iban}
-            onChangeText={setIban}
-            autoCapitalize="characters"
-          />
-        </View>
+            {comingSoon.length > 0 ? (
+              <Text style={styles.soon}>
+                {t('settings.bank.comingSoon', {
+                  list: comingSoon.slice(0, 5).map((r) => r.name).join(', '),
+                })}
+              </Text>
+            ) : null}
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Nombre del Titular</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nombre del titular de la cuenta"
-            placeholderTextColor={Colors.light.textSecondary}
-            value={accountName}
-            onChangeText={setAccountName}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>BIC/SWIFT (Opcional)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="BIC del banco"
-            placeholderTextColor={Colors.light.textSecondary}
-            value={bic}
-            onChangeText={setBic}
-            autoCapitalize="characters"
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Pressable style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Guardar Cuenta Bancaria</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>Estado de la cuenta:</Text>
-          <Text style={styles.infoText}>- Pendiente de verificación</Text>
-          <Text style={styles.infoText}>- Verificada</Text>
-          <Text style={styles.infoText}>- Rechazada</Text>
-        </View>
-      </View>
-    </ScrollView>
+            {ibanMasked ? (
+              <Text style={styles.meta}>{t('settings.bank.accountLabel', { iban: ibanMasked })}</Text>
+            ) : (
+              <Text style={styles.meta}>{t('settings.bank.noBankLinked')}</Text>
+            )}
+            <Text style={styles.copy}>
+              {t('settings.bank.webCopy', {
+                note: Platform.OS === 'web' ? '' : t('settings.bank.webCopyBrowserNote'),
+              })}
+            </Text>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {busy ? (
+              <ActivityIndicator color={Colors.light.primary} style={{ marginTop: 12 }} />
+            ) : (
+              <>
+                <GradientButton
+                  label={
+                    verified
+                      ? t('settings.bank.refreshStatus')
+                      : status?.hasConnectAccount
+                        ? t('settings.bank.continueVerification')
+                        : t('settings.bank.linkWithStripe')
+                  }
+                  onPress={() =>
+                    verified
+                      ? load()
+                      : openOnboarding(!!status?.hasConnectAccount && locked)
+                  }
+                />
+                {!verified && status?.hasConnectAccount ? (
+                  <View style={{ marginTop: 10 }}>
+                    <GradientButton
+                      label={t('settings.bank.refreshLink')}
+                      onPress={() => openOnboarding(true)}
+                    />
+                  </View>
+                ) : null}
+              </>
+            )}
+          </View>
+        )}
+      </AppSection>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  gradientHeader: {
-    paddingTop: Spacing.six,
-    paddingBottom: Spacing.four,
-    paddingHorizontal: Spacing.six,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    padding: Spacing.two,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  content: {
-    padding: Spacing.four,
-  },
-  warningSection: {
-    backgroundColor: '#FFF3CD',
-    padding: Spacing.four,
+  block: { gap: Spacing.two },
+  badge: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.light.backgroundSelected,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 8,
-    marginBottom: Spacing.four,
-    borderLeftWidth: 4,
-    borderLeftColor: '#FFC107',
-  },
-  warningTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#856404',
-    marginBottom: Spacing.two,
-  },
-  warningText: {
-    fontSize: 14,
-    color: '#856404',
-  },
-  section: {
-    marginBottom: Spacing.four,
+    overflow: 'hidden',
+    fontWeight: '700',
+    color: Colors.light.text,
+    marginTop: Spacing.two,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.light.text,
-    marginBottom: Spacing.two,
-  },
-  input: {
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.light.backgroundSelected,
-    fontSize: 16,
-  },
-  saveButton: {
-    backgroundColor: Colors.light.gradientStart,
-    padding: Spacing.four,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  infoSection: {
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 8,
-    marginTop: Spacing.four,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.light.text,
-    marginBottom: Spacing.two,
-  },
-  infoText: {
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '700',
     color: Colors.light.textSecondary,
-    marginBottom: Spacing.one,
+    marginTop: Spacing.two,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.light.backgroundSelected,
+    marginRight: 8,
+    marginTop: 8,
+  },
+  chipOn: { backgroundColor: Colors.light.primary },
+  chipText: { fontSize: 13, fontWeight: '600', color: Colors.light.text },
+  chipTextOn: { color: '#fff' },
+  soon: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    marginTop: Spacing.two,
+  },
+  meta: {
+    fontSize: 15,
+    color: Colors.light.text,
+    marginTop: Spacing.two,
+  },
+  copy: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: Colors.light.textSecondary,
+    marginVertical: Spacing.two,
+  },
+  error: {
+    color: '#B91C1C',
+    fontSize: 14,
+    marginBottom: Spacing.two,
   },
 });

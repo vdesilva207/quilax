@@ -10,9 +10,12 @@ export const walletService = {
     }
   },
 
-  createPaymentIntent: async (credits) => {
+  createPaymentIntent: async (credits, totpCode) => {
     try {
-      const data = await apiClient.post('/payments/create-intent', { credits });
+      const data = await apiClient.post('/payments/create-intent', {
+        credits,
+        totpCode,
+      });
       return { success: true, data: data.paymentIntent };
     } catch (error) {
       return { success: false, error: error.message };
@@ -28,9 +31,27 @@ export const walletService = {
     }
   },
 
-  requestWithdrawal: async (amount) => {
+  getConnectStatus: async () => {
     try {
-      const data = await apiClient.post('/withdraws/request', { amount });
+      const data = await apiClient.get('/payments/connect/status');
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  startConnectOnboarding: async () => {
+    try {
+      const data = await apiClient.post('/payments/connect/onboard', {});
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  requestWithdrawal: async (amount, totpCode) => {
+    try {
+      const data = await apiClient.post('/withdraws/request', { amount, totpCode });
       return { success: true, data };
     } catch (error) {
       return { success: false, error: error.message };

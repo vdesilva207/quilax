@@ -1,0 +1,106 @@
+[
+  {
+    "title": "1. Qué es este documento",
+    "body": "Estos términos regulan el uso de Quilax: app móvil, web de juego y Gestión (Wallet).\nAl usar el servicio aceptas estos términos y la Política de privacidad.\nÚltima actualización: 25 de julio de 2026.\nContacto solo dentro de la app (Ayuda / tickets)."
+  },
+  {
+    "title": "2. Quién presta el servicio",
+    "body": "Quilax es una plataforma de quizzes competitivos con premios en créditos.\nOperado por Vicente de Silva Ortiz, en fase de prelanzamiento (aún sin sociedad mercantil constituida). Cuando se constituya la empresa, se actualizarán aquí su razón social, NIF/CIF y domicilio.\nContacto solo dentro de la app (Soporte por tickets)."
+  },
+  {
+    "title": "3. Qué puedes hacer en Quilax",
+    "body": "• Jugar quizzes en directo o programados.\n• Inscribirte pagando la entrada en créditos.\n• Crear quizzes (si cumples requisitos) sujetos a revisión.\n• Consultar rankings, mensajes, perfil y ayuda.\n• Depositar y retirar solo desde la web de Gestión (Wallet).\nNo es un casino: el resultado depende de conocimiento, rapidez y acierto."
+  },
+  {
+    "title": "4. Edad y quién puede usar la app",
+    "body": "Debes tener al menos 18 años para depositar, unirte a quizzes de pago y retirar.\nLos menores no pueden usar flujos monetarios. Podemos pedir verificación de edad o identidad."
+  },
+  {
+    "title": "5. Tu cuenta",
+    "body": "Datos verdaderos; cuidas tu contraseña y 2FA; no compartes la cuenta.\nUna persona = una cuenta. Multi-cuenta abusiva prohibida.\nPodemos limitar, suspender o cerrar cuentas por fraude o riesgo.\nPuedes pedir cierre/borrado vía soporte, conservando lo que la ley exija."
+  },
+  {
+    "title": "6. Créditos: qué son",
+    "body": "Unidad de valor en Quilax. Referencia habitual: 1 crédito ≈ 1 euro.\nSirven para entradas, premios y saldo disponible según reglas de Gestión.\nNo son un depósito bancario tradicional fuera de Quilax, salvo el derecho a solicitar retiro conforme a estos términos."
+  },
+  {
+    "title": "7. Cómo funciona un quiz (reglas de juego)",
+    "body": "Entrada: normalmente 1 crédito; se cobra al unirte; no reembolsable salvo error técnico demostrado.\nSolo quizzes aprobados/programados/publicados permiten unirse.\nConviene estar en pantalla con margen antes del inicio y con conexión estable.\nLas fases las controla el servidor; el ranking en vivo puede ser orientativo.\nAl terminar se fija clasificación y reparto oficiales."
+  },
+  {
+    "title": "8. Premios, bote y reparto",
+    "body": "Según reglas del quiz (posiciones y porcentajes). Puede haber parte para ganadores, plataforma, creador y jackpot/temporada.\nPodemos anular o retener premios por bots, multi-cuenta, colusión, fallos graves o KYC pendiente cuando aplique."
+  },
+  {
+    "title": "9. Temporadas, ranking y jackpot",
+    "body": "Temporadas típicas de 45 días. Ranking y posibles repartos (incluido jackpot) según reglas de esa temporada.\nSi hay conflicto entre un mensaje promocional y el cierre técnico, prevalecen las reglas de cierre / publicadas."
+  },
+  {
+    "title": "10. Crear quizzes",
+    "body": "Requieren revisión. Hasta aprobarse no aparecen en público ni se puede unir nadie.\nTras rechazo (o aprobación con mensaje del admin) puedes escribir al Panel Admin en la ventana indicada (normalmente 72 h).\nEres responsable del contenido de tus preguntas."
+  },
+  {
+    "title": "11. Depósitos (Gestión / Wallet)",
+    "body": "Solo en la web de Gestión. La app móvil no procesa tarjetas (seguridad).\nProcesador habitual: Stripe. Aceptas también sus condiciones."
+  },
+  {
+    "title": "12. Retiros",
+    "body": "Desde Gestión a cuenta bancaria verificada. Pueden exigir KYC, 2FA y revisión anti-fraude.\nPlazos bancarios variables. Podemos retrasar, retener o rechazar retiros sospechosos."
+  },
+  {
+    "title": "13. Verificación de identidad (KYC)",
+    "body": "Documento oficial, selfie/prueba de vida y datos bancarios coherentes.\nDocumentos ajenos o falsos: prohibidos. Pueden aplicarse medidas anti-blanqueo cuando proceda."
+  },
+  {
+    "title": "14. Reembolsos, errores y chargebacks",
+    "body": "Entrada de quiz no reembolsable salvo error técnico demostrado.\nCargos erróneos: soporte con justificante.\nChargebacks abusivos pueden conllevar suspensión. Premios abonados por error pueden revertirse."
+  },
+  {
+    "title": "15. Notificaciones y avisos del juego",
+    "body": "Avisos in-app y push si activas el permiso.\nCountdown tras inscripción: 2 días, 1 día, 2 h, 1 h, 30 min, 10 min, 5 min y 1 min antes del inicio.\nRecomendado no desactivar los de countdown. Al pulsar un aviso de quiz se abre esa partida.\nPreferencias: Configuración → Notificaciones."
+  },
+  {
+    "title": "16. Contenido social, mensajes y soporte",
+    "body": "Lenguaje respetuoso. Prohibido acoso, spam e ilegalidad.\nPuedes bloquear y reportar. Soporte vía ayuda, FAQ y tickets (sin garantía 24/7).\nLos avisos generales no se responden como chat privado."
+  },
+  {
+    "title": "17. Conducta prohibida",
+    "body": "Trampas, bots, colusión, multi-cuenta, ataques de seguridad, blanqueo, phishing e infracción de IP.\nPuede conllevar pérdida de premios, suspensión o cierre."
+  },
+  {
+    "title": "18. Propiedad intelectual",
+    "body": "Software y marca Quilax protegidos.\nConservas derechos sobre tu contenido original; concedes licencia para alojarlo y operarlo en el servicio."
+  },
+  {
+    "title": "19. Disponibilidad y cambios del servicio",
+    "body": "No garantizamos servicio ininterrumpido. Podemos modificar funciones y reglas con aviso razonable cuando sea relevante."
+  },
+  {
+    "title": "20. Limitación de responsabilidad",
+    "body": "En la medida legal: no respondemos de daños indirectos, desconexión del usuario ni fallos de terceros (red, bancos, Stripe).\nNo se limitan derechos imperativos de consumidores.\nSi hay fallo grave nuestro demostrado, el alcance puede limitarse a la operación afectada."
+  },
+  {
+    "title": "21. Cookies y tecnologías similares",
+    "body": "En web: cookies/almacenamiento de sesión y seguridad.\nEn app: almacenamiento local (sesión, preferencias).\nDesactivar lo esencial puede impedir login o pagos."
+  },
+  {
+    "title": "22. Juego responsable",
+    "body": "Establece límites de gasto y tiempo. Si el uso deja de ser saludable, deja de depositar y contacta soporte.\nPodemos aplicar límites ante patrones de riesgo."
+  },
+  {
+    "title": "23. Suspensión y cancelación",
+    "body": "Podemos suspender o cancelar por incumplimiento, seguridad o ley.\nSaldo legítimo pendiente de retiro sujeto a verificaciones; retención posible en disputa/fraude."
+  },
+  {
+    "title": "24. Modificación de estos términos",
+    "body": "Podemos actualizar este documento. Cambios relevantes se comunicarán en la app o por email cuando sea razonable."
+  },
+  {
+    "title": "25. Ley aplicable y reclamaciones",
+    "body": "Legislación española. Derechos imperativos de consumidores de la UE cuando correspondan.\nReclamaciones y privacidad: solo por tickets dentro de la app. AEPD si procede."
+  },
+  {
+    "title": "26. Contacto",
+    "body": "• Configuración → Centro de ayuda\n• Configuración → FAQ\n• Configuración → Soporte (tickets)"
+  }
+]

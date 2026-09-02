@@ -1,0 +1,106 @@
+[
+  {
+    "title": "1. Qu'est-ce que ce document",
+    "body": "Les présentes conditions régissent l'utilisation de Quilax : l'application mobile, le site du jeu et Wallet (gestion de l'argent).\nEn utilisant le service, vous acceptez ces conditions et la politique de confidentialité.\nDernière mise à jour : 25 juillet 2026.\nContact uniquement au sein de l'application (Aide / tickets)."
+  },
+  {
+    "title": "2. Qui fournit le service",
+    "body": "Quilax est une plateforme de quiz compétitifs avec des prix en crédits.\nExploité par Vicente de Silva Ortiz, en phase de pré-lancement (aucune société encore constituée). Lorsqu'une société est créée, sa dénomination sociale, son numéro d'identification fiscale et son adresse enregistrée seront mis à jour ici.\nContact uniquement au sein de l'application (Support via tickets)."
+  },
+  {
+    "title": "3. Ce que vous pouvez faire sur Quilax",
+    "body": "• Jouez à des quiz en direct ou programmés.\n• Adhérez en payant les frais d'entrée en crédits.\n• Créez des quiz (si vous remplissez les conditions), sous réserve de révision.\n• Vérifiez les classements, les messages, le profil et l'aide.\n• Déposez et retirez uniquement à partir du site Web Wallet.\nCe n'est pas un casino : le résultat dépend de la connaissance, de la rapidité et de la précision."
+  },
+  {
+    "title": "4. Âge et qui peut utiliser l'application",
+    "body": "Vous devez avoir au moins 18 ans pour déposer, participer à des quiz payants et vous retirer.\nLes mineurs ne peuvent pas utiliser les flux liés à l'argent. Nous pouvons demander une vérification de l’âge ou de l’identité."
+  },
+  {
+    "title": "5. Votre compte",
+    "body": "Fournir des données précises ; gardez votre mot de passe et votre 2FA en sécurité ; ne partagez pas votre compte.\nUne personne = un compte. Le multicompte abusif est interdit.\nNous pouvons limiter, suspendre ou fermer des comptes en raison d'une fraude ou d'un risque.\nVous pouvez demander la fermeture/suppression de compte via le support, sous réserve de la conservation légalement requise."
+  },
+  {
+    "title": "6. Crédits : qu'est-ce que c'est",
+    "body": "Une unité de valeur au sein de Quilax. Référence habituelle : 1 crédit ≈ 1 euro.\nUtilisé pour les participations, les prix et le solde disponible conformément aux règles du portefeuille.\nIl ne s'agit pas d'un dépôt bancaire traditionnel en dehors de Quilax, à l'exception du droit de demander un retrait selon ces conditions."
+  },
+  {
+    "title": "7. Comment fonctionne un quiz (règles du jeu)",
+    "body": "Entrée : généralement 1 crédit ; facturé lors de votre adhésion ; non remboursable sauf erreur technique prouvée.\nSeuls les quiz approuvés/programmés/publiés peuvent être rejoints.\nIl est préférable d'être à l'écran avec du temps libre avant le début, avec une connexion stable.\nLes phases sont contrôlées par le serveur ; le classement en direct peut être approximatif.\nÀ la fin, le classement officiel et les paiements sont fixés."
+  },
+  {
+    "title": "8. Prix, cagnotte et paiement",
+    "body": "Selon les règles de récompense du quiz (positions et pourcentages). Il peut y avoir une part pour les gagnants, la plateforme, le créateur et le jackpot/saison.\nNous pouvons annuler ou retenir les prix pour les robots, les comptes multiples, la collusion, les échecs graves ou le KYC en attente, le cas échéant."
+  },
+  {
+    "title": "9. Saisons, classement et jackpot",
+    "body": "Les saisons typiques durent 45 jours. Le classement et les paiements possibles (y compris le jackpot) suivent les règles de cette saison.\nEn cas de conflit entre un message promotionnel et la clôture technique, les règles de clôture/publiées prévalent."
+  },
+  {
+    "title": "10. Créer des quiz",
+    "body": "Ils nécessitent un examen. Jusqu'à leur approbation, ils n'apparaissent pas publiquement et personne ne peut y adhérer.\nAprès rejet (ou approbation avec un message de l'administrateur), vous pouvez écrire au panneau d'administration dans la fenêtre indiquée (généralement 72 h).\nVous êtes responsable du contenu de vos questions."
+  },
+  {
+    "title": "11. Dépôts (portefeuille)",
+    "body": "Uniquement sur le site Wallet. L'application mobile ne traite pas les cartes (pour des raisons de sécurité).\nProcesseur habituel : Stripe. Vous acceptez également ses termes."
+  },
+  {
+    "title": "12. Retraits",
+    "body": "Du Wallet à un compte bancaire vérifié. Peut nécessiter un examen KYC, 2FA et anti-fraude.\nLes délais de traitement bancaire varient. Nous pouvons retarder, retenir ou rejeter les retraits suspects."
+  },
+  {
+    "title": "13. Vérification d'identité (KYC)",
+    "body": "Document officiel, contrôle de selfie/vivabilité et coordonnées bancaires cohérentes.\nDocuments appartenant à autrui ou documents falsifiés : interdits. Des mesures anti-blanchiment peuvent s’appliquer le cas échéant."
+  },
+  {
+    "title": "14. Remboursements, erreurs et rétrofacturations",
+    "body": "L'entrée au quiz n'est pas remboursable sauf si une erreur technique est prouvée.\nFrais incorrects : contactez le support avec une preuve.\nLes rétrofacturations abusives peuvent entraîner une suspension. Les prix payés par erreur peuvent être annulés."
+  },
+  {
+    "title": "15. Notifications et alertes de jeu",
+    "body": "Alertes intégrées à l'application et push si vous activez l'autorisation.\nCompte à rebours après inscription : 2 jours, 1 jour, 2 h, 1 h, 30 min, 10 min, 5 min et 1 min avant le départ.\nNous vous recommandons de ne pas désactiver les alertes du compte à rebours. Appuyer sur une alerte de quiz ouvre cette correspondance.\nPréférences : Paramètres → Notifications."
+  },
+  {
+    "title": "16. Contenu social, messages et assistance",
+    "body": "Langage respectueux. Le harcèlement, le spam et les contenus illégaux sont interdits.\nVous pouvez bloquer et signaler. L'assistance est disponible via l'aide, la FAQ et les tickets (pas de garantie 24h/24 et 7j/7).\nIl n’est pas possible de répondre aux avis généraux comme à un chat privé."
+  },
+  {
+    "title": "17. Conduite interdite",
+    "body": "Tricherie, robots, collusion, multi-comptes, attaques de sécurité, blanchiment d'argent, phishing et violation de la propriété intellectuelle.\nCela peut entraîner la perte des prix, la suspension ou la fermeture du compte."
+  },
+  {
+    "title": "18. Propriété intellectuelle",
+    "body": "Le logiciel et la marque Quilax sont protégés.\nVous conservez les droits sur votre contenu original ; vous accordez une licence pour l'héberger et l'exploiter au sein du service."
+  },
+  {
+    "title": "19. Disponibilité et modifications du service",
+    "body": "Nous ne garantissons pas un service ininterrompu. Nous pouvons modifier les fonctionnalités et les règles avec un préavis raisonnable, le cas échéant."
+  },
+  {
+    "title": "20. Limitation de responsabilité",
+    "body": "Dans la mesure permise par la loi : nous ne sommes pas responsables des dommages indirects, des déconnexions des utilisateurs ou des pannes de tiers (réseau, banques, Stripe).\nLes droits obligatoires des consommateurs ne sont pas limités.\nSi une faute grave de notre part est prouvée, notre responsabilité peut être limitée à l'opération concernée."
+  },
+  {
+    "title": "21. Cookies et technologies similaires",
+    "body": "Sur le site Internet : cookies/session et stockage de sécurité.\nDans l'application : stockage local (session, préférences).\nLa désactivation du stockage essentiel peut empêcher la connexion ou les paiements."
+  },
+  {
+    "title": "22. Jeu responsable",
+    "body": "Fixez des limites de dépenses et de temps. Si l’utilisation cesse d’être saine, arrêtez de déposer et contactez le support.\nNous pouvons appliquer des limites en réponse aux modèles de risque."
+  },
+  {
+    "title": "23. Suspension et annulation",
+    "body": "Nous pouvons suspendre ou annuler des comptes pour des raisons de violation, de sécurité ou juridiques.\nLe solde légitime en attente de retrait est sujet à vérification ; elle pourra être retenue en cas de litige/fraude."
+  },
+  {
+    "title": "24. Modifications de ces conditions",
+    "body": "Nous pouvons mettre à jour ce document. Les modifications pertinentes seront communiquées dans l'application ou par e-mail lorsque cela est raisonnable."
+  },
+  {
+    "title": "25. Droit applicable et plaintes",
+    "body": "La loi espagnole s'applique. Les droits obligatoires des consommateurs de l’UE s’appliquent le cas échéant.\nPlaintes et questions de confidentialité : uniquement via des tickets dans l'application. L'Agence espagnole de protection des données (AEPD), le cas échéant."
+  },
+  {
+    "title": "26. Contacter",
+    "body": "• Paramètres → Centre d'aide\n• Paramètres → FAQ\n• Paramètres → Assistance (billets)"
+  }
+]

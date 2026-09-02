@@ -1,232 +1,127 @@
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Text, StyleSheet, View, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing } from '@/constants/theme';
-import { useRouter } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
+import userService from '@/services/userService';
+import { AppScreen, AppHeader, AppSection, AppCard, AppPlaceholder } from '@/components/ui/AppScreen';
 import CustomIcon from '@/components/CustomIcon';
 
 export default function FollowersScreen() {
-  const { t } = useTranslation();
   const router = useRouter();
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const result = await userService.getFollowers(user.id);
+    if (result.success) {
+      const payload = result.data?.followers || result.data?.data?.followers || [];
+      setFollowers(Array.isArray(payload) ? payload : []);
+    } else {
+      setFollowers([]);
+    }
+    setLoading(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleBlock = (person: any) => {
+    const name = person.username || person.fullName || t('profile.userFallback', { id: person.id });
+    Alert.alert(t('profile.blockUserTitle'), t('profile.blockUserConfirm', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('profile.block'),
+        style: 'destructive',
+        onPress: async () => {
+          const result = await userService.blockUser(person.id);
+          if (result.success) {
+            setFollowers((prev) => prev.filter((p) => p.id !== person.id));
+          } else {
+            Alert.alert(t('common.error'), result.error || t('profile.blockError'));
+          }
+        },
+      },
+    ]);
+  };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <CustomIcon name="back" size={24} color={Colors.light.text} />
-        </Pressable>
-        <Text style={styles.title}>Seguidores</Text>
-        <Text style={styles.count}>234</Text>
-      </View>
+    <AppScreen>
+      <AppHeader
+        title={t('profile.followersTitle')}
+        subtitle={t('profile.followersSubtitle', { count: followers.length })}
+        showBack
+        backHref="/(app)/profile"
+      />
 
-      <View style={styles.list}>
-        <View style={styles.followerCard}>
-          <View style={styles.followerInfo}>
-            <View style={styles.avatar}>
-              <CustomIcon name="user" size={32} color={Colors.light.textSecondary} />
-            </View>
-            <View style={styles.followerDetails}>
-              <Text style={styles.username}>@usuario1</Text>
-              <Text style={styles.followerDate}>Te sigue desde hace 2 semanas</Text>
-            </View>
-          </View>
-          <View style={styles.followerActions}>
-            <Pressable style={styles.actionButton}>
-              <CustomIcon name="close" size={16} color={Colors.light.error} />
-              <Text style={styles.actionButtonText}>Eliminar</Text>
-            </Pressable>
-            <Pressable style={styles.actionButtonSecondary}>
-              <CustomIcon name="lock" size={16} color={Colors.light.text} />
-              <Text style={styles.actionButtonTextSecondary}>Bloquear</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <View style={styles.followerCard}>
-          <View style={styles.followerInfo}>
-            <View style={styles.avatar}>
-              <CustomIcon name="user" size={32} color={Colors.light.textSecondary} />
-            </View>
-            <View style={styles.followerDetails}>
-              <Text style={styles.username}>@quizmaster99</Text>
-              <Text style={styles.followerDate}>Te sigue desde hace 1 mes</Text>
-            </View>
-          </View>
-          <View style={styles.followerActions}>
-            <Pressable style={styles.actionButton}>
-              <CustomIcon name="close" size={16} color={Colors.light.error} />
-              <Text style={styles.actionButtonText}>Eliminar</Text>
-            </Pressable>
-            <Pressable style={styles.actionButtonSecondary}>
-              <CustomIcon name="lock" size={16} color={Colors.light.text} />
-              <Text style={styles.actionButtonTextSecondary}>Bloquear</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <View style={styles.followerCard}>
-          <View style={styles.followerInfo}>
-            <View style={styles.avatar}>
-              <CustomIcon name="user" size={32} color={Colors.light.textSecondary} />
-            </View>
-            <View style={styles.followerDetails}>
-              <Text style={styles.username}>@gamer_pro</Text>
-              <Text style={styles.followerDate}>Te sigue desde hace 3 días</Text>
-            </View>
-          </View>
-          <View style={styles.followerActions}>
-            <Pressable style={styles.actionButton}>
-              <CustomIcon name="close" size={16} color={Colors.light.error} />
-              <Text style={styles.actionButtonText}>Eliminar</Text>
-            </Pressable>
-            <Pressable style={styles.actionButtonSecondary}>
-              <CustomIcon name="lock" size={16} color={Colors.light.text} />
-              <Text style={styles.actionButtonTextSecondary}>Bloquear</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <View style={styles.followerCard}>
-          <View style={styles.followerInfo}>
-            <View style={styles.avatar}>
-              <CustomIcon name="user" size={32} color={Colors.light.textSecondary} />
-            </View>
-            <View style={styles.followerDetails}>
-              <Text style={styles.username}>@culture_fan</Text>
-              <Text style={styles.followerDate}>Te sigue desde hace 2 meses</Text>
-            </View>
-          </View>
-          <View style={styles.followerActions}>
-            <Pressable style={styles.actionButton}>
-              <CustomIcon name="close" size={16} color={Colors.light.error} />
-              <Text style={styles.actionButtonText}>Eliminar</Text>
-            </Pressable>
-            <Pressable style={styles.actionButtonSecondary}>
-              <CustomIcon name="lock" size={16} color={Colors.light.text} />
-              <Text style={styles.actionButtonTextSecondary}>Bloquear</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <View style={styles.followerCard}>
-          <View style={styles.followerInfo}>
-            <View style={styles.avatar}>
-              <CustomIcon name="user" size={32} color={Colors.light.textSecondary} />
-            </View>
-            <View style={styles.followerDetails}>
-              <Text style={styles.username}>@history_buff</Text>
-              <Text style={styles.followerDate}>Te sigue desde hace 1 semana</Text>
-            </View>
-          </View>
-          <View style={styles.followerActions}>
-            <Pressable style={styles.actionButton}>
-              <CustomIcon name="close" size={16} color={Colors.light.error} />
-              <Text style={styles.actionButtonText}>Eliminar</Text>
-            </Pressable>
-            <Pressable style={styles.actionButtonSecondary}>
-              <CustomIcon name="lock" size={16} color={Colors.light.text} />
-              <Text style={styles.actionButtonTextSecondary}>Bloquear</Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </ScrollView>
+      <AppSection title={t('profile.yourFollowersSection')} accentIndex={0}>
+        {loading ? (
+          <ActivityIndicator color={Colors.light.primary} />
+        ) : followers.length === 0 ? (
+          <AppPlaceholder text={t('profile.noFollowersYet')} />
+        ) : (
+          followers.map((person) => (
+            <AppCard key={person.id}>
+              <Pressable
+                style={styles.row}
+                onPress={() => router.push(`/(app)/profile/${person.id}` as any)}
+              >
+                <View style={styles.avatar}>
+                  <CustomIcon name="user" size={28} color={Colors.light.textSecondary} />
+                </View>
+                <View style={styles.details}>
+                  <Text style={styles.username}>
+                    {person.username || person.fullName || t('profile.userFallback', { id: person.id })}
+                  </Text>
+                </View>
+              </Pressable>
+              <Pressable style={styles.blockButton} onPress={() => handleBlock(person)}>
+                <CustomIcon name="lock" size={16} color={Colors.light.error} />
+                <Text style={styles.blockButtonText}>{t('profile.block')}</Text>
+              </Pressable>
+            </AppCard>
+          ))
+        )}
+      </AppSection>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.four,
-    backgroundColor: Colors.light.backgroundElement,
-    gap: Spacing.three,
-  },
-  backButton: {
-    padding: Spacing.two,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.light.text,
-    flex: 1,
-  },
-  count: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.light.primary,
-  },
-  list: {
-    padding: Spacing.four,
-    gap: Spacing.three,
-  },
-  followerCard: {
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 12,
-    gap: Spacing.three,
-  },
-  followerInfo: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: Colors.light.background,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.light.backgroundSelected,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  followerDetails: {
-    flex: 1,
-  },
-  username: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.light.text,
-    marginBottom: Spacing.one,
-  },
-  followerDate: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
-  },
-  followerActions: {
+  details: { flex: 1 },
+  username: { fontSize: 16, fontWeight: '700', color: Colors.light.text },
+  blockButton: {
+    marginTop: Spacing.three,
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.two,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.light.background,
-    padding: Spacing.three,
+    paddingVertical: Spacing.two,
     borderRadius: 8,
-    gap: Spacing.two,
+    borderWidth: 1,
+    borderColor: Colors.light.backgroundSelected,
   },
-  actionButtonText: {
-    color: Colors.light.error,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  actionButtonSecondary: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.light.background,
-    padding: Spacing.three,
-    borderRadius: 8,
-    gap: Spacing.two,
-  },
-  actionButtonTextSecondary: {
-    color: Colors.light.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  blockButtonText: { color: Colors.light.error, fontSize: 14, fontWeight: '600' },
 });

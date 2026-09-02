@@ -1,0 +1,106 @@
+[
+  {
+    "title": "1. O que é este documento",
+    "body": "Estes termos regem o uso do Quilax: o aplicativo móvel, o site do jogo e a Carteira (gerenciamento de dinheiro).\nAo utilizar o serviço você aceita estes termos e a Política de Privacidade.\nÚltima atualização: 25 de julho de 2026.\nContato somente dentro do app (Ajuda/tickets)."
+  },
+  {
+    "title": "2. Quem presta o serviço",
+    "body": "Quilax é uma plataforma de quiz competitiva com prêmios em créditos.\nOperado por Vicente de Silva Ortiz, em fase de pré-lançamento (ainda sem empresa constituída). Quando uma empresa é constituída, sua razão social, número de identificação fiscal e endereço registrado serão atualizados aqui.\nContato somente dentro do app (Suporte via tickets)."
+  },
+  {
+    "title": "3. O que você pode fazer no Quilax",
+    "body": "• Jogue questionários ao vivo ou agendados.\n• Participe pagando a taxa de inscrição em créditos.\n• Crie questionários (se atender aos requisitos), sujeitos a revisão.\n• Verifique classificações, mensagens, perfil e ajuda.\n• Deposite e retire apenas no site da Wallet.\nIsto não é um casino: o resultado depende do conhecimento, rapidez e precisão."
+  },
+  {
+    "title": "4. Idade e quem pode usar o aplicativo",
+    "body": "Você deve ter pelo menos 18 anos para depositar, participar de questionários pagos e sacar.\nOs menores não podem utilizar fluxos relacionados com dinheiro. Poderemos solicitar verificação de idade ou identidade."
+  },
+  {
+    "title": "5. Sua conta",
+    "body": "Fornecer dados precisos; mantenha sua senha e 2FA seguros; não compartilhe sua conta.\nUma pessoa = uma conta. A multicontabilidade abusiva é proibida.\nPodemos limitar, suspender ou encerrar contas devido a fraude ou risco.\nVocê pode solicitar o encerramento/exclusão da conta por meio do suporte, sujeito à retenção exigida por lei."
+  },
+  {
+    "title": "6. Créditos: o que são",
+    "body": "Uma unidade de valor dentro de Quilax. Referência habitual: 1 crédito ≈ 1 euro.\nUtilizado para inscrições, prêmios e saldo disponível de acordo com as regras da Wallet.\nNão são um depósito bancário tradicional fora do Quilax, exceto pelo direito de solicitar um saque nestes termos."
+  },
+  {
+    "title": "7. Como funciona um quiz (regras do jogo)",
+    "body": "Entrada: normalmente 1 crédito; cobrado quando você se cadastra; não reembolsável, a menos que seja comprovado um erro técnico.\nSomente questionários aprovados/agendados/publicados podem ser participados.\nÉ melhor estar na tela com tempo de sobra antes do início, com uma conexão estável.\nAs fases são controladas pelo servidor; a classificação ao vivo pode ser aproximada.\nQuando termina, a classificação oficial e o pagamento são definidos."
+  },
+  {
+    "title": "8. Prêmios, pool e pagamento",
+    "body": "De acordo com as regras de premiação do quiz (posições e percentuais). Pode haver uma parcela para os vencedores, a plataforma, o criador e o jackpot/temporada.\nPoderemos anular ou reter prêmios para bots, contas múltiplas, conluio, falhas graves ou KYC pendente, quando aplicável."
+  },
+  {
+    "title": "9. Temporadas, classificação e jackpot",
+    "body": "As temporadas típicas duram 45 dias. A classificação e os possíveis pagamentos (incluindo o jackpot) seguem as regras daquela temporada.\nCaso haja conflito entre a mensagem promocional e o fechamento técnico, prevalecem as regras de fechamento/publicadas."
+  },
+  {
+    "title": "10. Criação de questionários",
+    "body": "Eles exigem revisão. Até serem aprovados, eles não aparecem publicamente e ninguém pode participar.\nApós a rejeição (ou aprovação com mensagem do administrador) você pode escrever para o Painel de Administração dentro da janela indicada (geralmente 72 horas).\nVocê é responsável pelo conteúdo de suas perguntas."
+  },
+  {
+    "title": "11. Depósitos (carteira)",
+    "body": "Somente no site da Carteira. O aplicativo móvel não processa cartões (por segurança).\nProcessador usual: Stripe. Você também aceita seus termos."
+  },
+  {
+    "title": "12. Retiradas",
+    "body": "Da Wallet para uma conta bancária verificada. Pode exigir KYC, 2FA e revisão antifraude.\nOs tempos de processamento do banco variam. Podemos atrasar, reter ou rejeitar levantamentos suspeitos."
+  },
+  {
+    "title": "13. Verificação de identidade (KYC)",
+    "body": "Documento oficial, verificação de selfie/liveness e dados bancários consistentes.\nDocumentos pertencentes a terceiros ou documentos falsificados: proibidos. Medidas antilavagem de dinheiro podem ser aplicadas quando relevante."
+  },
+  {
+    "title": "14. Reembolsos, erros e estornos",
+    "body": "A participação no questionário não é reembolsável, a menos que seja comprovado um erro técnico.\nCobranças incorretas: entre em contato com o suporte com comprovante.\nEstornos abusivos podem levar à suspensão. Os prêmios pagos por engano poderão ser revertidos."
+  },
+  {
+    "title": "15. Notificações e alertas de jogos",
+    "body": "Alertas no aplicativo e push se você ativar a permissão.\nContagem regressiva após adesão: 2 dias, 1 dia, 2 h, 1 h, 30 min, 10 min, 5 min e 1 min antes do início.\nRecomendamos não desativar os alertas de contagem regressiva. Tocar em um alerta de questionário abre essa partida.\nPreferências: Configurações → Notificações."
+  },
+  {
+    "title": "16. Conteúdo social, mensagens e suporte",
+    "body": "Linguagem respeitosa. Assédio, spam e conteúdo ilegal são proibidos.\nVocê pode bloquear e denunciar. O suporte está disponível via Ajuda, Perguntas frequentes e tickets (sem garantia 24 horas por dia, 7 dias por semana).\nAvisos gerais não podem ser respondidos como um bate-papo privado."
+  },
+  {
+    "title": "17. Conduta proibida",
+    "body": "Trapaça, bots, conluio, contas múltiplas, ataques de segurança, lavagem de dinheiro, phishing e violação de IP.\nIsso pode resultar na perda de prêmios, suspensão ou encerramento da conta."
+  },
+  {
+    "title": "18. Propriedade intelectual",
+    "body": "O software e a marca da Quilax estão protegidos.\nVocê retém os direitos sobre seu conteúdo original; você concede uma licença para hospedá-lo e operá-lo dentro do serviço."
+  },
+  {
+    "title": "19. Disponibilidade e alterações do serviço",
+    "body": "Não garantimos serviço ininterrupto. Podemos modificar recursos e regras com aviso prévio razoável, quando relevante."
+  },
+  {
+    "title": "20. Limitação de responsabilidade",
+    "body": "Na medida do permitido por lei: não nos responsabilizamos por danos indiretos, desconexões de usuários ou falhas de terceiros (rede, bancos, Stripe).\nOs direitos obrigatórios do consumidor não são limitados.\nSe for comprovada uma falha grave da nossa parte, a responsabilidade poderá ser limitada à operação afetada."
+  },
+  {
+    "title": "21. Cookies e tecnologias semelhantes",
+    "body": "No site: cookies/sessão e armazenamento de segurança.\nNo aplicativo: armazenamento local (sessão, preferências).\nDesativar o armazenamento essencial pode impedir login ou pagamentos."
+  },
+  {
+    "title": "22. Jogo responsável",
+    "body": "Estabeleça limites de gastos e tempo. Caso o uso deixe de ser saudável, pare de depositar e entre em contato com o suporte.\nPodemos aplicar limites em resposta a padrões de risco."
+  },
+  {
+    "title": "23. Suspensão e cancelamento",
+    "body": "Podemos suspender ou cancelar contas devido a violação, motivos de segurança ou legais.\nO saldo legítimo pendente de saque está sujeito a verificação; pode ser retido em caso de disputa/fraude."
+  },
+  {
+    "title": "24. Alterações nestes termos",
+    "body": "Poderemos atualizar este documento. Mudanças relevantes serão comunicadas no aplicativo ou por e-mail quando for razoável."
+  },
+  {
+    "title": "25. Lei aplicável e reclamações",
+    "body": "Aplica-se a lei espanhola. Os direitos obrigatórios do consumidor na UE aplicam-se quando relevante.\nReclamações e questões de privacidade: somente por meio de tickets dentro do app. A Agência Espanhola de Proteção de Dados (AEPD), se aplicável."
+  },
+  {
+    "title": "26. Contato",
+    "body": "• Configurações → Central de ajuda\n• Configurações → Perguntas frequentes\n• Configurações → Suporte (tickets)"
+  }
+]

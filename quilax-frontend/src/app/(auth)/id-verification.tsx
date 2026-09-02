@@ -1,57 +1,218 @@
-import React, { useState } from 'react';
-import { Text, StyleSheet, Alert } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Text,
+  StyleSheet,
+  Alert,
+  View,
+  Linking,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import apiClient from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+import { Colors, Spacing, bodyTypeface } from '@/constants/theme';
+import { authFormStyles } from '@/constants/authForm';
 import {
   AuthFlowLayout,
   AuthPrimaryButton,
   AuthCard,
   AuthProgressDots,
+  AuthSecondaryButton,
 } from '@/components/ui/AuthFlowLayout';
 
+async function openStripeUrl(url: string): Promise<boolean> {
+  if (!url) return false;
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    try {
+      const w = window.open(url, '_blank', 'noopener,noreferrer');
+      if (w) return true;
+    } catch { /* fall through */ }
+    try {
+      window.location.href = url;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  try {
+    const can = await Linking.canOpenURL(url);
+    if (can === false) return false;
+    await Linking.openURL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * KYC = Stripe Identity only (document + matching selfie / liveness).
+ * No manual photo upload and no in-app face-scan — those do not verify documents.
+ */
 export default function IdVerificationScreen() {
   const router = useRouter();
-  const [uploading, setUploading] = useState(false);
-  const [documentName, setDocumentName] = useState<string | null>(null);
+  const { t } = useTranslation();
+  const { refreshProfile, token: authToken } = useAuth() as any;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [polling, setPolling] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'creating' | 'ready' | 'polling'>('idle');
+  const [stripeUrl, setStripeUrl] = useState<string | null>(null);
+  const pollCancel = useRef(false);
 
-  const pickDocument = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
-    if (result.canceled || !result.assets?.[0]) return;
-    setUploading(true);
+  useEffect(() => {
+    return () => {
+      pollCancel.current = true;
+    };
+  }, []);
+
+  const goAfterVerified = async () => {
+    const profile = await refreshProfile?.({ full: false }).catch(() => null);
+    const { getOnboardingHref } = await import('@/utils/onboardingGate');
+    const nextUser = profile?.user || profile?.profile || profile;
+    const href = getOnboardingHref(nextUser) || '/(auth)/complete-profile';
+    router.replace(href as any);
+  };
+
+  const startPolling = async () => {
+    pollCancel.current = false;
+    setPolling(true);
+    setPhase('polling');
+    for (let i = 0; i < 60; i += 1) {
+      if (pollCancel.current) break;
+      await new Promise((r) => setTimeout(r, 3000));
+      if (pollCancel.current) break;
+      const status = await apiClient.get('/profile/identity/status').catch(() => null);
+      if (status?.idVerified) {
+        setPolling(false);
+        setPhase('idle');
+        await goAfterVerified();
+        return;
+      }
+    }
+    setPolling(false);
+    setPhase(stripeUrl ? 'ready' : 'idle');
+    Alert.alert(
+      t('auth.idVerificationScreen.autoPendingTitle'),
+      t('auth.idVerificationScreen.autoPendingBody'),
+    );
+  };
+
+  const openHostedVerification = async (url: string) => {
+    const target = url || stripeUrl;
+    if (!target) {
+      setError(t('auth.idVerificationScreen.autoUnavailable'));
+      return;
+    }
+    setStripeUrl(target);
+    setPhase('ready');
+    setError(null);
+    const opened = await openStripeUrl(target);
+    if (!opened) {
+      setError(t('auth.idVerificationScreen.autoOpenFailed'));
+      return;
+    }
+    if (Platform.OS !== 'web') await startPolling();
+    else void startPolling();
+  };
+
+  const startStripeIdentity = async () => {
+    setError(null);
+    setBusy(true);
+    setPhase('creating');
+    setStripeUrl(null);
     try {
-      const asset = result.assets[0];
-      setDocumentName(asset.fileName || 'documento.jpg');
-      await apiClient.put('/profile/kyc/document', {
-        idDocumentUrl: asset.uri,
-        idDocumentType: 'NATIONAL_ID',
-      }).catch(() => null);
-      router.push('/(auth)/face-scan');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo subir el documento');
+      if (!authToken) throw new Error(t('auth.idVerificationScreen.autoNeedLogin'));
+      apiClient.setToken(authToken);
+      const data = await apiClient.post(
+        '/profile/identity/session',
+        {
+          returnOrigin:
+            Platform.OS === 'web' && typeof window !== 'undefined'
+              ? window.location.origin
+              : undefined,
+        },
+        { timeoutMs: 45000 },
+      );
+      if (data.alreadyVerified) {
+        await goAfterVerified();
+        return;
+      }
+      if (!data.url) throw new Error(t('auth.idVerificationScreen.autoUnavailable'));
+      setStripeUrl(data.url);
+      setPhase('ready');
+    } catch (err: any) {
+      const msg =
+        err?.code === 'TIMEOUT'
+          ? t('auth.idVerificationScreen.autoTimeout')
+          : err?.message || t('auth.idVerificationScreen.autoUnavailable');
+      setError(msg);
+      setPhase('idle');
     } finally {
-      setUploading(false);
+      setBusy(false);
     }
   };
 
+  const creating = busy || phase === 'creating';
+
   return (
-    <AuthFlowLayout title="Verificación de identidad" subtitle="Sube tu documento oficial" badge="Paso 4">
-      <AuthProgressDots total={5} current={3} />
+    <AuthFlowLayout
+      title={t('auth.idVerificationScreen.title')}
+      subtitle={t('auth.idVerificationScreen.subtitle')}
+      badge={t('common.step', { n: 4 })}
+    >
+      <AuthProgressDots total={5} current={4} />
       <AuthCard>
-        <Text style={styles.text}>
-          Necesitamos una foto clara de tu DNI, pasaporte o carnet de conducir.
-        </Text>
-        {documentName ? <Text style={styles.file}>Archivo: {documentName}</Text> : null}
+        <Text style={authFormStyles.hint}>{t('auth.idVerificationScreen.stripeOnlyHint')}</Text>
+
+        {creating ? (
+          <View style={styles.busyBox}>
+            <ActivityIndicator color={Colors.light.primary} />
+            <Text style={styles.polling}>{t('auth.idVerificationScreen.autoCreating')}</Text>
+          </View>
+        ) : phase === 'ready' && stripeUrl ? (
+          <>
+            <AuthPrimaryButton
+              label={t('auth.idVerificationScreen.autoOpenButton')}
+              onPress={() => openHostedVerification(stripeUrl)}
+            />
+            <Text style={styles.polling}>{t('auth.idVerificationScreen.autoOpenHint')}</Text>
+          </>
+        ) : (
+          <AuthPrimaryButton
+            label={t('auth.idVerificationScreen.autoButton')}
+            onPress={startStripeIdentity}
+          />
+        )}
+
+        {polling ? (
+          <>
+            <Text style={styles.polling}>{t('auth.idVerificationScreen.autoPolling')}</Text>
+            <AuthSecondaryButton
+              label={t('common.cancel')}
+              onPress={() => {
+                pollCancel.current = true;
+                setPolling(false);
+                setPhase(stripeUrl ? 'ready' : 'idle');
+              }}
+            />
+          </>
+        ) : null}
+
+        {error ? <Text style={authFormStyles.errorText}>{error}</Text> : null}
       </AuthCard>
-      <AuthPrimaryButton label={uploading ? 'Subiendo...' : 'Seleccionar documento'} onPress={pickDocument} disabled={uploading} />
     </AuthFlowLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  text: { lineHeight: 22 },
-  file: { marginTop: 12, fontWeight: '700' },
+  busyBox: { alignItems: 'center', gap: Spacing.two, marginVertical: Spacing.three },
+  polling: {
+    ...bodyTypeface,
+    marginTop: Spacing.two,
+    fontSize: 13,
+    color: Colors.light.textSecondary,
+    textAlign: 'center',
+  },
 });

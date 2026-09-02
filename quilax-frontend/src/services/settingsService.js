@@ -4,7 +4,7 @@ export const settingsService = {
   // Actualizar perfil de usuario
   updateProfile: async (userData) => {
     try {
-      const response = await apiClient.put('/auth/profile', userData);
+      const response = await apiClient.put('/profile/me', userData);
       return { success: true, data: response };
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -29,7 +29,7 @@ export const settingsService = {
   // Actualizar configuración de notificaciones
   updateNotificationSettings: async (settings) => {
     try {
-      const response = await apiClient.put('/auth/notification-settings', settings);
+      const response = await apiClient.put('/profile/notification-settings', settings);
       return { success: true, data: response };
     } catch (error) {
       console.error('Error updating notification settings:', error);
@@ -37,10 +37,21 @@ export const settingsService = {
     }
   },
 
+  // Obtener configuración de privacidad
+  getPrivacySettings: async () => {
+    try {
+      const response = await apiClient.get('/profile/privacy');
+      return { success: true, data: response };
+    } catch (error) {
+      console.error('Error fetching privacy settings:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
   // Actualizar configuración de privacidad
   updatePrivacySettings: async (settings) => {
     try {
-      const response = await apiClient.put('/auth/privacy-settings', settings);
+      const response = await apiClient.put('/profile/privacy', settings);
       return { success: true, data: response };
     } catch (error) {
       console.error('Error updating privacy settings:', error);
@@ -48,10 +59,10 @@ export const settingsService = {
     }
   },
 
-  // Eliminar cuenta
-  deleteAccount: async () => {
+  // Eliminar cuenta (requiere contraseña)
+  deleteAccount: async (password) => {
     try {
-      const response = await apiClient.delete('/auth/account');
+      const response = await apiClient.delete('/profile/account', { password });
       return { success: true, data: response };
     } catch (error) {
       console.error('Error deleting account:', error);

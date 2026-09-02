@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import apiClient from '@/lib/api';
 import secureStorage from '@/lib/secureStorage';
+import { isAccessTokenExpired } from '@/lib/tokenUtils';
 
 const AuthContext = createContext(null);
 
@@ -12,6 +13,38 @@ export const useAuth = () => {
   return context;
 };
 
+function mapProfileToUser(prev, profile) {
+  return {
+    ...(prev || {}),
+    id: profile.id,
+    email: profile.email,
+    role: profile.role,
+    fullName: profile.fullName,
+    balance: profile.balance,
+    currency: profile.currency,
+    country: profile.country,
+    province: profile.province,
+    gender: profile.gender,
+    dateOfBirth: profile.dateOfBirth,
+    emailVerified: !!profile.emailVerified,
+    idDocumentUrl: profile.idDocumentUrl,
+    idVerified: !!profile.idVerified,
+    verificationVideoUrl: profile.verificationVideoUrl,
+    livenessCompletedAt: profile.livenessCompletedAt,
+    username: profile.username,
+    bio: profile.bio,
+    profilePhoto: profile.profilePhoto,
+    showQuizHistory: profile.showQuizHistory,
+    showPrizes: profile.showPrizes,
+    profilePublic: profile.profilePublic,
+    statistics: profile.statistics,
+    winnings: profile.winnings,
+    seasonPoints: profile.seasonPoints ?? profile.season?.seasonPoints ?? 0,
+    seasonRank: profile.seasonRank ?? profile.season?.seasonRank ?? null,
+    seasonName: profile.seasonName ?? profile.season?.seasonName ?? null,
+  };
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -22,22 +55,26 @@ export function AuthProvider({ children }) {
     loadAuth();
   }, []);
 
-  const loadAuth = async () => {
-    try {
-      const storedToken = await secureStorage.getItem('authToken');
-      const storedUser = await secureStorage.getItem('authUser');
+  // Keep apiClient Authorization in sync (HMR / remounts can clear the singleton token).
+  useEffect(() => {
+    if (token) apiClient.setToken(token);
+    else apiClient.clearToken();
+  }, [token]);
 
-      if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-        apiClient.setToken(storedToken);
-        setIsAuthenticated(true);
-      }
-    } catch (error) {
-      console.error('Error loading auth data:', error);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+    import('@/services/pushNotifications')
+      .then((m) => m.refreshPushTokenIfGranted())
+      .catch(() => {});
+  }, [isAuthenticated, token]);
+
+  const clearLocalSession = async () => {
+    setToken(null);
+    setUser(null);
+    setIsAuthenticated(false);
+    apiClient.clearToken();
+    await secureStorage.removeItem('authToken');
+    await secureStorage.removeItem('authUser');
   };
 
   const persistSession = async (nextToken, nextUser) => {
@@ -49,10 +86,69 @@ export function AuthProvider({ children }) {
     await secureStorage.setItem('authUser', JSON.stringify(nextUser));
   };
 
+  const refreshProfile = async ({ full = false } = {}) => {
+    try {
+      // lite=1 skips season rank / aggregates (was 20–30s locally and timed out login).
+      const data = await apiClient.get(full ? '/profile/me' : '/profile/me?lite=1');
+      const profile = data.profile || data;
+      if (!profile) return { success: false };
+      // Prefer in-memory user; fall back to storage (login just persisted before setState flushes).
+      let prev = user;
+      if (!prev) {
+        try {
+          const raw = await secureStorage.getItem('authUser');
+          if (raw) prev = JSON.parse(raw);
+        } catch {
+          prev = null;
+        }
+      }
+      const nextUser = mapProfileToUser(prev, profile);
+      setUser(nextUser);
+      await secureStorage.setItem('authUser', JSON.stringify(nextUser));
+      return { success: true, user: nextUser, profile };
+    } catch (error) {
+      console.error('Refresh profile error:', error);
+      if (error?.status === 401) {
+        await clearLocalSession();
+      }
+      return { success: false, error: error.message, status: error?.status };
+    }
+  };
+
+  const loadAuth = async () => {
+    try {
+      const storedToken = await secureStorage.getItem('authToken');
+      const storedUser = await secureStorage.getItem('authUser');
+
+      if (storedToken && storedUser) {
+        if (isAccessTokenExpired(storedToken)) {
+          await clearLocalSession();
+          return;
+        }
+
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+        apiClient.setToken(storedToken);
+        setIsAuthenticated(true);
+        // Refresh KYC / onboarding flags — never block app start on slow profile.
+        refreshProfile().catch(() => {});
+      }
+    } catch (error) {
+      console.error('Error loading auth data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const login = async (email, password) => {
     try {
       const data = await apiClient.post('/auth/login', { email, password });
       await persistSession(data.token, data.user);
+      // Do not await /profile/me here — it used to add 12–30s and hit the client timeout.
+      refreshProfile().catch(() => {});
+      import('@/services/pushNotifications')
+        .then((m) => m.refreshPushTokenIfGranted())
+        .catch(() => {});
       return { success: true, user: data.user };
     } catch (error) {
       console.error('Login error:', error);
@@ -60,37 +156,67 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const register = async (email, password, fullName) => {
+  const register = async ({ email, password, fullName, dateOfBirth, country, nationality } = {}) => {
     try {
-      const data = await apiClient.post('/auth/register', { email, password, fullName });
-      await persistSession(data.token, data.user);
-      return { success: true, user: data.user };
+      const data = await apiClient.post('/auth/register', {
+        email,
+        password,
+        fullName,
+        dateOfBirth,
+        country: country || nationality,
+      });
+      await persistSession(data.token, {
+        ...data.user,
+        emailVerified: !!data.user?.emailVerified,
+      });
+      return { success: true, user: data.user, delivered: data.delivered };
     } catch (error) {
       console.error('Register error:', error);
+      const msg = String(error?.message || '');
+      const network =
+        /network request failed/i.test(msg) ||
+        /failed to fetch/i.test(msg) ||
+        error?.name === 'TypeError';
+      if (network) {
+        const i18n = (await import('@/i18n')).default;
+        return {
+          success: false,
+          error: i18n.t('auth.registerScreen.networkError'),
+        };
+      }
       return { success: false, error: error.message };
     }
   };
 
   const logout = async () => {
     try {
+      await import('@/services/pushNotifications')
+        .then((m) => m.unregisterPushToken())
+        .catch(() => {});
       if (token) {
         await apiClient.post('/auth/logout').catch(() => {});
       }
     } finally {
-      setToken(null);
-      setUser(null);
-      setIsAuthenticated(false);
-      apiClient.clearToken();
-      await secureStorage.removeItem('authToken');
-      await secureStorage.removeItem('authUser');
+      await clearLocalSession();
     }
     return { success: true };
   };
 
   const updateUser = async (payload) => {
     try {
-      const data = await apiClient.put('/auth/profile', payload);
-      const nextUser = data.user || data.profile || data;
+      const data = await apiClient.put('/profile/me', payload);
+      const profile = data.user || data.profile || data;
+      // Merge partial PUT response without wiping season stats / missing flags
+      const nextUser = {
+        ...(user || {}),
+        ...profile,
+        emailVerified:
+          profile.emailVerified !== undefined
+            ? !!profile.emailVerified
+            : !!user?.emailVerified,
+        idVerified:
+          profile.idVerified !== undefined ? !!profile.idVerified : !!user?.idVerified,
+      };
       setUser(nextUser);
       await secureStorage.setItem('authUser', JSON.stringify(nextUser));
       return { success: true, user: nextUser };
@@ -109,6 +235,8 @@ export function AuthProvider({ children }) {
     register,
     logout,
     updateUser,
+    refreshProfile,
+    setUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

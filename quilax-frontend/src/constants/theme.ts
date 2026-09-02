@@ -1,74 +1,69 @@
 /**
- * Quilax Theme - Colores basados en el logo (blanco, negro, gradiente azul-morado-rojo)
+ * Quilax Theme — light-only, mobile-first.
+ * Warm white (still reads as white, not cream paper).
  */
 
 import '@/global.css';
 
-import { Platform } from 'react-native';
+import { Platform, type TextStyle } from 'react-native';
+import { Typography } from '@/constants/typography';
+import { sora } from '@/lib/soraFonts';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F8FAFC',
-    backgroundSelected: '#E2E8F0',
-    textSecondary: '#64748B',
-    // Gradiente del logo (azul - morado - rojo)
+    text: '#1C1917',
+    background: '#FFFCF8', // warm white
+    backgroundElement: '#FFFFFF',
+    backgroundSelected: '#F3EEE8',
+    textSecondary: '#57534E',
     gradientStart: '#3B82F6',
     gradientMiddle: '#8B5CF6',
     gradientEnd: '#EF4444',
-    // Colores adicionales (rojo, rosa, morado)
     red: '#EF4444',
     pink: '#EC4899',
     purple: '#8B5CF6',
     primary: '#3B82F6',
-    success: '#22C55E',
-    warning: '#F59E0B',
-    error: '#EF4444',
-  },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#1E293B',
-    backgroundSelected: '#334155',
-    textSecondary: '#94A3B8',
-    // Gradiente del logo (azul - morado - rojo)
-    gradientStart: '#3B82F6',
-    gradientMiddle: '#8B5CF6',
-    gradientEnd: '#EF4444',
-    // Colores adicionales (rojo, rosa, morado)
-    red: '#EF4444',
-    pink: '#EC4899',
-    purple: '#8B5CF6',
-    primary: '#3B82F6',
-    success: '#22C55E',
-    warning: '#F59E0B',
+    success: '#16A34A',
+    warning: '#D97706',
     error: '#EF4444',
   },
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+export type ThemeColor = keyof typeof Colors.light;
 
+/**
+ * Brand typeface — Sora (loaded via expo-font / @expo-google-fonts/sora on native;
+ * Google Fonts CSS on web).
+ * Native faces omit fontWeight — see `sora()` / resolveSoraStyle.
+ */
 export const Fonts = Platform.select({
-  ios: {
-    sans: 'system-ui',
-    serif: 'ui-serif',
-    rounded: 'ui-rounded',
-    mono: 'Helvetica',
+  web: {
+    sans: 'Sora, system-ui, sans-serif',
+    serif: 'Georgia, serif',
+    rounded: 'Sora, system-ui, sans-serif',
+    mono: 'ui-monospace, monospace',
   },
   default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'Helvetica',
+    sans: 'Sora_500Medium',
+    serif: 'Sora_500Medium',
+    rounded: 'Sora_500Medium',
+    mono: 'Sora_500Medium',
   },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'Helvetica',
-  },
-});
+})!;
+
+/** Alias — one face for all titles */
+export const FONT_DISPLAY = Platform.select({
+  web: 'Sora, system-ui, sans-serif',
+  default: 'Sora_700Bold',
+})!;
+
+/** Shared title typeface (size stays local to each screen). */
+export const titleTypeface = sora(700) satisfies TextStyle;
+
+/** Default body text style — slightly heavier than system regular */
+export const bodyTypeface = sora(500) satisfies TextStyle;
+
+export { Typography, sora };
 
 export const Spacing = {
   half: 2,
@@ -91,5 +86,9 @@ export const BorderRadius = {
   full: 9999,
 } as const;
 
+/**
+ * @deprecated Prefer useChromeInsets().bottomPadding — fixed 50/80 ignores real devices.
+ * Kept as a last-resort fallback for non-hook contexts.
+ */
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const MaxContentWidth = 480;

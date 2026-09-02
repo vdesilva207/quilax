@@ -1,23 +1,31 @@
 import { Redirect } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { Tabs } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import CustomTabBar from '@/components/CustomTabBar';
+import { getOnboardingHref } from '@/utils/onboardingGate';
 
 export default function AppLayout() {
-  const { loading, isAuthenticated } = useAuth();
+  const { t } = useTranslation();
+  const { loading, isAuthenticated, user } = useAuth();
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.light.background }}>
+        <ActivityIndicator size="large" color={Colors.light.primary} />
       </View>
     );
   }
 
   if (!isAuthenticated) {
-    return <Redirect href="/(auth)/login" />;
+    return <Redirect href="/(auth)/welcome" />;
+  }
+
+  const onboardingHref = getOnboardingHref(user);
+  if (onboardingHref) {
+    return <Redirect href={onboardingHref as any} />;
   }
 
   return (
@@ -27,12 +35,16 @@ export default function AppLayout() {
         headerShown: false,
         tabBarActiveTintColor: Colors.light.primary,
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="quiz" options={{ title: 'Quiz' }} />
-      <Tabs.Screen name="search" options={{ title: 'Buscar' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Perfil' }} />
-      <Tabs.Screen name="settings" options={{ title: 'Ajustes' }} />
-      <Tabs.Screen name="messages" options={{ href: null }} />
+      <Tabs.Screen name="index" options={{ title: t('tabs.home') }} />
+      <Tabs.Screen name="search" options={{ title: t('tabs.search') }} />
+      <Tabs.Screen name="quiz" options={{ title: t('tabs.create') }} />
+      <Tabs.Screen name="profile" options={{ title: t('tabs.profile') }} />
+      <Tabs.Screen name="wallet" options={{ title: t('tabs.wallet') }} />
+      <Tabs.Screen name="messages" options={{ title: t('tabs.messages') }} />
+      <Tabs.Screen name="settings" options={{ title: t('tabs.settings') }} />
+      <Tabs.Screen name="home" options={{ href: null }} />
+      <Tabs.Screen name="matches" options={{ href: null }} />
+      <Tabs.Screen name="season" options={{ href: null }} />
     </Tabs>
   );
 }

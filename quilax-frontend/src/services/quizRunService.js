@@ -1,6 +1,16 @@
 import apiClient from '@/lib/api';
+import i18n from '@/i18n';
 
 export const quizRunService = {
+  enrollQuiz: async (quizId) => {
+    try {
+      const data = await apiClient.post(`/quiz-play/enroll/${quizId}`);
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
   joinQuiz: async (runId) => {
     try {
       const data = await apiClient.post(`/quiz-play/${runId}/join`);
@@ -10,12 +20,15 @@ export const quizRunService = {
     }
   },
 
-  getRunState: async (runId) => {
+  getRunState: async (runId, options = {}) => {
     try {
-      const data = await apiClient.get(`/quiz-run/${runId}/state`);
+      const data = await apiClient.get(`/quiz-run/${runId}/state`, {
+        timeoutMs: 10000,
+        ...options,
+      });
       return { success: true, data: data.run || data };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message, code: error.code };
     }
   },
 
@@ -55,12 +68,46 @@ export const quizRunService = {
     }
   },
 
+  getRanking: async (runId, { limit = 5 } = {}) => {
+    try {
+      const data = await apiClient.get(
+        `/quiz-play/${runId}/ranking?limit=${Math.min(100, Math.max(1, limit))}`
+      );
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  getResults: async (runId, { limit = 10 } = {}) => {
+    try {
+      const data = await apiClient.get(
+        `/quiz-play/${runId}/results?limit=${Math.min(100, Math.max(1, limit))}`
+      );
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, error: error.message, status: error.status };
+    }
+  },
+
   resolveActiveRunId: async (quizId) => {
     const info = await quizRunService.getQuizInfo(quizId);
     if (!info.success) return info;
-    const activeRun = info.data?.activeRun;
+    let activeRun = info.data?.activeRun;
     if (!activeRun?.id) {
-      return { success: false, error: 'No hay una partida activa para este quiz' };
+      // Playtest / dev: crear partida al pulsar jugar
+      try {
+        const ensured = await apiClient.post(`/quiz-play/ensure-run/${quizId}`);
+        activeRun = ensured?.run || null;
+      } catch (error) {
+        return {
+          success: false,
+          error: error.message || i18n.t('quizDetail.noActiveRun'),
+        };
+      }
+    }
+    if (!activeRun?.id) {
+      return { success: false, error: i18n.t('quizDetail.noActiveRun') };
     }
     return { success: true, runId: activeRun.id, data: activeRun };
   },
