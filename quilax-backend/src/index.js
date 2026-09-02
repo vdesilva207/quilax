@@ -41,6 +41,7 @@ import legalRouter from "./routes/legal.js";
 import reportsRouter from "./routes/reports.js";
 import walletAccessRouter from "./routes/walletAccess.js";
 import redis from "./lib/redis.js";
+import prisma from "./lib/prisma.js";
 import { platformMiddleware } from "./middleware/platform.js";
 import scalabilityManager from "./utils/scalabilityManager.js";
 import { metricsMiddleware, metricsEndpoint } from "./config/monitoring.js";
@@ -186,7 +187,22 @@ app.get(
 
 
 app.get("/", (req, res) => res.json({ status: "ok" }));
-app.get("/health", (req, res) => res.json({ ok: true }));
+app.get("/health", (req, res) =>
+  res.json({
+    ok: true,
+    commit: process.env.RENDER_GIT_COMMIT || null,
+  })
+);
+
+app.get("/health/db", async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true, db: true });
+  } catch (err) {
+    console.error("❌ /health/db:", err?.message || err);
+    res.status(503).json({ ok: false, db: false, error: "Database unreachable" });
+  }
+});
 
 // Endpoint de métricas Prometheus
 app.get("/metrics", metricsEndpoint);

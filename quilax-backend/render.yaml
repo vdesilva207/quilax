@@ -1,0 +1,23 @@
+# Render Blueprint — servicio web Quilax API
+# Dashboard: New > Blueprint > conecta este repo y usa render.yaml
+services:
+  - type: web
+    name: quilax-api
+    runtime: node
+    rootDir: quilax-backend
+    buildCommand: npm ci && npx prisma generate
+    startCommand: npm run start:render
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://appquilax.com,http://127.0.0.1:8081,http://localhost:8081,http://127.0.0.1:8082,http://localhost:8082

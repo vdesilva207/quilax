@@ -8,10 +8,15 @@ const host =
 
 const extra = Constants.expoConfig?.extra || {};
 
+const isWeb = typeof window !== 'undefined';
+const useDevProxy = isWeb && typeof __DEV__ !== 'undefined' && __DEV__;
+
 export const API_BASE_URL = (
-  extra.API_URL ||
-  process.env.EXPO_PUBLIC_API_URL ||
-  `http://${host}:3001`
+  useDevProxy
+    ? `${window.location.origin}/__api`
+    : extra.API_URL ||
+      process.env.EXPO_PUBLIC_API_URL ||
+      `http://${host}:3001`
 ).replace(/\/$/, '');
 
 export const WALLET_APP_URL = (
