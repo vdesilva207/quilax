@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, TextInput, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,11 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    // Por si recargas en /login con flag viejo de un registro a medias
+    void import('@/utils/onboardingGate').then((m) => m.clearRegistrationOnboarding());
+  }, []);
+
   const handleLogin = async () => {
     if (!email.trim() || !password) {
       setError(t('auth.loginScreen.missingFields'));
@@ -35,10 +40,10 @@ export default function LoginScreen() {
         setError(result.error || t('auth.loginScreen.invalidCredentials'));
         return;
       }
-      const { getOnboardingHref } = await import('@/utils/onboardingGate');
-      // Prefer user from login (already refreshed inside AuthContext); never block navigation.
-      const href = getOnboardingHref(result.user) || '/(app)';
-      router.replace(href as any);
+      // Login = solo email + contraseña. No reanudar onboarding de registro.
+      const { clearRegistrationOnboarding } = await import('@/utils/onboardingGate');
+      await clearRegistrationOnboarding();
+      router.replace('/(app)');
     } catch (e: any) {
       setError(e?.message || t('auth.loginScreen.invalidCredentials'));
     } finally {

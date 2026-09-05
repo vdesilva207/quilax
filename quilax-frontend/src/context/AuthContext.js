@@ -14,34 +14,38 @@ export const useAuth = () => {
 };
 
 function mapProfileToUser(prev, profile) {
+  const pick = (key, transform) => {
+    if (profile[key] === undefined) return prev?.[key];
+    return transform ? transform(profile[key]) : profile[key];
+  };
   return {
     ...(prev || {}),
-    id: profile.id,
-    email: profile.email,
-    role: profile.role,
-    fullName: profile.fullName,
-    balance: profile.balance,
-    currency: profile.currency,
-    country: profile.country,
-    province: profile.province,
-    gender: profile.gender,
-    dateOfBirth: profile.dateOfBirth,
-    emailVerified: !!profile.emailVerified,
-    idDocumentUrl: profile.idDocumentUrl,
-    idVerified: !!profile.idVerified,
-    verificationVideoUrl: profile.verificationVideoUrl,
-    livenessCompletedAt: profile.livenessCompletedAt,
-    username: profile.username,
-    bio: profile.bio,
-    profilePhoto: profile.profilePhoto,
-    showQuizHistory: profile.showQuizHistory,
-    showPrizes: profile.showPrizes,
-    profilePublic: profile.profilePublic,
-    statistics: profile.statistics,
-    winnings: profile.winnings,
-    seasonPoints: profile.seasonPoints ?? profile.season?.seasonPoints ?? 0,
-    seasonRank: profile.seasonRank ?? profile.season?.seasonRank ?? null,
-    seasonName: profile.seasonName ?? profile.season?.seasonName ?? null,
+    id: pick('id') ?? prev?.id,
+    email: pick('email') ?? prev?.email,
+    role: pick('role') ?? prev?.role,
+    fullName: pick('fullName'),
+    balance: pick('balance'),
+    currency: pick('currency'),
+    country: pick('country'),
+    province: pick('province'),
+    gender: pick('gender'),
+    dateOfBirth: pick('dateOfBirth'),
+    emailVerified: profile.emailVerified !== undefined ? !!profile.emailVerified : !!prev?.emailVerified,
+    idDocumentUrl: pick('idDocumentUrl'),
+    idVerified: profile.idVerified !== undefined ? !!profile.idVerified : !!prev?.idVerified,
+    verificationVideoUrl: pick('verificationVideoUrl'),
+    livenessCompletedAt: pick('livenessCompletedAt'),
+    username: pick('username'),
+    bio: pick('bio'),
+    profilePhoto: pick('profilePhoto'),
+    showQuizHistory: pick('showQuizHistory'),
+    showPrizes: pick('showPrizes'),
+    profilePublic: pick('profilePublic'),
+    statistics: pick('statistics'),
+    winnings: pick('winnings'),
+    seasonPoints: profile.seasonPoints ?? profile.season?.seasonPoints ?? prev?.seasonPoints ?? 0,
+    seasonRank: profile.seasonRank ?? profile.season?.seasonRank ?? prev?.seasonRank ?? null,
+    seasonName: profile.seasonName ?? profile.season?.seasonName ?? prev?.seasonName ?? null,
   };
 }
 
@@ -143,13 +147,31 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const data = await apiClient.post('/auth/login', { email, password });
-      await persistSession(data.token, data.user);
-      // Do not await /profile/me here — it used to add 12–30s and hit the client timeout.
+      await persistSession(data.token, {
+        ...data.user,
+        emailVerified: !!data.user?.emailVerified,
+        idVerified: !!data.user?.idVerified,
+      });
+      // Login nunca reanuda onboarding de registro (moneda / país / Stripe).
+      try {
+        const { clearRegistrationOnboarding } = await import('@/utils/onboardingGate');
+        await clearRegistrationOnboarding();
+      } catch {
+        /* ignore */
+      }
+      // Preferimos el user del login (ya trae emailVerified) para la navegación inmediata.
       refreshProfile().catch(() => {});
       import('@/services/pushNotifications')
         .then((m) => m.refreshPushTokenIfGranted())
         .catch(() => {});
-      return { success: true, user: data.user };
+      return {
+        success: true,
+        user: {
+          ...data.user,
+          emailVerified: !!data.user?.emailVerified,
+          idVerified: !!data.user?.idVerified,
+        },
+      };
     } catch (error) {
       console.error('Login error:', error);
       return { success: false, error: error.message };
@@ -158,18 +180,23 @@ export function AuthProvider({ children }) {
 
   const register = async ({ email, password, fullName, dateOfBirth, country, nationality } = {}) => {
     try {
-      const data = await apiClient.post('/auth/register', {
-        email,
-        password,
-        fullName,
-        dateOfBirth,
-        country: country || nationality,
-      });
+      // SMTP puede tardar; el backend ya no bloquea, pero damos margen al cliente
+      const data = await apiClient.post(
+        '/auth/register',
+        {
+          email,
+          password,
+          fullName,
+          dateOfBirth,
+          country: country || nationality,
+        },
+        { timeoutMs: 20000 }
+      );
       await persistSession(data.token, {
         ...data.user,
         emailVerified: !!data.user?.emailVerified,
       });
-      return { success: true, user: data.user, delivered: data.delivered };
+      return { success: true, user: data.user, delivered: data.delivered, verificationCode: data.verificationCode };
     } catch (error) {
       console.error('Register error:', error);
       const msg = String(error?.message || '');

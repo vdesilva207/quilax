@@ -291,7 +291,9 @@
       "autoPendingTitle": "Verification in progress",
       "autoPendingBody": "If you finished in Stripe, wait a few seconds or tap Open verification again.",
       "autoPolling": "Waiting for Stripe Identity…",
-      "stripeOnlyHint": "Verification is done by Stripe Identity: document photo + selfie (liveness). There is no manual upload or admin photo review."
+      "stripeOnlyHint": "Verification is done by Stripe Identity: document photo + selfie (liveness). There is no manual upload or admin photo review.",
+      "skipForNow": "Skip for now (testing only)",
+      "skipFailed": "Could not skip verification."
     },
     "faceScanScreen": {
       "title": "Face scan",

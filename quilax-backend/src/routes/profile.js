@@ -13,6 +13,7 @@ const router = express.Router();
 router.get('/me', auth, async (req, res) => {
   try {
     const userId = req.user.id;
+    const lite = req.query.lite === '1' || req.query.lite === 'true';
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -21,9 +22,24 @@ router.get('/me', auth, async (req, res) => {
         email: true,
         role: true,
         fullName: true,
+        username: true,
+        bio: true,
+        profilePhoto: true,
         balance: true,
         points: true,
+        currency: true,
+        country: true,
+        nationality: true,
+        province: true,
+        gender: true,
+        timezone: true,
         createdAt: true,
+        emailVerified: true,
+        idVerified: true,
+        idVerifiedAt: true,
+        idDocumentType: true,
+        idDocumentUrl: true,
+        livenessCompletedAt: true,
         // Validaciones y datos bancarios
         dateOfBirth: true,
         isOver18: true,
@@ -33,23 +49,38 @@ router.get('/me', auth, async (req, res) => {
         bankAccountName: true,
         bankAccountBic: true,
         isBankVerified: true,
-        // Estadísticas
-        _count: {
-          select: {
-            createdQuizzes: true,
-            quizParticipants: true,
-            quizScores: true,
-            quizWinners: true,
-            payments: true,
-            withdrawals: true,
-            transactions: true
-          }
-        }
-      }
+        language: true,
+        profilePublic: true,
+        showQuizHistory: true,
+        showPrizes: true,
+        ...(lite
+          ? {}
+          : {
+              _count: {
+                select: {
+                  createdQuizzes: true,
+                  quizParticipants: true,
+                  quizScores: true,
+                  quizWinners: true,
+                  payments: true,
+                  withdrawals: true,
+                  transactions: true,
+                },
+              },
+            }),
+      },
     });
 
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Lite: onboarding / gate — sin agregados pesados ni includes frágiles
+    if (lite) {
+      return res.json({
+        success: true,
+        profile: user,
+      });
     }
 
     // Calcular estadísticas adicionales
@@ -71,7 +102,7 @@ router.get('/me', auth, async (req, res) => {
         take: 5,
         include: {
           quiz: {
-            select: { title: true, category: true }
+            select: { title: true }
           }
         }
       }),
@@ -149,8 +180,13 @@ router.put('/me', auth, async (req, res) => {
     const {
       fullName,
       dateOfBirth,
+      country,
+      province,
+      gender,
+      currency,
+      timezone,
       guardianPhotoUrl,
-      verificationVideoUrl
+      verificationVideoUrl,
     } = req.body;
 
     // Validar datos
@@ -185,6 +221,31 @@ router.put('/me', auth, async (req, res) => {
       updateData.isOver18 = age >= 18;
     }
 
+    if (country) {
+      const code = String(country).trim().toUpperCase().slice(0, 2);
+      if (code.length !== 2) {
+        return res.status(400).json({ error: 'Código de país inválido' });
+      }
+      updateData.country = code;
+      updateData.nationality = code;
+    }
+
+    if (typeof province === 'string' && province.trim()) {
+      updateData.province = province.trim().slice(0, 120);
+    }
+
+    if (typeof gender === 'string' && gender.trim()) {
+      updateData.gender = gender.trim().slice(0, 40);
+    }
+
+    if (typeof currency === 'string' && currency.trim()) {
+      updateData.currency = currency.trim().toUpperCase().slice(0, 3);
+    }
+
+    if (typeof timezone === 'string' && timezone.trim()) {
+      updateData.timezone = timezone.trim().slice(0, 64);
+    }
+
     // Validar URLs si se proporcionan
     if (guardianPhotoUrl) {
       if (!isValidUrl(guardianPhotoUrl)) {
@@ -200,6 +261,10 @@ router.put('/me', auth, async (req, res) => {
       updateData.verificationVideoUrl = verificationVideoUrl;
     }
 
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: updateData,
@@ -209,8 +274,15 @@ router.put('/me', auth, async (req, res) => {
         fullName: true,
         dateOfBirth: true,
         isOver18: true,
+        country: true,
+        province: true,
+        gender: true,
+        currency: true,
+        timezone: true,
         guardianPhotoUrl: true,
-        verificationVideoUrl: true
+        verificationVideoUrl: true,
+        emailVerified: true,
+        idVerified: true,
       }
     });
 
@@ -222,6 +294,25 @@ router.put('/me', auth, async (req, res) => {
   } catch (error) {
     console.error('Error updating user profile:', error);
     res.status(500).json({ error: 'Error al actualizar perfil' });
+  }
+});
+
+// Zona horaria del dispositivo / región
+router.put('/timezone', auth, async (req, res) => {
+  try {
+    const { timezone } = req.body || {};
+    if (!timezone || typeof timezone !== 'string') {
+      return res.status(400).json({ error: 'timezone requerido' });
+    }
+    const updated = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { timezone: timezone.trim().slice(0, 64) },
+      select: { id: true, timezone: true },
+    });
+    res.json({ success: true, user: updated });
+  } catch (error) {
+    console.error('Error updating timezone:', error);
+    res.status(500).json({ error: 'Error al actualizar zona horaria' });
   }
 });
 
@@ -512,6 +603,182 @@ router.post('/verify-bank', auth, async (req, res) => {
   } catch (error) {
     console.error('Error verifying bank account:', error);
     res.status(500).json({ error: 'Error en verificación bancaria' });
+  }
+});
+
+// Saltar verificación Stripe Identity (solo emails en allowlist — no quita el flujo para el resto)
+router.post('/identity/skip', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, idVerified: true },
+    });
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const allowlist = (
+      process.env.KYC_SKIP_ALLOWLIST ||
+      'vdesilvaortiz@gmail.com'
+    )
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (!allowlist.includes(String(user.email || '').toLowerCase())) {
+      return res.status(403).json({
+        error: 'No puedes saltarte la verificación de identidad',
+        code: 'KYC_SKIP_DENIED',
+      });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        idVerified: true,
+        idVerifiedAt: new Date(),
+        idDocumentType: 'SKIP_ALLOWLIST',
+      },
+      select: {
+        id: true,
+        email: true,
+        idVerified: true,
+        idVerifiedAt: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      skipped: true,
+      user: updated,
+    });
+  } catch (error) {
+    console.error('Error skipping identity:', error);
+    res.status(500).json({ error: 'Error al saltar verificación' });
+  }
+});
+
+async function syncStripeIdentityStatus(user) {
+  if (!user?.stripeIdentitySessionId || !process.env.STRIPE_SECRET_KEY) {
+    return user;
+  }
+  const Stripe = (await import('stripe')).default;
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  const session = await stripe.identity.verificationSessions.retrieve(
+    user.stripeIdentitySessionId
+  );
+  if (session.status === 'verified' && !user.idVerified) {
+    return prisma.user.update({
+      where: { id: user.id },
+      data: {
+        idVerified: true,
+        idVerifiedAt: new Date(),
+        idDocumentType: 'STRIPE_IDENTITY',
+        livenessCompletedAt: new Date(),
+      },
+      select: {
+        id: true,
+        email: true,
+        idVerified: true,
+        idVerifiedAt: true,
+        stripeIdentitySessionId: true,
+      },
+    });
+  }
+  return {
+    ...user,
+    stripeStatus: session.status,
+  };
+}
+
+// Crear sesión hospedada de Stripe Identity
+router.post('/identity/session', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const returnOrigin =
+      (typeof req.body?.returnOrigin === 'string' && req.body.returnOrigin) ||
+      process.env.FRONTEND_APP_URL ||
+      'http://127.0.0.1:8081';
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        idVerified: true,
+        stripeIdentitySessionId: true,
+      },
+    });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (user.idVerified) {
+      return res.json({ success: true, alreadyVerified: true, idVerified: true });
+    }
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(503).json({
+        error: 'Stripe Identity no configurado',
+        code: 'STRIPE_NOT_CONFIGURED',
+      });
+    }
+
+    const Stripe = (await import('stripe')).default;
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const returnUrl = `${String(returnOrigin).replace(/\/$/, '')}/identity-return`;
+
+    const session = await stripe.identity.verificationSessions.create({
+      type: 'document',
+      metadata: { userId: String(userId) },
+      options: {
+        document: {
+          require_matching_selfie: true,
+        },
+      },
+      return_url: returnUrl,
+    });
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { stripeIdentitySessionId: session.id },
+    });
+
+    res.json({
+      success: true,
+      url: session.url,
+      sessionId: session.id,
+    });
+  } catch (error) {
+    console.error('Error creating identity session:', error);
+    res.status(500).json({
+      error: error?.message || 'Error al crear sesión de identidad',
+    });
+  }
+});
+
+// Estado de verificación Identity (polling)
+router.get('/identity/status', auth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        email: true,
+        idVerified: true,
+        idVerifiedAt: true,
+        stripeIdentitySessionId: true,
+      },
+    });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const synced = await syncStripeIdentityStatus(user).catch(() => user);
+    res.json({
+      success: true,
+      idVerified: !!synced.idVerified,
+      idVerifiedAt: synced.idVerifiedAt || null,
+      status: synced.stripeStatus || (synced.idVerified ? 'verified' : 'pending'),
+    });
+  } catch (error) {
+    console.error('Error identity status:', error);
+    res.status(500).json({ error: 'Error al consultar identidad' });
   }
 });
 
@@ -962,7 +1229,7 @@ router.get('/:userId/share', async (req, res) => {
     }
 
     // Generar URL de compartir
-    const shareUrl = `https://quilax.com/profile/${userId}`;
+    const shareUrl = `https://appquilax.com/profile/${userId}`;
     const shareText = `¡Mira el perfil de ${user.fullName || user.username} en Quilax!`;
 
     res.json({

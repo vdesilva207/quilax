@@ -98,27 +98,38 @@ router.post("/send-verification-email", auth, async (req, res) => {
     }
 
     if (user.emailVerified) {
-      return res.status(400).json({ error: "Email ya verificado" });
+      return res.json({
+        success: true,
+        alreadyVerified: true,
+        message: 'Email ya verificado',
+      });
     }
 
-    // Generar código de verificación de 6 dígitos
-    const verificationCode = generateVerificationCode();
+    // Reutilizar código pendiente si existe; si no, generar uno nuevo
+    const verificationCode =
+      user.emailVerificationToken || generateVerificationCode();
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { emailVerificationToken: verificationCode }
-    });
-
-    // Enviar email real con el código
-    const emailSent = await sendVerificationEmail(user.email, verificationCode);
-
-    if (!emailSent) {
-      return res.status(500).json({ error: "Error al enviar email de verificación" });
+    if (!user.emailVerificationToken) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          emailVerificationToken: verificationCode,
+          emailVerificationExpires: new Date(Date.now() + 15 * 60 * 1000),
+        }
+      });
     }
+
+    const result = await sendVerificationEmail(user.email, verificationCode);
+    const delivered = !!result?.delivered;
 
     res.json({
       success: true,
-      message: "Email de verificación enviado"
+      message: delivered
+        ? "Email de verificación enviado"
+        : "No se pudo entregar el email; usa el código de respaldo",
+      delivered,
+      // Si Brevo falla o estamos en local, el front puede mostrar el código
+      verificationCode,
     });
   } catch (error) {
     console.error("Error sending verification email:", error);
@@ -129,10 +140,11 @@ router.post("/send-verification-email", auth, async (req, res) => {
 // Verificar email
 router.post("/verify-email", async (req, res) => {
   try {
-    const { token } = req.body;
+    const raw = req.body?.token ?? req.body?.code ?? "";
+    const token = String(raw).trim();
 
     if (!token) {
-      return res.status(400).json({ error: "Token es requerido" });
+      return res.status(400).json({ error: "Token es requerido", code: "MISSING_CODE" });
     }
 
     const user = await prisma.user.findFirst({
@@ -140,14 +152,28 @@ router.post("/verify-email", async (req, res) => {
     });
 
     if (!user) {
-      return res.status(400).json({ error: "Token inválido" });
+      return res.status(400).json({
+        error: "Código inválido",
+        code: "INVALID_CODE",
+      });
+    }
+
+    if (
+      user.emailVerificationExpires &&
+      new Date(user.emailVerificationExpires).getTime() < Date.now()
+    ) {
+      return res.status(400).json({
+        error: "Código expirado",
+        code: "EXPIRED_CODE",
+      });
     }
 
     await prisma.user.update({
       where: { id: user.id },
       data: {
         emailVerified: true,
-        emailVerificationToken: null
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
       }
     });
 
@@ -195,15 +221,18 @@ router.post("/forgot-password", rateLimiters.sensitive, async (req, res) => {
     });
 
     // Enviar email real con el código
-    const emailSent = await sendPasswordResetEmail(user.email, resetCode);
+    const emailResult = await sendPasswordResetEmail(user.email, resetCode);
 
-    if (!emailSent) {
+    if (!emailResult?.ok) {
       return res.status(500).json({ error: "Error al enviar email de reset" });
     }
 
     res.json({
       success: true,
-      message: "Email de reset enviado"
+      message: emailResult.delivered
+        ? "Email de reset enviado"
+        : "No se pudo entregar el email; revisa la configuración SMTP",
+      delivered: !!emailResult.delivered,
     });
   } catch (error) {
     console.error("Error sending reset email:", error);

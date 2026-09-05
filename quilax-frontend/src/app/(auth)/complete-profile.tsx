@@ -12,6 +12,10 @@ import {
   AuthFlowLayout,
   AuthPrimaryButton,
 } from '@/components/ui/AuthFlowLayout';
+import {
+  RegistrationOnboardingGate,
+  useRequireRegistrationOnboarding,
+} from '@/hooks/useRequireRegistrationOnboarding';
 
 const PROVINCES_BY_COUNTRY: Record<string, string[]> = {
   ES: ['Andalucía', 'Aragón', 'Asturias (Principado de)', 'Baleares (Islas)', 'Canarias (Islas)', 'Cantabria', 'Castilla-La Mancha', 'Castilla y León', 'Cataluña', 'Ceuta (Ciudad Autónoma)', 'Comunidad Valenciana', 'Extremadura', 'Galicia', 'Madrid (Comunidad de)', 'Melilla (Ciudad Autónoma)', 'Murcia (Región de)', 'Navarra (Comunidad Foral de)', 'País Vasco', 'La Rioja'],
@@ -53,6 +57,7 @@ export default function CompleteProfileScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { user, updateUser } = useAuth() as any;
+  const gate = useRequireRegistrationOnboarding();
   const [selectedCountry, setSelectedCountry] = useState(
     String(user?.country || 'ES').toUpperCase().slice(0, 2) || 'ES'
   );
@@ -140,6 +145,28 @@ export default function CompleteProfileScreen() {
       setSubmitting(false);
     }
   };
+
+  if (gate.status !== 'ready') {
+    return (
+      <RegistrationOnboardingGate
+        gate={gate}
+        fallback={
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: Colors.light.background,
+            }}
+          >
+            <ActivityIndicator color={Colors.light.primary} />
+          </View>
+        }
+      >
+        {null}
+      </RegistrationOnboardingGate>
+    );
+  }
 
   return (
     <>

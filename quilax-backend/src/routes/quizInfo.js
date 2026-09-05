@@ -491,7 +491,7 @@ router.get('/:quizId/share', async (req, res) => {
     }
 
     // Generar URL de compartir
-    const shareUrl = `https://quilax.com/quiz/${quizId}`;
+    const shareUrl = `https://appquilax.com/quiz/${quizId}`;
     const shareText = `¡Juega "${quiz.title}" en Quilax!`;
     const shareDescription = `Prueba este quiz de ${quiz.category} creado por @${quiz.creator.username}`;
 

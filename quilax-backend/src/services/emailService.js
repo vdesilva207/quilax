@@ -4,16 +4,34 @@ import nodemailer from 'nodemailer';
 // Cargar variables de entorno
 dotenv.config();
 
-// Configurar el transportador de email
+// Tiempo generoso: el registro ya no espera al SMTP (fire-and-forget).
+const EMAIL_TIMEOUT_MS = Number.parseInt(process.env.EMAIL_TIMEOUT_MS || '20000', 10);
+const skipSmtp =
+  process.env.SKIP_EMAIL === 'true' ||
+  process.env.SKIP_EMAIL === '1';
+
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.EMAIL_PORT) || 587,
-  secure: process.env.EMAIL_SECURE === 'true', // true para 465, false para otros puertos
+  secure: process.env.EMAIL_SECURE === 'true',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
+  connectionTimeout: EMAIL_TIMEOUT_MS,
+  greetingTimeout: EMAIL_TIMEOUT_MS,
+  socketTimeout: EMAIL_TIMEOUT_MS,
 });
+
+function withTimeout(promise, ms, label) {
+  let timer;
+  return Promise.race([
+    promise.finally(() => clearTimeout(timer)),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    }),
+  ]);
+}
 
 /**
  * Generar código de verificación de 6 dígitos
@@ -23,9 +41,21 @@ export const generateVerificationCode = () => {
 };
 
 /**
- * Enviar email de verificación con código de 6 dígitos
+ * Enviar email de verificación.
+ * @returns {{ ok: boolean, delivered: boolean }}
  */
 export const sendVerificationEmail = async (email, code) => {
+  if (skipSmtp) {
+    console.log(`📧 [SKIP_EMAIL] Código de verificación para ${email}: ${code}`);
+    return { ok: true, delivered: false };
+  }
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.error('❌ EMAIL_USER/EMAIL_PASSWORD no configurados');
+    console.log(`📧 [FALLBACK] Código de verificación para ${email}: ${code}`);
+    return { ok: true, delivered: false };
+  }
+
   try {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
@@ -52,14 +82,13 @@ export const sendVerificationEmail = async (email, code) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await withTimeout(transporter.sendMail(mailOptions), EMAIL_TIMEOUT_MS, 'sendVerificationEmail');
     console.log(`✅ Email de verificación enviado a ${email}`);
-    return true;
+    return { ok: true, delivered: true };
   } catch (error) {
-    console.error('❌ Error enviando email de verificación:', error);
-    // Fallback para desarrollo: mostrar código en consola
-    console.log(`📧 [MODO DESARROLLO] Código de verificación para ${email}: ${code}`);
-    return true; // Devolver true para no bloquear el flujo en desarrollo
+    console.error('❌ Error enviando email de verificación:', error?.message || error);
+    console.log(`📧 [FALLBACK] Código de verificación para ${email}: ${code}`);
+    return { ok: true, delivered: false };
   }
 };
 
@@ -67,6 +96,16 @@ export const sendVerificationEmail = async (email, code) => {
  * Enviar email de reset de contraseña
  */
 export const sendPasswordResetEmail = async (email, code) => {
+  if (skipSmtp) {
+    console.log(`📧 [SKIP_EMAIL] Código de reset para ${email}: ${code}`);
+    return { ok: true, delivered: false };
+  }
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.log(`📧 [FALLBACK] Código de reset para ${email}: ${code}`);
+    return { ok: true, delivered: false };
+  }
+
   try {
     const mailOptions = {
       from: process.env.EMAIL_FROM,
@@ -93,14 +132,13 @@ export const sendPasswordResetEmail = async (email, code) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await withTimeout(transporter.sendMail(mailOptions), EMAIL_TIMEOUT_MS, 'sendPasswordResetEmail');
     console.log(`✅ Email de reset de contraseña enviado a ${email}`);
-    return true;
+    return { ok: true, delivered: true };
   } catch (error) {
-    console.error('❌ Error enviando email de reset de contraseña:', error);
-    // Fallback para desarrollo: mostrar código en consola
-    console.log(`📧 [MODO DESARROLLO] Código de reset de contraseña para ${email}: ${code}`);
-    return true; // Devolver true para no bloquear el flujo en desarrollo
+    console.error('❌ Error enviando email de reset de contraseña:', error?.message || error);
+    console.log(`📧 [FALLBACK] Código de reset de contraseña para ${email}: ${code}`);
+    return { ok: true, delivered: false };
   }
 };
 

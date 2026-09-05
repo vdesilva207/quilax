@@ -21,6 +21,10 @@ import {
   AuthProgressDots,
   AuthSecondaryButton,
 } from '@/components/ui/AuthFlowLayout';
+import {
+  RegistrationOnboardingGate,
+  useRequireRegistrationOnboarding,
+} from '@/hooks/useRequireRegistrationOnboarding';
 
 async function openStripeUrl(url: string): Promise<boolean> {
   if (!url) return false;
@@ -53,13 +57,28 @@ async function openStripeUrl(url: string): Promise<boolean> {
 export default function IdVerificationScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { refreshProfile, token: authToken } = useAuth() as any;
+  const { refreshProfile, token: authToken, user } = useAuth() as any;
   const [busy, setBusy] = useState(false);
+  const [skipping, setSkipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'creating' | 'ready' | 'polling'>('idle');
   const [stripeUrl, setStripeUrl] = useState<string | null>(null);
   const pollCancel = useRef(false);
+
+  const canSkipKyc = (() => {
+    const email = String(user?.email || '').toLowerCase();
+    const allow = (
+      process.env.EXPO_PUBLIC_KYC_SKIP_ALLOWLIST ||
+      'vdesilvaortiz@gmail.com'
+    )
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    return allow.includes(email);
+  })();
+
+  const gate = useRequireRegistrationOnboarding();
 
   useEffect(() => {
     return () => {
@@ -68,11 +87,24 @@ export default function IdVerificationScreen() {
   }, []);
 
   const goAfterVerified = async () => {
-    const profile = await refreshProfile?.({ full: false }).catch(() => null);
-    const { getOnboardingHref } = await import('@/utils/onboardingGate');
-    const nextUser = profile?.user || profile?.profile || profile;
-    const href = getOnboardingHref(nextUser) || '/(auth)/complete-profile';
-    router.replace(href as any);
+    await refreshProfile?.({ full: false }).catch(() => null);
+    // Tras KYC el siguiente paso del registro es completar provincia/género
+    router.replace('/(auth)/complete-profile');
+  };
+
+  const skipStripeIdentity = async () => {
+    setError(null);
+    setSkipping(true);
+    try {
+      if (!authToken) throw new Error(t('auth.idVerificationScreen.autoNeedLogin'));
+      apiClient.setToken(authToken);
+      await apiClient.post('/profile/identity/skip', {});
+      await goAfterVerified();
+    } catch (err: any) {
+      setError(err?.message || t('auth.idVerificationScreen.skipFailed'));
+    } finally {
+      setSkipping(false);
+    }
   };
 
   const startPolling = async () => {
@@ -157,6 +189,14 @@ export default function IdVerificationScreen() {
   const creating = busy || phase === 'creating';
 
   return (
+    <RegistrationOnboardingGate
+      gate={gate}
+      fallback={
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.light.background }}>
+          <ActivityIndicator color={Colors.light.primary} />
+        </View>
+      }
+    >
     <AuthFlowLayout
       title={t('auth.idVerificationScreen.title')}
       subtitle={t('auth.idVerificationScreen.subtitle')}
@@ -201,8 +241,17 @@ export default function IdVerificationScreen() {
         ) : null}
 
         {error ? <Text style={authFormStyles.errorText}>{error}</Text> : null}
+
+        {canSkipKyc && !polling && !creating ? (
+          <AuthSecondaryButton
+            label={skipping ? t('common.loading') : t('auth.idVerificationScreen.skipForNow')}
+            onPress={skipStripeIdentity}
+            disabled={skipping || busy}
+          />
+        ) : null}
       </AuthCard>
     </AuthFlowLayout>
+    </RegistrationOnboardingGate>
   );
 }
 

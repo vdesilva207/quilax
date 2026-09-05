@@ -291,7 +291,9 @@
       "autoPendingTitle": "Verificación en curso",
       "autoPendingBody": "Si ya terminaste en Stripe, espera unos segundos o pulsa de nuevo «Abrir verificación».",
       "autoPolling": "Esperando resultado de Stripe Identity…",
-      "stripeOnlyHint": "La verificación la hace Stripe Identity: foto del documento + selfie (prueba de vida). No hay subida manual ni revisión por admin de fotos."
+      "stripeOnlyHint": "La verificación la hace Stripe Identity: foto del documento + selfie (prueba de vida). No hay subida manual ni revisión por admin de fotos.",
+      "skipForNow": "Saltar por ahora (solo pruebas)",
+      "skipFailed": "No se pudo saltar la verificación."
     },
     "faceScanScreen": {
       "title": "Escaneo facial",

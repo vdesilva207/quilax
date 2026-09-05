@@ -8,16 +8,16 @@ const isPreview = process.env.APP_ENV === 'preview';
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   process.env.API_URL ||
-  (isProd ? 'https://api.quilax.com' : undefined);
+  (isProd ? 'https://api.appquilax.com' : undefined);
 
 const WALLET_URL =
   process.env.EXPO_PUBLIC_WALLET_URL ||
-  (isProd ? 'https://gestion.quilax.com' : undefined);
+  (isProd ? 'https://gestion.appquilax.com' : undefined);
 
 const SOCKET_URL =
   process.env.EXPO_PUBLIC_SOCKET_URL ||
   process.env.SOCKET_URL ||
-  (isProd ? 'https://api.quilax.com' : undefined);
+  (isProd ? 'https://api.appquilax.com' : undefined);
 
 // Preview/prod: never bake skip flags into the binary even if present in the shell.
 const skipOnboardingAllowed = !isProd && !isPreview;
@@ -173,7 +173,8 @@ export default {
         monochromeImage: './assets/images/android-icon-monochrome.png',
         backgroundColor: '#FFFFFF',
       },
-      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || undefined,
+      googleServicesFile:
+        process.env.GOOGLE_SERVICES_JSON || './google-services.json',
       permissions: ['CAMERA', 'READ_MEDIA_IMAGES', 'POST_NOTIFICATIONS'],
     },
     notification: {

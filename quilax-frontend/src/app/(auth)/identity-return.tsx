@@ -30,13 +30,10 @@ export default function IdentityReturnScreen() {
           if (cancelled) return;
           const res = await apiClient.get('/profile/identity/status').catch(() => null);
           if (res?.idVerified) {
-            const profile = await refreshProfile?.().catch(() => null);
-            const { getOnboardingHref } = await import('@/utils/onboardingGate');
-            const user = profile?.profile || profile?.user || profile;
-            const href = getOnboardingHref(user) || '/(auth)/complete-profile';
+            await refreshProfile?.().catch(() => null);
             if (!cancelled) {
               setStatus('ok');
-              router.replace(href as any);
+              router.replace('/(auth)/complete-profile');
             }
             return;
           }

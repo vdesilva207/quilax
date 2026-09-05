@@ -4,19 +4,45 @@ import { ActivityIndicator, View, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { Colors, Spacing } from '@/constants/theme';
-import { getOnboardingHref } from '@/utils/onboardingGate';
+import {
+  getOnboardingHref,
+  isRegistrationOnboardingActive,
+} from '@/utils/onboardingGate';
 
 export default function Index() {
-  const { loading, isAuthenticated, user } = useAuth();
+  const { loading, isAuthenticated, user } = useAuth() as any;
   const { t } = useTranslation();
   const [slow, setSlow] = useState(false);
+  const [bootHref, setBootHref] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setSlow(true), 8000);
     return () => clearTimeout(timer);
   }, []);
 
-  if (loading) {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (loading) return;
+      if (!isAuthenticated) {
+        if (!cancelled) setBootHref('/(auth)/welcome');
+        return;
+      }
+      const active = await isRegistrationOnboardingActive();
+      if (cancelled) return;
+      if (active) {
+        const href = getOnboardingHref(user) || '/(auth)/currency-selection';
+        setBootHref(href);
+        return;
+      }
+      setBootHref('/(app)');
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, isAuthenticated, user]);
+
+  if (loading || !bootHref) {
     return (
       <View
         style={{
@@ -36,13 +62,5 @@ export default function Index() {
     );
   }
 
-  if (isAuthenticated) {
-    const onboardingHref = getOnboardingHref(user);
-    if (onboardingHref) {
-      return <Redirect href={onboardingHref as any} />;
-    }
-    return <Redirect href="/(app)" />;
-  }
-
-  return <Redirect href="/(auth)/welcome" />;
+  return <Redirect href={bootHref as any} />;
 }

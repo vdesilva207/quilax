@@ -1,11 +1,14 @@
 /**
- * Resume KYC / onboarding after login or cold start.
- * Bank linking is optional (user can skip until deposit/withdraw).
+ * Onboarding gate — solo para el flujo de REGISTRO (después de crear cuenta).
+ * El login y las sesiones ya abiertas van directo a /(app): email + contraseña basta.
  *
- * @param {object | null | undefined} user
- * @returns {string | null} expo-router href, or null if ready for (app)
+ * Flag `quilax_registration_onboarding` marca que el usuario está a mitad de registrarse.
+ * Sin ese flag, las pantallas de moneda/país/Stripe redirigen a la app.
  */
 import Constants from 'expo-constants';
+import secureStorage from '@/lib/secureStorage';
+
+const ONBOARDING_FLAG = 'quilax_registration_onboarding';
 
 function isProductionLikeEnv() {
   const appEnv =
@@ -14,7 +17,6 @@ function isProductionLikeEnv() {
     process.env.APP_ENV ||
     '';
   if (appEnv === 'production' || appEnv === 'preview') return true;
-  // Metro web prod export / release bundles
   if (process.env.NODE_ENV === 'production' && appEnv !== 'development') {
     return true;
   }
@@ -33,10 +35,26 @@ export function isDevSkipOnboarding() {
   );
 }
 
+export async function startRegistrationOnboarding() {
+  await secureStorage.setItem(ONBOARDING_FLAG, '1');
+}
+
+export async function clearRegistrationOnboarding() {
+  await secureStorage.removeItem(ONBOARDING_FLAG);
+}
+
+export async function isRegistrationOnboardingActive() {
+  const v = await secureStorage.getItem(ONBOARDING_FLAG);
+  return v === '1' || v === 'true';
+}
+
+/**
+ * @param {object | null | undefined} user
+ * @returns {string | null} expo-router href, or null if ready for (app)
+ */
 export function getOnboardingHref(user) {
   if (!user) return '/(auth)/welcome';
 
-  // Fase de testeo local: entrar a la app sin código ni KYC.
   if (isDevSkipOnboarding()) {
     return null;
   }

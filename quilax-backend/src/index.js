@@ -109,6 +109,13 @@ app.use(
 
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
+      } else if (
+        process.env.NODE_ENV !== 'production' &&
+        /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(
+          origin
+        )
+      ) {
+        callback(null, true);
       } else {
         callback(null, false);
       }

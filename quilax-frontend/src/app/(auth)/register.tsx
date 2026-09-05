@@ -82,7 +82,10 @@ export default function RegisterScreen() {
       });
 
       if (result.success) {
-        const { getOnboardingHref } = await import('@/utils/onboardingGate');
+        const { getOnboardingHref, startRegistrationOnboarding } = await import(
+          '@/utils/onboardingGate'
+        );
+        await startRegistrationOnboarding();
         const href = getOnboardingHref(result.user) || '/(app)';
         router.replace(href as any);
         return;

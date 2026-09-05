@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "867985610435",
+    "project_id": "quilax-33a64",
+    "storage_bucket": "quilax-33a64.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:867985610435:android:146166b2ec8d98ff1cb476",
+        "android_client_info": {
+          "package_name": "com.quilax.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAOG3jcdiad7gjyFuSD2GQc8ic0TL5KrdA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

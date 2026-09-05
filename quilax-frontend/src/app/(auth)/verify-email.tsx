@@ -30,6 +30,31 @@ export default function VerifyEmailScreen() {
   const [codeError, setCodeError] = useState<string | null>(null);
   const autoSent = useRef(false);
 
+  // Ya verificado: si sigue el registro → siguiente paso; si no → app
+  useEffect(() => {
+    if (!user?.emailVerified) return;
+    let cancelled = false;
+    (async () => {
+      const {
+        isRegistrationOnboardingActive,
+        getOnboardingHref,
+      } = await import('@/utils/onboardingGate');
+      const active = await isRegistrationOnboardingActive();
+      if (cancelled) return;
+      if (active) {
+        const href = getOnboardingHref(user) || '/(auth)/currency-selection';
+        if (href !== '/(auth)/verify-email') {
+          router.replace(href as any);
+        }
+        return;
+      }
+      router.replace('/(app)');
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.emailVerified, user, router]);
+
   useEffect(() => {
     if (cooldown <= 0) return;
     const id = setInterval(() => {
@@ -78,8 +103,14 @@ export default function VerifyEmailScreen() {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${authToken}`,
             },
+            timeoutMs: 25000,
           }
         );
+        if (data?.alreadyVerified) {
+          await refreshProfile?.({ full: false }).catch(() => null);
+          router.replace('/(app)');
+          return;
+        }
         if (data?.verificationCode) {
           setDevCode(String(data.verificationCode));
         }
@@ -127,17 +158,25 @@ export default function VerifyEmailScreen() {
         setResending(false);
       }
     },
-    [cooldown, resending, t, user?.email, authToken]
+    [cooldown, resending, t, user, authToken, refreshProfile, router]
   );
 
-  // Auto-envío cuando hay sesión (Alert no funciona en web)
+  // Register already sends the verification email — don't auto-resend on mount
+  // (that generated a NEW code and made the first email's code invalid).
   useEffect(() => {
     if (skipOnboarding) return;
     if (autoSent.current) return;
     if (!authToken) return;
     autoSent.current = true;
-    void handleResend(true);
-  }, [authToken, handleResend, skipOnboarding]);
+    // Mark that an email should already be on the way from register.
+    setStatus({
+      type: 'ok',
+      text: t('auth.verifyEmailScreen.resendOkTo', {
+        email: user?.email || t('auth.verifyEmailScreen.fallbackEmail'),
+      }),
+    });
+    startCooldown(RESEND_COOLDOWN_SEC);
+  }, [authToken, skipOnboarding, t, user?.email]);
 
   const handleVerify = async () => {
     const code = token.trim();

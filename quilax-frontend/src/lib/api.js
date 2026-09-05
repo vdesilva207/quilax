@@ -1,35 +1,27 @@
 import Constants from 'expo-constants';
 import i18n from '@/i18n';
+import { resolveDevHost, rewriteLocalhostUrl } from '@/lib/devHost';
 
-const host =
-  typeof window !== 'undefined' && window.location?.hostname
-    ? window.location.hostname
-    : '127.0.0.1';
-
+const host = resolveDevHost();
 const extra = Constants.expoConfig?.extra || {};
 
-const isWeb = typeof window !== 'undefined';
-const useDevProxy = isWeb && typeof __DEV__ !== 'undefined' && __DEV__;
+export const API_BASE_URL = rewriteLocalhostUrl(
+  extra.API_URL ||
+    process.env.EXPO_PUBLIC_API_URL ||
+    `http://${host}:3001`
+);
 
-export const API_BASE_URL = (
-  useDevProxy
-    ? `${window.location.origin}/__api`
-    : extra.API_URL ||
-      process.env.EXPO_PUBLIC_API_URL ||
-      `http://${host}:3001`
-).replace(/\/$/, '');
-
-export const WALLET_APP_URL = (
+export const WALLET_APP_URL = rewriteLocalhostUrl(
   extra.WALLET_URL ||
-  process.env.EXPO_PUBLIC_WALLET_URL ||
-  `http://${host}:8082`
-).replace(/\/$/, '');
+    process.env.EXPO_PUBLIC_WALLET_URL ||
+    `http://${host}:8082`
+);
 
-export const SOCKET_URL = (
+export const SOCKET_URL = rewriteLocalhostUrl(
   extra.SOCKET_URL ||
-  process.env.EXPO_PUBLIC_SOCKET_URL ||
-  API_BASE_URL
-).replace(/\/$/, '');
+    process.env.EXPO_PUBLIC_SOCKET_URL ||
+    API_BASE_URL
+);
 
 export const getApiUrl = (path) => `${API_BASE_URL}${path}`;
 

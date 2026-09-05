@@ -137,7 +137,8 @@ export function getAllExchangeRates() {
  * @returns {number} - Tasa de cambio (1 EUR = X moneda)
  */
 export function getExchangeRate(currency) {
-  return EXCHANGE_RATES[currency] || 1.0;
+  if (!currency || !(currency in EXCHANGE_RATES)) return null;
+  return EXCHANGE_RATES[currency];
 }
 
 /**
@@ -147,7 +148,7 @@ export function getExchangeRate(currency) {
  * @returns {number} - Cantidad en moneda local
  */
 export function creditsToCurrency(credits, currency) {
-  const rate = getExchangeRate(currency);
+  const rate = getExchangeRate(currency) ?? 1;
   return credits * rate;
 }
 
@@ -158,7 +159,7 @@ export function creditsToCurrency(credits, currency) {
  * @returns {number} - Cantidad en créditos
  */
 export function currencyToCredits(amount, currency) {
-  const rate = getExchangeRate(currency);
+  const rate = getExchangeRate(currency) ?? 1;
   return amount / rate;
 }
 

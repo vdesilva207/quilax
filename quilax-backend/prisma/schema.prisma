@@ -19,19 +19,37 @@ model User {
   quizSubmittedAt       DateTime?            // Cuándo envió el último quiz a revisión
   quizRejectedAt        DateTime?            // Cuándo fue rechazado el último quiz
   fullName              String?              // Nombre completo del usuario
+  username              String?              @unique
+  bio                   String?
+  profilePhoto          String?
   dateOfBirth           DateTime?            // Fecha de nacimiento
   isOver18              Boolean?             @default(false) // Si es mayor de 18 años
+  country               String?              // ISO country code (ES, MX, …)
+  nationality           String?              // País / nacionalidad (ISO o texto)
+  province              String?
+  gender                String?
+  timezone              String?
+  emailVerified         Boolean              @default(false) // Si el email está verificado
   emailVerificationToken String?             // Token de verificación de email
+  emailVerificationExpires DateTime?
+  resetPasswordToken    String?              // Código de reset de contraseña
+  resetPasswordExpires  DateTime?            // Caducidad del código de reset
   twoFactorSecret       String?              // Secreto para Google Authenticator
   twoFactorEnabled      Boolean              @default(false) // Si 2FA está habilitado
+  adminPassword         String?              // Hash para acceso Gestión (si aplica)
+  lastLoginAt           DateTime?
+  lastLoginIp           String?
   
   // Campos de verificación y KYC
   guardianPhotoUrl      String?              // Foto del tutor (para menores)
   verificationVideoUrl  String?              // Video de verificación
   idDocumentUrl         String?              // URL del documento de identidad
   idDocumentType        String?              // Tipo de documento (DNI, PASSPORT, etc)
+  idDocumentNumber      String?              @unique
   idVerified            Boolean              @default(false) // Si el documento está verificado
   idVerifiedAt          DateTime?            // Cuándo se verificó el documento
+  stripeIdentitySessionId String?
+  livenessCompletedAt   DateTime?
   
   // Configuración de privacidad
   profilePublic         Boolean              @default(false) // Si el perfil es público

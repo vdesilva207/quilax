@@ -19,7 +19,7 @@ import CustomIcon from '@/components/CustomIcon';
 
 export default function WalletGateScreen() {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, token: authToken } = useAuth() as any;
   const [loading, setLoading] = useState(false);
   const [openError, setOpenError] = useState('');
   const balance = Number(user?.balance ?? 0) || 0;
@@ -35,6 +35,9 @@ export default function WalletGateScreen() {
     }
 
     try {
+      if (authToken) {
+        apiClient.setToken(authToken);
+      }
       const data = await apiClient.post('/wallet-access/exchange-token', {});
       if (!data?.token) {
         throw new Error(t('wallet.openErrorBody'));
@@ -58,7 +61,11 @@ export default function WalletGateScreen() {
       } catch {
         /* ignore */
       }
-      setOpenError(error?.message || t('wallet.openErrorBody'));
+      const msg =
+        error?.status === 401
+          ? t('wallet.openErrorBody')
+          : error?.message || t('wallet.openErrorBody');
+      setOpenError(msg);
     } finally {
       setLoading(false);
     }

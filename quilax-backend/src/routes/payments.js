@@ -235,4 +235,53 @@ router.get("/verification-status", auth, async (req, res) => {
   }
 });
 
+// País del usuario (settings / currency lock)
+router.get("/country", auth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { country: true, currency: true, nationality: true },
+    });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    res.json({
+      success: true,
+      country: user.country || user.nationality || null,
+      currency: user.currency,
+    });
+  } catch (error) {
+    console.error("Error getting country:", error);
+    res.status(500).json({ error: "Error al obtener país" });
+  }
+});
+
+router.put("/country", auth, async (req, res) => {
+  try {
+    const { country, syncCurrency } = req.body || {};
+    if (!country) return res.status(400).json({ error: "country requerido" });
+    const code = String(country).trim().toUpperCase().slice(0, 2);
+    if (code.length !== 2) return res.status(400).json({ error: "Código de país inválido" });
+
+    const data = { country: code, nationality: code };
+    // Opcional: mapear moneda por país (mínimo ES→EUR)
+    if (syncCurrency) {
+      const currencyByCountry = {
+        ES: "EUR", PT: "EUR", FR: "EUR", DE: "EUR", IT: "EUR",
+        US: "USD", MX: "MXN", AR: "ARS", CO: "COP", CL: "CLP",
+        PE: "PEN", BR: "BRL", GB: "GBP",
+      };
+      if (currencyByCountry[code]) data.currency = currencyByCountry[code];
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: req.user.id },
+      data,
+      select: { country: true, currency: true, nationality: true },
+    });
+    res.json({ success: true, ...updated });
+  } catch (error) {
+    console.error("Error updating country:", error);
+    res.status(500).json({ error: "Error al actualizar país" });
+  }
+});
+
 export default router;

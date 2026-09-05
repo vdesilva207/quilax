@@ -29,7 +29,16 @@ const generateToken = (user) => {
 export const register = async (req, res) => {
   try {
     console.log("📝 Register request received:", req.body);
-    let { email, password, idDocumentNumber, idDocumentType, nationality } = req.body;
+    let {
+      email,
+      password,
+      fullName,
+      dateOfBirth,
+      country,
+      idDocumentNumber,
+      idDocumentType,
+      nationality,
+    } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent');
 
@@ -89,15 +98,27 @@ export const register = async (req, res) => {
       role: "USER",
     };
 
-    // Agregar campos adicionales si están presentes
+    if (typeof fullName === "string" && fullName.trim()) {
+      userData.fullName = fullName.trim().slice(0, 100);
+    }
+    if (dateOfBirth) {
+      const birthDate = new Date(dateOfBirth);
+      if (!Number.isNaN(birthDate.getTime())) {
+        userData.dateOfBirth = birthDate;
+        const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+        userData.isOver18 = age >= 18;
+      }
+    }
     if (idDocumentNumber) {
       userData.idDocumentNumber = idDocumentNumber.toUpperCase().trim();
     }
     if (idDocumentType) {
       userData.idDocumentType = idDocumentType;
     }
-    if (nationality) {
-      userData.nationality = nationality;
+    const countryCode = (country || nationality || "").toString().trim().toUpperCase().slice(0, 2);
+    if (countryCode.length === 2) {
+      userData.country = countryCode;
+      userData.nationality = countryCode;
     }
 
     const user = await prisma.user.create({
@@ -106,18 +127,19 @@ export const register = async (req, res) => {
 
     const token = generateToken(user);
 
-    // Generar y enviar código de verificación
+    // Generar y guardar código; el email NO debe bloquear la respuesta (SMTP lento = timeout en el cliente)
     const verificationCode = generateVerificationCode();
-    
-    // Guardar código de verificación en el usuario
+    const emailVerificationExpires = new Date(Date.now() + 15 * 60 * 1000);
+
     await prisma.user.update({
       where: { id: user.id },
-      data: { emailVerificationToken: verificationCode }
+      data: { emailVerificationToken: verificationCode, emailVerificationExpires },
     });
-    
-    await sendVerificationEmail(email, verificationCode);
 
     logRegisterSuccess(user.id, email, ipAddress, userAgent);
+
+    const skipEmail =
+      process.env.SKIP_EMAIL === 'true' || process.env.SKIP_EMAIL === '1';
 
     res.json({
       token,
@@ -125,8 +147,22 @@ export const register = async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        fullName: user.fullName,
+        dateOfBirth: user.dateOfBirth,
+        country: user.country,
+        emailVerified: false,
+        idVerified: !!user.idVerified,
       },
-      verificationCode, // En desarrollo, devolver el código para facilitar pruebas
+      // Código en respuesta solo si SMTP está desactivado o no es producción
+      ...(skipEmail || process.env.NODE_ENV !== 'production'
+        ? { verificationCode }
+        : {}),
+      delivered: false,
+    });
+
+    // Fire-and-forget: timeouts internos en emailService evitan colgar el event loop
+    sendVerificationEmail(email, verificationCode).catch((err) => {
+      console.error("❌ post-register email:", err?.message || err);
     });
   } catch (error) {
     console.error("❌ register error:", error);
@@ -186,6 +222,10 @@ export const login = async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        emailVerified: !!user.emailVerified,
+        idVerified: !!user.idVerified,
+        fullName: user.fullName,
+        currency: user.currency,
       },
     });
 

@@ -1,15 +1,26 @@
 import { Redirect } from 'expo-router';
+import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { Tabs } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import CustomTabBar from '@/components/CustomTabBar';
-import { getOnboardingHref } from '@/utils/onboardingGate';
+import {
+  clearRegistrationOnboarding,
+  isOnboardingComplete,
+} from '@/utils/onboardingGate';
 
 export default function AppLayout() {
   const { t } = useTranslation();
-  const { loading, isAuthenticated, user } = useAuth();
+  const { loading, isAuthenticated, user } = useAuth() as any;
+
+  useEffect(() => {
+    // Solo limpiar el flag de registro cuando el perfil ya está completo
+    if (isAuthenticated && isOnboardingComplete(user)) {
+      void clearRegistrationOnboarding();
+    }
+  }, [isAuthenticated, user]);
 
   if (loading) {
     return (
@@ -21,11 +32,6 @@ export default function AppLayout() {
 
   if (!isAuthenticated) {
     return <Redirect href="/(auth)/welcome" />;
-  }
-
-  const onboardingHref = getOnboardingHref(user);
-  if (onboardingHref) {
-    return <Redirect href={onboardingHref as any} />;
   }
 
   return (
