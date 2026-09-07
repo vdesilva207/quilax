@@ -1,5 +1,6 @@
 import express from "express";
 import Stripe from "stripe";
+import speakeasy from "speakeasy";
 import prisma from "../lib/prisma.js";
 import { auth } from "../middleware/auth.js";
 import {
@@ -13,6 +14,241 @@ import { decrypt, encryptIBAN, encryptAccountName } from "../services/encryption
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+const FRONTEND_BASE =
+  process.env.FRONTEND_APP_URL ||
+  process.env.FRONTEND_URL ||
+  "https://gestion.appquilax.com";
+
+const PAYMENT_REGIONS = [
+  {
+    code: "EU",
+    country: "ES",
+    name: "España / UE",
+    currency: "EUR",
+    currencies: ["EUR"],
+    active: true,
+  },
+  {
+    code: "US",
+    country: "US",
+    name: "United States",
+    currency: "USD",
+    currencies: ["USD"],
+    active: true,
+  },
+  {
+    code: "GB",
+    country: "GB",
+    name: "United Kingdom",
+    currency: "GBP",
+    currencies: ["GBP"],
+    active: false,
+    comingSoon: true,
+  },
+  {
+    code: "MX",
+    country: "MX",
+    name: "México",
+    currency: "MXN",
+    currencies: ["MXN"],
+    active: false,
+    comingSoon: true,
+  },
+];
+
+function requireTotpIfEnabled(user, totpCode) {
+  if (!user.twoFactorEnabled) return null;
+  if (!totpCode) {
+    return {
+      status: 403,
+      body: {
+        requires2FA: true,
+        error: "Se requiere código 2FA",
+      },
+    };
+  }
+  const ok = speakeasy.totp.verify({
+    secret: user.twoFactorSecret,
+    encoding: "base32",
+    token: String(totpCode).trim(),
+    window: 1,
+  });
+  if (!ok) {
+    return {
+      status: 401,
+      body: { error: "Código 2FA inválido" },
+    };
+  }
+  return null;
+}
+
+async function createConnectAccountLink(accountId) {
+  const refreshUrl = `${FRONTEND_BASE.replace(/\/$/, "")}/settings/bank?refresh=1`;
+  const returnUrl = `${FRONTEND_BASE.replace(/\/$/, "")}/settings/bank?return=1`;
+  return stripe.accountLinks.create({
+    account: accountId,
+    refresh_url: refreshUrl,
+    return_url: returnUrl,
+    type: "account_onboarding",
+  });
+}
+
+// ============================
+// REGIONES + STRIPE CONNECT
+// (antes de rutas paramétricas)
+// ============================
+
+router.get("/regions", (_req, res) => {
+  res.json({ regions: PAYMENT_REGIONS });
+});
+
+router.get("/connect/status", auth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        stripeConnectAccountId: true,
+        isBankVerified: true,
+        bankAccountIban: true,
+        country: true,
+        currency: true,
+      },
+    });
+
+    if (!user?.stripeConnectAccountId) {
+      return res.json({
+        connected: false,
+        hasConnectAccount: false,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        detailsSubmitted: false,
+        isBankVerified: !!user?.isBankVerified,
+        canWithdraw: false,
+        bankVerificationStatus: user?.isBankVerified ? "VERIFIED" : "PENDING",
+        bankLast4: null,
+        country: user?.country || null,
+        currency: user?.currency || null,
+        countryLocked: !!user?.country,
+      });
+    }
+
+    let account;
+    try {
+      account = await stripe.accounts.retrieve(user.stripeConnectAccountId);
+    } catch (err) {
+      console.error("Stripe accounts.retrieve failed:", err?.message || err);
+      return res.json({
+        connected: false,
+        hasConnectAccount: true,
+        accountId: user.stripeConnectAccountId,
+        error: "No se pudo consultar la cuenta Connect",
+        isBankVerified: !!user.isBankVerified,
+        country: user.country || null,
+        currency: user.currency || null,
+        countryLocked: !!user.country,
+      });
+    }
+
+    const chargesEnabled = !!account.charges_enabled;
+    const payoutsEnabled = !!account.payouts_enabled;
+    const detailsSubmitted = !!account.details_submitted;
+    const connected = chargesEnabled && payoutsEnabled;
+
+    let bankLast4 = null;
+    try {
+      if (user.bankAccountIban) {
+        const iban = decrypt(user.bankAccountIban);
+        if (iban && iban.length >= 4) bankLast4 = iban.slice(-4);
+      }
+    } catch {
+      // ignore decrypt errors
+    }
+
+    res.json({
+      connected,
+      hasConnectAccount: true,
+      accountId: user.stripeConnectAccountId,
+      chargesEnabled,
+      payoutsEnabled,
+      detailsSubmitted,
+      isBankVerified: !!user.isBankVerified || connected,
+      canWithdraw: payoutsEnabled && (user.isBankVerified || detailsSubmitted),
+      bankVerificationStatus:
+        connected || user.isBankVerified ? "VERIFIED" : detailsSubmitted ? "PENDING" : "NOT_STARTED",
+      bankLast4,
+      country: user.country || account.country || null,
+      currency: user.currency || null,
+      countryLocked: !!user.country,
+    });
+  } catch (error) {
+    console.error("Error getting connect status:", error);
+    res.status(500).json({ error: "Error al obtener estado Connect" });
+  }
+});
+
+router.post("/connect/onboard", auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { country } = req.body || {};
+
+    let user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    if (country && !user.country) {
+      const code = String(country).trim().toUpperCase().slice(0, 2);
+      user = await prisma.user.update({
+        where: { id: userId },
+        data: { country: code, nationality: code },
+      });
+    }
+
+    let accountId = user.stripeConnectAccountId;
+    if (!accountId) {
+      const account = await stripe.accounts.create({
+        type: "express",
+        country: (user.country || "ES").slice(0, 2),
+        email: user.email,
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+        business_type: "individual",
+        metadata: { userId: String(userId) },
+      });
+      accountId = account.id;
+      await prisma.user.update({
+        where: { id: userId },
+        data: { stripeConnectAccountId: accountId },
+      });
+    }
+
+    const link = await createConnectAccountLink(accountId);
+    res.json({ url: link.url, accountId });
+  } catch (error) {
+    console.error("Error onboarding Connect:", error);
+    res.status(400).json({ error: error.message || "Error al iniciar onboarding" });
+  }
+});
+
+router.post("/connect/refresh", auth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { stripeConnectAccountId: true },
+    });
+
+    if (!user?.stripeConnectAccountId) {
+      return res.status(400).json({ error: "No hay cuenta Connect. Usa /connect/onboard primero." });
+    }
+
+    const link = await createConnectAccountLink(user.stripeConnectAccountId);
+    res.json({ url: link.url, accountId: user.stripeConnectAccountId });
+  } catch (error) {
+    console.error("Error refreshing Connect link:", error);
+    res.status(400).json({ error: error.message || "Error al refrescar enlace Connect" });
+  }
+});
 
 // ============================
 // COMPRAR CRÉDITOS
@@ -32,8 +268,13 @@ router.get("/packages", auth, async (req, res) => {
 // Crear payment intent para comprar créditos
 router.post("/create-intent", auth, async (req, res) => {
   try {
-    const { credits } = req.body;
+    const { credits, totpCode } = req.body;
     const userId = req.user.id;
+
+    const totpError = requireTotpIfEnabled(req.user, totpCode);
+    if (totpError) {
+      return res.status(totpError.status).json(totpError.body);
+    }
 
     if (!credits || credits <= 0) {
       return res.status(400).json({ error: "Cantidad de créditos inválida" });

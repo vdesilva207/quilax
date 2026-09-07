@@ -1,11 +1,48 @@
 import express from "express";
 import Stripe from "stripe";
 import prisma from "../lib/prisma.js";
+import { processStripeWebhook } from "../services/paymentService.js";
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 console.log("🔥 webhook.js cargado");
+
+async function handleIdentityVerified(session) {
+  const userIdFromMeta = session?.metadata?.userId
+    ? parseInt(session.metadata.userId, 10)
+    : null;
+
+  let user = null;
+  if (userIdFromMeta && !Number.isNaN(userIdFromMeta)) {
+    user = await prisma.user.findUnique({ where: { id: userIdFromMeta } });
+  }
+  if (!user && session?.id) {
+    user = await prisma.user.findFirst({
+      where: { stripeIdentitySessionId: session.id },
+    });
+  }
+
+  if (!user) {
+    console.warn(
+      `ℹ️ identity.verified pero sin usuario (session=${session?.id}, meta.userId=${session?.metadata?.userId})`
+    );
+    return;
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      idVerified: true,
+      idVerifiedAt: new Date(),
+      idDocumentType: "STRIPE_IDENTITY",
+      livenessCompletedAt: new Date(),
+      stripeIdentitySessionId: session.id,
+    },
+  });
+
+  console.log(`✅ Identity verified for user ${user.id}`);
+}
 
 router.post(
   "/stripe",
@@ -16,7 +53,6 @@ router.post(
     const sig = req.headers["stripe-signature"];
     let event;
 
-    // 1️⃣ Verificar firma
     try {
       event = stripe.webhooks.constructEvent(
         req.body,
@@ -31,56 +67,28 @@ router.post(
     console.log("✅ Evento Stripe:", event.type);
 
     try {
-      const intent = event.data.object;
-
-      // 2️⃣ COMPLETADO
-      if (event.type === "payment_intent.succeeded") {
-        const result = await prisma.payment.updateMany({
-          where: { stripePaymentIntentId: intent.id },
-          data: { status: "COMPLETED" },
-        });
-
+      if (event.type?.startsWith("payment_intent.")) {
+        await processStripeWebhook(event);
+      } else if (event.type === "identity.verification_session.verified") {
+        await handleIdentityVerified(event.data.object);
+      } else if (
+        event.type === "identity.verification_session.requires_input" ||
+        event.type === "identity.verification_session.canceled" ||
+        event.type === "identity.verification_session.redacted"
+      ) {
+        const session = event.data.object;
         console.log(
-          result.count
-            ? `✅ Pago COMPLETED: ${intent.id}`
-            : `ℹ️ COMPLETED recibido pero no existe en BD: ${intent.id}`
+          `ℹ️ Identity session ${event.type}: id=${session?.id} status=${session?.status}`
         );
-      }
-
-      // 3️⃣ FALLIDO
-      else if (event.type === "payment_intent.payment_failed") {
-        const result = await prisma.payment.updateMany({
-          where: { stripePaymentIntentId: intent.id },
-          data: { status: "FAILED" },
-        });
-
-        console.log(
-          result.count
-            ? `❌ Pago FAILED: ${intent.id}`
-            : `ℹ️ FAILED recibido pero no existe en BD: ${intent.id}`
-        );
-      }
-
-      // 4️⃣ CANCELADO
-      else if (event.type === "payment_intent.canceled") {
-        const result = await prisma.payment.updateMany({
-          where: { stripePaymentIntentId: intent.id },
-          data: { status: "CANCELLED" },
-        });
-
-        console.log(
-          result.count
-            ? `⚠️ Pago CANCELLED: ${intent.id}`
-            : `ℹ️ CANCELLED recibido pero no existe en BD: ${intent.id}`
-        );
+      } else {
+        console.log(`ℹ️ Unhandled Stripe event: ${event.type}`);
       }
     } catch (err) {
       console.error("❌ Error en webhook:", err);
-      return res.status(500).json({ error: "Webhook processing error" });
+      // Always ack so Stripe does not hammer retries for app-level failures
     }
 
-    // 5️⃣ Confirmar a Stripe
-    res.json({ received: true });
+    return res.json({ received: true });
   }
 );
 

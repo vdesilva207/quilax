@@ -1,4 +1,5 @@
 import express from 'express';
+import speakeasy from 'speakeasy';
 import prisma from '../lib/prisma.js';
 import { auth, roleMiddleware } from '../middleware/auth.js';
 import {
@@ -18,7 +19,25 @@ const router = express.Router();
 router.post('/request', auth, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { amount } = req.body;
+    const { amount, totpCode } = req.body;
+
+    if (req.user.twoFactorEnabled) {
+      if (!totpCode) {
+        return res.status(403).json({
+          requires2FA: true,
+          error: 'Se requiere código 2FA',
+        });
+      }
+      const ok = speakeasy.totp.verify({
+        secret: req.user.twoFactorSecret,
+        encoding: 'base32',
+        token: String(totpCode).trim(),
+        window: 1,
+      });
+      if (!ok) {
+        return res.status(401).json({ error: 'Código 2FA inválido' });
+      }
+    }
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Monto inválido' });

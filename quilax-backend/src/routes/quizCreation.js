@@ -20,6 +20,85 @@ ROUTES
 
 router.post("/", auth, createQuiz);
 
+/**
+ * ¿Puede el usuario escribir al admin? (ventana 72h tras envío/rechazo)
+ * BEFORE /:id routes
+ */
+router.get("/can-message-admin", auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        quizSubmittedAt: true,
+        quizRejectedAt: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const now = new Date();
+    const HOURS_72 = 72 * 60 * 60 * 1000;
+
+    let canMessage = false;
+    let reason = "";
+    let expiresAt = null;
+
+    if (user.quizSubmittedAt) {
+      const timeSinceSubmission = now.getTime() - user.quizSubmittedAt.getTime();
+      if (timeSinceSubmission <= HOURS_72) {
+        canMessage = true;
+        reason = "Quiz enviado a revisión recientemente";
+        expiresAt = new Date(user.quizSubmittedAt.getTime() + HOURS_72).toISOString();
+      }
+    }
+
+    if (user.quizRejectedAt) {
+      const timeSinceRejection = now.getTime() - user.quizRejectedAt.getTime();
+      if (timeSinceRejection <= HOURS_72) {
+        canMessage = true;
+        reason = "Quiz rechazado recientemente";
+        const rejectExpiry = new Date(user.quizRejectedAt.getTime() + HOURS_72).toISOString();
+        if (!expiresAt || rejectExpiry > expiresAt) expiresAt = rejectExpiry;
+      }
+    }
+
+    res.json({
+      canMessage,
+      reason,
+      expiresAt,
+      quizSubmittedAt: user.quizSubmittedAt,
+      quizRejectedAt: user.quizRejectedAt,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error checking admin messaging permission" });
+  }
+});
+
+/**
+ * Spellcheck stub (frontend expects corrected/changed)
+ * BEFORE /:id routes
+ */
+router.post("/spellcheck", auth, async (req, res) => {
+  try {
+    const text = typeof req.body?.text === "string" ? req.body.text : "";
+    res.json({
+      ok: true,
+      suggestions: [],
+      corrected: text,
+      changed: false,
+      count: 0,
+    });
+  } catch (err) {
+    console.error("spellcheck error:", err);
+    res.status(500).json({ error: "Spellcheck failed" });
+  }
+});
+
 router.put("/:id", auth, updateQuiz);
 
 router.delete("/:id", auth, deleteQuiz);

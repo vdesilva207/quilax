@@ -1,0 +1,19 @@
+# EAS upload — keep archive small
+node_modules/
+.expo/
+dist/
+web-build/
+android/
+ios/
+.git/
+**/.DS_Store
+**/._*
+*.log
+.env
+.env.*
+!.env.example
+coverage/
+e2e/
+__tests__/
+*.map
+.local-services/

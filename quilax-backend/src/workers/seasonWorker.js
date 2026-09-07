@@ -1,4 +1,3 @@
-import prisma from "../lib/prisma.js";
 import {
   getActiveSeason,
   closeSeason,
@@ -39,12 +38,19 @@ export async function checkSeasonExpiration() {
  * 🔁 Worker automático
  */
 export function startSeasonWorker() {
-  // Temporarily disabled to prevent DB connection errors during development
-  // setInterval(async () => {
-  //   try {
-  //     await checkSeasonExpiration();
-  //   } catch (err) {
-  //     console.error("Season worker error", err);
-  //   }
-  // }, 60000); // cada minuto
+  const enabled = process.env.SEASON_WORKER_ENABLED !== "0";
+  if (!enabled) return;
+
+  let running = false;
+  setInterval(async () => {
+    if (running) return;
+    running = true;
+    try {
+      await checkSeasonExpiration();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      running = false;
+    }
+  }, Number(process.env.SEASON_WORKER_INTERVAL_MS) || 300000);
 }

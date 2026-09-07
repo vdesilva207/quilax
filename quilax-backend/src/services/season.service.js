@@ -137,13 +137,12 @@ export async function calculateSeasonWinners(seasonId) {
     take: 1000,
   });
 
-  // Obtener jackpot acumulado de la temporada
   const season = await prisma.season.findUnique({
     where: { id: seasonId },
-    select: { jackpotAccumulated: true }
+    select: { jackpotPool: true },
   });
 
-  const jackpotTotal = season?.jackpotAccumulated || 0;
+  const jackpotTotal = season?.jackpotPool || 0;
   const winners = [];
 
   for (let i = 0; i < ranking.length; i++) {
@@ -158,7 +157,7 @@ export async function calculateSeasonWinners(seasonId) {
       position,
       points: entry.points,
       creditsAwarded,
-      rewardDescription: `Posición ${position} - ${creditsAwarded} créditos`
+      rewardDescription: `Posición ${position} - ${creditsAwarded} créditos`,
     });
   }
 
@@ -176,9 +175,7 @@ export async function calculateSeasonWinners(seasonId) {
 export async function createNextSeason() {
   const now = new Date();
 
-  const ends = new Date(
-    now.getTime() + 90 * 24 * 60 * 60 * 1000
-  );
+  const ends = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
   return prisma.season.create({
     data: {
@@ -195,45 +192,41 @@ export async function createNextSeason() {
 export async function closeSeason(seasonId) {
   const winners = await calculateSeasonWinners(seasonId);
 
-  // Obtener configuración de límites
-  const settings = await prisma.systemSettings.findFirst();
-  const largePrizeThreshold = settings?.largePrizeThreshold || 100000;
+  let largePrizeThreshold = 100000;
+  try {
+    const settings = await prisma.systemSettings.findFirst();
+    if (settings?.largePrizeThreshold != null) {
+      largePrizeThreshold = settings.largePrizeThreshold;
+    }
+  } catch (err) {
+    console.warn(
+      "⚠️ systemSettings unavailable, using default largePrizeThreshold=100000",
+      err?.message || err
+    );
+  }
 
-  // Distribuir créditos a los ganadores y crear transacciones
   for (const winner of winners) {
     if (winner.creditsAwarded && winner.creditsAwarded > 0) {
-      // Verificar si requiere KYC enhanced para grandes premios
       const requiresEnhancedKyc = winner.creditsAwarded >= largePrizeThreshold;
 
-      // Actualizar balance del usuario
       await prisma.user.update({
         where: { id: winner.userId },
         data: {
-          balance: { increment: winner.creditsAwarded }
-        }
+          balance: { increment: winner.creditsAwarded },
+        },
       });
 
-      // Crear transacción de premio
       await prisma.transaction.create({
         data: {
           userId: winner.userId,
           type: "PRIZE_PAYOUT",
           amount: winner.creditsAwarded,
           currency: "EUR",
-          seasonId: seasonId
-        }
+        },
       });
 
-      // Si es un premio grande, marcar usuario para verificación
+      // User schema has no largePrizeVerified — notify only
       if (requiresEnhancedKyc) {
-        await prisma.user.update({
-          where: { id: winner.userId },
-          data: {
-            largePrizeVerified: false
-          }
-        });
-
-        // Crear notificación para el usuario
         await prisma.notification.create({
           data: {
             userId: winner.userId,
@@ -242,9 +235,9 @@ export async function closeSeason(seasonId) {
             body: `Has ganado ${winner.creditsAwarded} créditos. Para retirar este premio, necesitamos documentación adicional. Por favor sube los documentos requeridos en Configuración > Ayuda.`,
             data: {
               prizeAmount: winner.creditsAwarded,
-              position: winner.position
-            }
-          }
+              position: winner.position,
+            },
+          },
         });
       }
     }

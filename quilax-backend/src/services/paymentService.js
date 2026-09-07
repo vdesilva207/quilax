@@ -123,24 +123,54 @@ export async function processStripeWebhook(event) {
 }
 
 async function handlePaymentSuccess(paymentIntent) {
-  const { userId, credits, totalCredits } = paymentIntent.metadata;
+  const { userId, credits, totalCredits } = paymentIntent.metadata || {};
   const userIdNum = parseInt(userId);
+  const creditsToAdd = parseInt(totalCredits || credits || 0);
 
-  // Actualizar pago en BD
-  await prisma.payment.update({
+  if (!userIdNum || !creditsToAdd) {
+    console.error('❌ handlePaymentSuccess: missing metadata', paymentIntent.id);
+    return;
+  }
+
+  const existing = await prisma.payment.findFirst({
     where: { stripePaymentIntentId: paymentIntent.id },
+  });
+
+  if (!existing) {
+    console.error('❌ handlePaymentSuccess: payment not found', paymentIntent.id);
+    return;
+  }
+
+  // Idempotente: si ya se acreditó, no volver a sumar
+  if (existing.status === 'COMPLETED') {
+    console.log(`⏭️ Payment already completed: ${paymentIntent.id}`);
+    return;
+  }
+
+  const chargeId = paymentIntent.charges?.data?.[0]?.id || null;
+
+  const updated = await prisma.payment.updateMany({
+    where: {
+      stripePaymentIntentId: paymentIntent.id,
+      status: { not: 'COMPLETED' },
+    },
     data: {
       status: 'COMPLETED',
-      stripeChargeId: paymentIntent.charges.data[0]?.id
-    }
+      ...(chargeId ? { stripeChargeId: chargeId } : {}),
+    },
   });
+
+  if (updated.count === 0) {
+    console.log(`⏭️ Payment race: already completed ${paymentIntent.id}`);
+    return;
+  }
 
   // Añadir créditos al usuario
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: userIdNum },
       data: {
-        balance: { increment: parseInt(totalCredits) }
+        balance: { increment: creditsToAdd }
       }
     });
 
@@ -149,20 +179,24 @@ async function handlePaymentSuccess(paymentIntent) {
       data: {
         userId: userIdNum,
         type: 'BANK_TO_CREDITS',
-        amount: parseInt(totalCredits),
+        amount: creditsToAdd,
         currency: 'CREDITS',
       }
     });
   });
 
   // Notificar al usuario
-  const io = getIO();
-  io.to(`user:${userIdNum}`).emit('payment:success', {
-    credits: parseInt(totalCredits),
-    message: `¡Has comprado ${totalCredits} créditos con éxito!`
-  });
+  try {
+    const io = getIO();
+    io.to(`user:${userIdNum}`).emit('payment:success', {
+      credits: creditsToAdd,
+      message: `¡Has comprado ${creditsToAdd} créditos con éxito!`
+    });
+  } catch (err) {
+    console.warn('payment:success emit failed:', err?.message || err);
+  }
 
-  console.log(`✅ Payment succeeded: User ${userIdNum} bought ${totalCredits} credits`);
+  console.log(`✅ Payment succeeded: User ${userIdNum} bought ${creditsToAdd} credits`);
 }
 
 async function handlePaymentFailure(paymentIntent) {

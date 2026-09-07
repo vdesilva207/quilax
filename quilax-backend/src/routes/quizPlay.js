@@ -32,6 +32,169 @@ function getEarlyJoinBonus(joinPosition) {
 }
 
 // --------------------
+// 📝 Inscribirse en un quiz (antes del run)
+// --------------------
+router.post("/enroll/:quizId", auth, async (req, res) => {
+  try {
+    const quizId = Number(req.params.quizId);
+    const userId = req.user.id;
+
+    if (!quizId) {
+      return res.status(400).json({ error: "quizId inválido" });
+    }
+
+    const quiz = await prisma.quiz.findUnique({ where: { id: quizId } });
+    if (!quiz) {
+      return res.status(404).json({ error: "Quiz no encontrado" });
+    }
+
+    const existing = await prisma.quizEnrollment.findUnique({
+      where: { quizId_userId: { quizId, userId } },
+    });
+
+    if (existing) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { balance: true },
+      });
+      return res.json({
+        success: true,
+        enrollment: existing,
+        balance: user?.balance ?? 0,
+        alreadyEnrolled: true,
+      });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: userId } });
+      if (!user) throw new Error("USER_NOT_FOUND");
+      if (user.balance < ENTRY_COST) throw new Error("INSUFFICIENT_BALANCE");
+
+      const enrollment = await tx.quizEnrollment.create({
+        data: { quizId, userId },
+      });
+
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: { balance: { decrement: ENTRY_COST } },
+        select: { balance: true },
+      });
+
+      await tx.transaction.create({
+        data: {
+          userId,
+          quizId,
+          type: "QUIZ_ENTRY",
+          amount: ENTRY_COST,
+          currency: "CREDIT",
+        },
+      });
+
+      return { enrollment, balance: updatedUser.balance };
+    });
+
+    return res.json({
+      success: true,
+      enrollment: result.enrollment,
+      balance: result.balance,
+    });
+  } catch (err) {
+    if (err.message === "INSUFFICIENT_BALANCE") {
+      return res.status(400).json({ error: "Saldo insuficiente" });
+    }
+    if (err.message === "USER_NOT_FOUND") {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+    console.error("Error enrolling:", err);
+    return res.status(500).json({ error: "Error al inscribirse" });
+  }
+});
+
+// --------------------
+// 🎬 Asegurar QuizRun en PRE_START
+// --------------------
+router.post("/ensure-run/:quizId", auth, async (req, res) => {
+  try {
+    const quizId = Number(req.params.quizId);
+    if (!quizId) {
+      return res.status(400).json({ error: "quizId inválido" });
+    }
+
+    const quiz = await prisma.quiz.findUnique({ where: { id: quizId } });
+    if (!quiz) {
+      return res.status(404).json({ error: "Quiz no encontrado" });
+    }
+
+    let run = await prisma.quizRun.findFirst({
+      where: {
+        quizId,
+        phase: { not: "FINISHED" },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!run) {
+      run = await prisma.quizRun.create({
+        data: {
+          quizId,
+          phase: "PRE_START",
+        },
+      });
+    }
+
+    return res.json({
+      run: {
+        id: run.id,
+        quizId: run.quizId,
+        phase: run.phase,
+        currentIndex: run.currentIndex,
+        totalPrizeCredits: run.totalPrizeCredits,
+        startedAt: run.startedAt,
+        phaseStartedAt: run.phaseStartedAt,
+        phaseEndsAt: run.phaseEndsAt,
+        finishedAt: run.finishedAt,
+        createdAt: run.createdAt,
+      },
+    });
+  } catch (err) {
+    console.error("Error ensure-run:", err);
+    return res.status(500).json({ error: "Error al asegurar run" });
+  }
+});
+
+// --------------------
+// 🔌 Desconectar participante
+// --------------------
+router.post("/:quizRunId/disconnect", auth, async (req, res) => {
+  try {
+    const quizRunId = Number(req.params.quizRunId);
+    const userId = req.user.id;
+
+    if (!quizRunId) {
+      return res.status(400).json({ error: "quizRunId inválido" });
+    }
+
+    const participant = await prisma.quizParticipant.findUnique({
+      where: {
+        quizRunId_userId: { quizRunId, userId },
+      },
+    });
+
+    if (participant) {
+      await prisma.quizParticipant.update({
+        where: { id: participant.id },
+        data: { status: "DISCONNECTED" },
+      });
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Error disconnect:", err);
+    return res.status(500).json({ error: "Error al desconectar" });
+  }
+});
+
+// --------------------
 // ⬆️ Unirse a un quiz en curso
 // --------------------
 router.post("/:quizRunId/join", auth, async (req, res) => {

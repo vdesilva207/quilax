@@ -70,7 +70,7 @@ export default function IdVerificationScreen() {
     const email = String(user?.email || '').toLowerCase();
     const allow = (
       process.env.EXPO_PUBLIC_KYC_SKIP_ALLOWLIST ||
-      'vdesilvaortiz@gmail.com'
+      ''
     )
       .split(',')
       .map((e) => e.trim().toLowerCase())

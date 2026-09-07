@@ -40,6 +40,7 @@ import faqRouter from "./routes/faq.js";
 import legalRouter from "./routes/legal.js";
 import reportsRouter from "./routes/reports.js";
 import walletAccessRouter from "./routes/walletAccess.js";
+import postsRouter from "./routes/posts.js";
 import redis from "./lib/redis.js";
 import prisma from "./lib/prisma.js";
 import { platformMiddleware } from "./middleware/platform.js";
@@ -171,6 +172,7 @@ app.use("/faq", faqRouter);
 app.use("/legal", legalRouter);
 app.use("/reports", reportsRouter);
 app.use("/wallet-access", walletAccessRouter);
+app.use("/posts", postsRouter);
 app.use("/admin", adminRoutes);
 
 await redis.set("test", "quilax");

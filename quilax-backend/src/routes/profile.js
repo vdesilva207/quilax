@@ -2,8 +2,144 @@ import express from 'express';
 import { auth, roleMiddleware } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import bcrypt from 'bcryptjs';
+import speakeasy from 'speakeasy';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
+const ENTRY_COST = 1;
+
+async function getOptionalViewerId(req) {
+  try {
+    const header = req.headers.authorization;
+    if (!header?.startsWith('Bearer ')) return null;
+    const token = header.split(' ')[1];
+    if (!token) return null;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return decoded?.id ? Number(decoded.id) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function findRecoverableEnrollments(userId) {
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+
+  const enrollments = await prisma.quizEnrollment.findMany({
+    where: { userId },
+    include: {
+      quiz: {
+        include: {
+          schedules: { orderBy: { scheduledAt: 'desc' }, take: 5 },
+          quizRuns: {
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+            select: { id: true, phase: true, finishedAt: true, createdAt: true },
+          },
+        },
+      },
+    },
+  });
+
+  const recoverable = [];
+
+  for (const enrollment of enrollments) {
+    const quiz = enrollment.quiz;
+    if (!quiz) continue;
+
+    const finishedRun = (quiz.quizRuns || []).find(
+      (r) => r.phase === 'FINISHED' || r.finishedAt
+    );
+    if (finishedRun) continue;
+
+    const activeRun = (quiz.quizRuns || []).find(
+      (r) => r.phase !== 'FINISHED' && !r.finishedAt
+    );
+    if (activeRun) continue;
+
+    const schedule = quiz.schedules?.[0];
+    const quizCancelled =
+      quiz.status === 'REJECTED' || quiz.status === 'FINISHED';
+    const neverRan =
+      !quiz.quizRuns?.length &&
+      schedule &&
+      new Date(schedule.scheduledAt) < cutoff;
+    const notLive =
+      quiz.status !== 'SCHEDULED' &&
+      quiz.status !== 'PUBLISHED' &&
+      quiz.status !== 'APPROVED' &&
+      quizCancelled;
+
+    if (quizCancelled || neverRan || notLive) {
+      recoverable.push({
+        enrollmentId: enrollment.id,
+        quizId: quiz.id,
+        title: quiz.title,
+        scheduledAt: schedule?.scheduledAt || null,
+        reason: quizCancelled ? 'CANCELLED' : 'NEVER_RAN',
+      });
+    } else if (schedule && new Date(schedule.scheduledAt) < cutoff && !quiz.quizRuns?.length) {
+      recoverable.push({
+        enrollmentId: enrollment.id,
+        quizId: quiz.id,
+        title: quiz.title,
+        scheduledAt: schedule.scheduledAt,
+        reason: 'NEVER_RAN',
+      });
+    }
+  }
+
+  return recoverable;
+}
+
+async function refundEnrollment(userId, quizId) {
+  return prisma.$transaction(async (tx) => {
+    const enrollment = await tx.quizEnrollment.findUnique({
+      where: { quizId_userId: { quizId, userId } },
+    });
+
+    if (!enrollment) {
+      return { refunded: false, reason: 'NO_ENROLLMENT' };
+    }
+
+    const alreadyRefunded = await tx.transaction.findFirst({
+      where: {
+        userId,
+        quizId,
+        type: { in: ['ENROLLMENT_REFUND', 'PRIZE_PAYOUT'] },
+        currency: { in: ['ENROLLMENT_REFUND', 'CREDIT_REFUND'] },
+      },
+    });
+
+    const paidEntry = await tx.transaction.findFirst({
+      where: { userId, quizId, type: 'QUIZ_ENTRY' },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    await tx.quizEnrollment.delete({ where: { id: enrollment.id } });
+
+    if (!paidEntry || alreadyRefunded) {
+      return { refunded: false, reason: alreadyRefunded ? 'ALREADY_REFUNDED' : 'NO_PAYMENT' };
+    }
+
+    await tx.user.update({
+      where: { id: userId },
+      data: { balance: { increment: ENTRY_COST } },
+    });
+
+    await tx.transaction.create({
+      data: {
+        userId,
+        quizId,
+        type: 'ENROLLMENT_REFUND',
+        amount: ENTRY_COST,
+        currency: 'ENROLLMENT_REFUND',
+      },
+    });
+
+    return { refunded: true };
+  });
+}
 
 // ============================
 // PERFIL DE USUARIO
@@ -179,6 +315,8 @@ router.put('/me', auth, async (req, res) => {
     const userId = req.user.id;
     const {
       fullName,
+      username,
+      bio,
       dateOfBirth,
       country,
       province,
@@ -187,6 +325,9 @@ router.put('/me', auth, async (req, res) => {
       timezone,
       guardianPhotoUrl,
       verificationVideoUrl,
+      profilePublic,
+      showQuizHistory,
+      showPrizes,
     } = req.body;
 
     // Validar datos
@@ -198,6 +339,47 @@ router.put('/me', auth, async (req, res) => {
       }
       updateData.fullName = fullName.trim();
     }
+
+    if (username !== undefined) {
+      const raw = typeof username === 'string' ? username.trim() : '';
+      if (!raw) {
+        updateData.username = null;
+      } else {
+        const normalized = raw.replace(/^@+/, '').slice(0, 30);
+        if (!/^[a-zA-Z0-9._]{3,30}$/.test(normalized)) {
+          return res.status(400).json({
+            error: 'El usuario debe tener 3–30 caracteres (letras, números, . o _)',
+            code: 'INVALID_USERNAME',
+          });
+        }
+        const taken = await prisma.user.findFirst({
+          where: {
+            username: { equals: normalized, mode: 'insensitive' },
+            NOT: { id: userId },
+          },
+          select: { id: true },
+        });
+        if (taken) {
+          return res.status(409).json({
+            error: 'Ese nombre de usuario ya está en uso',
+            code: 'USERNAME_TAKEN',
+          });
+        }
+        updateData.username = normalized;
+      }
+    }
+
+    if (bio !== undefined) {
+      const text = typeof bio === 'string' ? bio.trim() : '';
+      if (text.length > 160) {
+        return res.status(400).json({ error: 'La bio no puede superar 160 caracteres' });
+      }
+      updateData.bio = text || null;
+    }
+
+    if (typeof profilePublic === 'boolean') updateData.profilePublic = profilePublic;
+    if (typeof showQuizHistory === 'boolean') updateData.showQuizHistory = showQuizHistory;
+    if (typeof showPrizes === 'boolean') updateData.showPrizes = showPrizes;
 
     if (dateOfBirth) {
       const birthDate = new Date(dateOfBirth);
@@ -272,6 +454,8 @@ router.put('/me', auth, async (req, res) => {
         id: true,
         email: true,
         fullName: true,
+        username: true,
+        bio: true,
         dateOfBirth: true,
         isOver18: true,
         country: true,
@@ -283,6 +467,9 @@ router.put('/me', auth, async (req, res) => {
         verificationVideoUrl: true,
         emailVerified: true,
         idVerified: true,
+        profilePublic: true,
+        showQuizHistory: true,
+        showPrizes: true,
       }
     });
 
@@ -292,8 +479,90 @@ router.put('/me', auth, async (req, res) => {
       user: updatedUser
     });
   } catch (error) {
+    if (error?.code === 'P2002') {
+      return res.status(409).json({
+        error: 'Ese nombre de usuario ya está en uso',
+        code: 'USERNAME_TAKEN',
+      });
+    }
     console.error('Error updating user profile:', error);
     res.status(500).json({ error: 'Error al actualizar perfil' });
+  }
+});
+
+// Preferencias de notificación in-app (no OS push)
+router.get('/notification-settings', auth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { notificationSettings: true },
+    });
+    const defaults = { quiz: true, quizReview: true, messages: true, followers: true };
+    const stored =
+      user?.notificationSettings && typeof user.notificationSettings === 'object'
+        ? user.notificationSettings
+        : {};
+    res.json({ success: true, settings: { ...defaults, ...stored } });
+  } catch (error) {
+    console.error('Error getting notification settings:', error);
+    res.status(500).json({ error: 'Error al obtener preferencias de notificación' });
+  }
+});
+
+router.put('/notification-settings', auth, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const settings = {
+      quiz: body.quiz !== false,
+      quizReview: body.quizReview !== false,
+      messages: body.messages !== false,
+      followers: body.followers !== false,
+    };
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { notificationSettings: settings },
+    });
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error('Error saving notification settings:', error);
+    res.status(500).json({ error: 'Error al guardar preferencias de notificación' });
+  }
+});
+
+// Tokens push (Expo / FCM via Expo)
+router.post('/push-token', auth, async (req, res) => {
+  try {
+    const token = String(req.body?.token || '').trim();
+    const platform = String(req.body?.platform || '').trim().slice(0, 20) || null;
+    if (!token || token.length < 10 || token.length > 512) {
+      return res.status(400).json({ error: 'token inválido', code: 'INVALID_PUSH_TOKEN' });
+    }
+    const row = await prisma.pushToken.upsert({
+      where: { token },
+      create: { userId: req.user.id, token, platform },
+      update: { userId: req.user.id, platform, updatedAt: new Date() },
+      select: { id: true, token: true, platform: true },
+    });
+    res.json({ success: true, pushToken: row });
+  } catch (error) {
+    console.error('Error saving push token:', error);
+    res.status(500).json({ error: 'Error al guardar token push' });
+  }
+});
+
+router.delete('/push-token', auth, async (req, res) => {
+  try {
+    const token = String(req.query?.token || req.body?.token || '').trim();
+    if (!token) {
+      return res.status(400).json({ error: 'token requerido' });
+    }
+    await prisma.pushToken.deleteMany({
+      where: { token, userId: req.user.id },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting push token:', error);
+    res.status(500).json({ error: 'Error al eliminar token push' });
   }
 });
 
@@ -620,7 +889,7 @@ router.post('/identity/skip', auth, async (req, res) => {
 
     const allowlist = (
       process.env.KYC_SKIP_ALLOWLIST ||
-      'vdesilvaortiz@gmail.com'
+      ''
     )
       .split(',')
       .map((e) => e.trim().toLowerCase())
@@ -806,8 +1075,9 @@ router.post('/verify-id', auth, async (req, res) => {
       data: {
         idDocumentUrl: documentUrl,
         idDocumentType: documentType,
-        idVerified: true,
-        idVerifiedAt: new Date()
+        // Do not auto-verify — admin / Stripe Identity must confirm
+        idVerified: false,
+        idVerifiedAt: null,
       },
       select: {
         id: true,
@@ -819,7 +1089,7 @@ router.post('/verify-id', auth, async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Verificación de identidad enviada',
+      message: 'Documento enviado. Pendiente de verificación.',
       user: updatedUser
     });
   } catch (error) {
@@ -948,55 +1218,156 @@ router.get('/security', auth, async (req, res) => {
   }
 });
 
-// Habilitar 2FA
-router.post('/security/2fa/enable', auth, async (req, res) => {
+async function setupTwoFactorHandler(req, res) {
   try {
     const userId = req.user.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, twoFactorEnabled: true },
+    });
 
-    // Generar secreto 2FA (simulado)
-    const twoFactorSecret = Math.random().toString(36).substring(2, 15);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
 
-    const updatedUser = await prisma.user.update({
+    if (user.twoFactorEnabled) {
+      return res.status(400).json({ error: '2FA ya está habilitado' });
+    }
+
+    const secret = speakeasy.generateSecret({
+      name: `Quilax (${user.email})`,
+      issuer: 'Quilax',
+    });
+
+    await prisma.user.update({
       where: { id: userId },
       data: {
-        twoFactorSecret,
-        twoFactorEnabled: true
+        twoFactorSecret: secret.base32,
+        twoFactorEnabled: false,
       },
-      select: {
-        twoFactorEnabled: true
-      }
     });
 
     res.json({
       success: true,
-      message: '2FA habilitado',
-      secret: twoFactorSecret // En producción, esto debería mostrarse solo una vez
+      secret: secret.base32,
+      otpauthUrl: secret.otpauth_url,
     });
   } catch (error) {
-    console.error('Error enabling 2FA:', error);
-    res.status(500).json({ error: 'Error al habilitar 2FA' });
+    console.error('Error setting up 2FA:', error);
+    res.status(500).json({ error: 'Error al configurar 2FA' });
+  }
+}
+
+// Setup 2FA (guardar secreto sin habilitar)
+router.post('/security/2fa/setup', auth, setupTwoFactorHandler);
+
+// Alias histórico: enable → mismo flujo que setup
+router.post('/security/2fa/enable', auth, setupTwoFactorHandler);
+
+// Confirmar 2FA con TOTP
+router.post('/security/2fa/confirm', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Código 2FA requerido' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { twoFactorSecret: true, twoFactorEnabled: true },
+    });
+
+    if (!user?.twoFactorSecret) {
+      return res.status(400).json({ error: 'Debes iniciar el setup de 2FA primero' });
+    }
+
+    if (user.twoFactorEnabled) {
+      return res.json({
+        success: true,
+        security: { twoFactorEnabled: true },
+      });
+    }
+
+    const verified = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: 'base32',
+      token: String(token).trim(),
+      window: 1,
+    });
+
+    if (!verified) {
+      return res.status(400).json({ error: 'Código 2FA incorrecto' });
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { twoFactorEnabled: true },
+    });
+
+    res.json({
+      success: true,
+      security: { twoFactorEnabled: true },
+    });
+  } catch (error) {
+    console.error('Error confirming 2FA:', error);
+    res.status(500).json({ error: 'Error al confirmar 2FA' });
   }
 });
 
-// Deshabilitar 2FA
+// Deshabilitar 2FA (password + TOTP)
 router.post('/security/2fa/disable', auth, async (req, res) => {
   try {
     const userId = req.user.id;
+    const { token, password } = req.body;
 
-    const updatedUser = await prisma.user.update({
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Código 2FA y contraseña son requeridos' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { password: true, twoFactorSecret: true, twoFactorEnabled: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (!user.password) {
+      return res.status(400).json({ error: 'Cuenta sin contraseña local' });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ error: 'Contraseña incorrecta' });
+    }
+
+    if (user.twoFactorEnabled && user.twoFactorSecret) {
+      const verified = speakeasy.totp.verify({
+        secret: user.twoFactorSecret,
+        encoding: 'base32',
+        token: String(token).trim(),
+        window: 1,
+      });
+      if (!verified) {
+        return res.status(400).json({ error: 'Código 2FA incorrecto' });
+      }
+    }
+
+    await prisma.user.update({
       where: { id: userId },
       data: {
         twoFactorEnabled: false,
-        twoFactorSecret: null
+        twoFactorSecret: null,
       },
-      select: {
-        twoFactorEnabled: true
-      }
     });
 
     res.json({
       success: true,
-      message: '2FA deshabilitado'
+      message: '2FA deshabilitado',
+      security: { twoFactorEnabled: false },
     });
   } catch (error) {
     console.error('Error disabling 2FA:', error);
@@ -1205,6 +1576,444 @@ router.get('/statistics/win-rate', auth, async (req, res) => {
 // PROFILE SHARING
 // ============================
 
+// GDPR data export
+router.get('/data-export', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const [
+      profile,
+      transactions,
+      payments,
+      withdrawals,
+      quizEnrollments,
+      participations,
+      notifications,
+    ] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          fullName: true,
+          username: true,
+          bio: true,
+          profilePhoto: true,
+          balance: true,
+          points: true,
+          currency: true,
+          country: true,
+          nationality: true,
+          province: true,
+          gender: true,
+          timezone: true,
+          createdAt: true,
+          emailVerified: true,
+          idVerified: true,
+          idVerifiedAt: true,
+          idDocumentType: true,
+          dateOfBirth: true,
+          isOver18: true,
+          language: true,
+          profilePublic: true,
+          showQuizHistory: true,
+          showPrizes: true,
+          isBankVerified: true,
+          twoFactorEnabled: true,
+          lastLoginAt: true,
+        },
+      }),
+      prisma.transaction.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 5000,
+      }),
+      prisma.payment.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 1000,
+        select: {
+          id: true,
+          amount: true,
+          currency: true,
+          status: true,
+          creditsPurchased: true,
+          paymentType: true,
+          createdAt: true,
+          failureReason: true,
+        },
+      }),
+      prisma.withdraw.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 1000,
+        select: {
+          id: true,
+          amount: true,
+          currency: true,
+          status: true,
+          processingFee: true,
+          createdAt: true,
+          processedAt: true,
+          failureReason: true,
+        },
+      }),
+      prisma.quizEnrollment.findMany({
+        where: { userId },
+        include: {
+          quiz: { select: { id: true, title: true, status: true } },
+        },
+        take: 2000,
+      }),
+      prisma.quizParticipant.findMany({
+        where: { userId },
+        take: 2000,
+        select: {
+          id: true,
+          quizRunId: true,
+          status: true,
+          score: true,
+          joinedAt: true,
+        },
+      }),
+      prisma.notification.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 2000,
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          body: true,
+          data: true,
+          read: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        exportedAt: new Date().toISOString(),
+        profile,
+        transactions,
+        payments,
+        withdrawals,
+        quizEnrollments,
+        participations,
+        notifications,
+      },
+    });
+  } catch (error) {
+    console.error('Error exporting data:', error);
+    res.status(500).json({ error: 'Error al exportar datos' });
+  }
+});
+
+// Upcoming enrollments for current user
+router.get('/me/upcoming-enrollments', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const now = new Date();
+
+    const enrollments = await prisma.quizEnrollment.findMany({
+      where: { userId },
+      include: {
+        quiz: {
+          include: {
+            questions: { select: { id: true } },
+            schedules: { orderBy: { scheduledAt: 'asc' } },
+            quizRuns: {
+              where: { phase: { not: 'FINISHED' } },
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+            _count: { select: { enrollments: true } },
+          },
+        },
+      },
+    });
+
+    const items = [];
+    for (const enrollment of enrollments) {
+      const quiz = enrollment.quiz;
+      if (!quiz) continue;
+
+      const futureSchedule = (quiz.schedules || []).find(
+        (s) => new Date(s.scheduledAt) >= now
+      );
+      const activeRun = quiz.quizRuns?.[0] || null;
+      const isActivePhase =
+        activeRun &&
+        (activeRun.phase === 'PRE_START' ||
+          activeRun.phase === 'QUESTION_READ' ||
+          activeRun.phase === 'QUESTION_ANSWER' ||
+          activeRun.phase === 'QUESTION_CORRECTION' ||
+          activeRun.phase === 'QUESTION_RANKING');
+
+      if (!futureSchedule && !isActivePhase) continue;
+
+      items.push({
+        enrollmentId: enrollment.id,
+        quizId: quiz.id,
+        title: quiz.title,
+        category: null,
+        questionsCount: quiz.questions?.length || 0,
+        enrollmentCount: quiz._count?.enrollments || 0,
+        startsAt: futureSchedule?.scheduledAt || activeRun?.startedAt || null,
+        lobby: activeRun?.phase === 'PRE_START',
+        live: !!(activeRun && activeRun.phase !== 'PRE_START' && activeRun.phase !== 'FINISHED'),
+        activeRunId: activeRun?.id || null,
+      });
+    }
+
+    res.json({ enrollments: items });
+  } catch (error) {
+    console.error('Error upcoming enrollments:', error);
+    res.status(500).json({ error: 'Error al obtener inscripciones próximas' });
+  }
+});
+
+router.get('/me/recoverable-enrollments', auth, async (req, res) => {
+  try {
+    const enrollments = await findRecoverableEnrollments(req.user.id);
+    res.json({ enrollments });
+  } catch (error) {
+    console.error('Error recoverable enrollments:', error);
+    res.status(500).json({ error: 'Error al obtener inscripciones recuperables' });
+  }
+});
+
+router.post('/me/recoverable-enrollments/recover-all', auth, async (req, res) => {
+  try {
+    const recoverable = await findRecoverableEnrollments(req.user.id);
+    let refunded = 0;
+
+    for (const item of recoverable) {
+      const result = await refundEnrollment(req.user.id, item.quizId);
+      if (result.refunded) refunded += 1;
+    }
+
+    res.json({ success: true, refunded });
+  } catch (error) {
+    console.error('Error recover-all enrollments:', error);
+    res.status(500).json({ error: 'Error al recuperar inscripciones' });
+  }
+});
+
+router.post('/me/recoverable-enrollments/:quizId/recover', auth, async (req, res) => {
+  try {
+    const quizId = Number(req.params.quizId);
+    if (!quizId) return res.status(400).json({ error: 'quizId inválido' });
+
+    const recoverable = await findRecoverableEnrollments(req.user.id);
+    if (!recoverable.some((e) => e.quizId === quizId)) {
+      return res.status(400).json({ error: 'Inscripción no recuperable' });
+    }
+
+    const result = await refundEnrollment(req.user.id, quizId);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Error recovering enrollment:', error);
+    res.status(500).json({ error: 'Error al recuperar inscripción' });
+  }
+});
+
+// Perfil público
+router.get('/:userId/public', async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId, 10);
+    if (!userId) return res.status(400).json({ error: 'userId inválido' });
+
+    const viewerId = await getOptionalViewerId(req);
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        bio: true,
+        profilePhoto: true,
+        country: true,
+        createdAt: true,
+        profilePublic: true,
+        showQuizHistory: true,
+        showPrizes: true,
+        points: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const isOwner = viewerId === userId;
+    if (!user.profilePublic && !isOwner) {
+      return res.status(403).json({ error: 'Este perfil es privado', private: true });
+    }
+
+    const [followers, following, activeSeason] = await Promise.all([
+      prisma.follow.count({ where: { followingId: userId } }),
+      prisma.follow.count({ where: { followerId: userId } }),
+      prisma.season.findFirst({
+        where: {
+          startsAt: { lte: new Date() },
+          endsAt: { gt: new Date() },
+        },
+      }),
+    ]);
+
+    let seasonPoints = null;
+    let seasonRank = null;
+    if (activeSeason) {
+      const su = await prisma.seasonUser.findUnique({
+        where: {
+          userId_seasonId: { userId, seasonId: activeSeason.id },
+        },
+      });
+      seasonPoints = su?.points ?? 0;
+      if (su) {
+        const better = await prisma.seasonUser.count({
+          where: {
+            seasonId: activeSeason.id,
+            points: { gt: su.points },
+          },
+        });
+        seasonRank = better + 1;
+      }
+    }
+
+    const { profilePublic, ...publicProfile } = user;
+
+    res.json({
+      success: true,
+      profile: {
+        ...publicProfile,
+        statistics: {
+          followers,
+          following,
+          seasonPoints,
+          seasonRank,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Error public profile:', error);
+    res.status(500).json({ error: 'Error al obtener perfil público' });
+  }
+});
+
+// Historial público / propio
+router.get('/:userId/history', async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId, 10);
+    if (!userId) return res.status(400).json({ error: 'userId inválido' });
+
+    const viewerId = await getOptionalViewerId(req);
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, showQuizHistory: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const isOwner = viewerId === userId;
+    if (!user.showQuizHistory && !isOwner) {
+      return res.status(403).json({ error: 'Historial privado', private: true });
+    }
+
+    const [participants, scores, prizes] = await Promise.all([
+      prisma.quizParticipant.findMany({
+        where: { userId },
+        take: 100,
+        orderBy: { joinedAt: 'desc' },
+        include: {
+          quizRun: {
+            select: {
+              id: true,
+              quizId: true,
+              phase: true,
+              finishedAt: true,
+              quiz: { select: { id: true, title: true } },
+            },
+          },
+        },
+      }),
+      prisma.quizScore.findMany({
+        where: { userId },
+        take: 100,
+        orderBy: { lastAnswerAt: 'desc' },
+        include: {
+          quizRun: {
+            select: {
+              id: true,
+              quizId: true,
+              quiz: { select: { id: true, title: true } },
+            },
+          },
+        },
+      }),
+      prisma.quizWinner.findMany({
+        where: { userId },
+        take: 100,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          quiz: { select: { id: true, title: true } },
+        },
+      }),
+    ]);
+
+    const participatedMap = new Map();
+    for (const p of participants) {
+      const key = p.quizRunId;
+      participatedMap.set(key, {
+        quizRunId: p.quizRunId,
+        quizId: p.quizRun?.quizId,
+        title: p.quizRun?.quiz?.title,
+        status: p.status,
+        score: p.score,
+        joinedAt: p.joinedAt,
+        finishedAt: p.quizRun?.finishedAt || null,
+      });
+    }
+    for (const s of scores) {
+      const existing = participatedMap.get(s.quizRunId) || {
+        quizRunId: s.quizRunId,
+        quizId: s.quizRun?.quizId,
+        title: s.quizRun?.quiz?.title,
+      };
+      participatedMap.set(s.quizRunId, {
+        ...existing,
+        score: s.score ?? existing.score,
+        lastAnswerAt: s.lastAnswerAt,
+      });
+    }
+
+    res.json({
+      history: {
+        participated: Array.from(participatedMap.values()),
+        prizes: prizes.map((p) => ({
+          quizId: p.quizId,
+          title: p.quiz?.title,
+          creditsWon: p.creditsWon,
+          percent: p.percent,
+          type: p.type,
+          createdAt: p.createdAt,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('Error profile history:', error);
+    res.status(500).json({ error: 'Error al obtener historial' });
+  }
+});
+
 // Generar enlace de compartir perfil
 router.get('/:userId/share', async (req, res) => {
   try {
@@ -1278,7 +2087,8 @@ function getTransactionDescription(transaction) {
     'PRIZE_PAYOUT': 'Premio ganado',
     'PLATFORM_FEE': 'Comisión de plataforma',
     'WITHDRAW': 'Retiro de fondos',
-    'BANK_TO_CREDITS': 'Compra de créditos'
+    'BANK_TO_CREDITS': 'Compra de créditos',
+    'ENROLLMENT_REFUND': 'Reembolso de inscripción'
   };
 
   let description = descriptions[transaction.type] || 'Transacción';

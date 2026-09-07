@@ -1,4 +1,5 @@
 import express from "express";
+import prisma from "../lib/prisma.js";
 import {
   getActiveSeasonController,
   getSeasonsHistory,
@@ -21,6 +22,47 @@ const router = express.Router();
  * Temporada activa
  */
 router.get("/active", getActiveSeasonController);
+
+/**
+ * Temporada anterior (más recientemente finalizada)
+ */
+router.get("/previous", async (req, res) => {
+  try {
+    const now = new Date();
+    const season = await prisma.season.findFirst({
+      where: { endsAt: { lt: now } },
+      orderBy: { endsAt: "desc" },
+      include: {
+        seasonWinners: {
+          orderBy: { position: "asc" },
+          take: 10,
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                fullName: true,
+                profilePhoto: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!season) {
+      return res.json({ season: null, winners: [] });
+    }
+
+    res.json({
+      season,
+      winners: season.seasonWinners || [],
+    });
+  } catch (error) {
+    console.error("❌ getPreviousSeason error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 /**
  * Historial
