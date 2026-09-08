@@ -15,6 +15,8 @@ export default function WalletHome() {
   const balance = status?.balance ?? 0;
   const currency = status?.currency ?? 'EUR';
   const name = status?.user?.fullName || status?.user?.username || status?.user?.email || 'Usuario';
+  const bankOk = !!(status?.verification?.isBankVerified && status?.verification?.hasBankAccount);
+  const canWithdraw = !!status?.eligibility?.canWithdraw;
 
   return (
     <View style={styles.container}>
@@ -23,6 +25,11 @@ export default function WalletHome() {
         <Text style={styles.title}>Hola, {name}</Text>
         <Text style={styles.balance}>{balance} créditos</Text>
         <Text style={styles.meta}>Moneda: {currency}</Text>
+        <View style={[styles.chip, bankOk ? styles.chipOk : styles.chipWarn]}>
+          <Text style={[styles.chipText, bankOk ? styles.chipTextOk : styles.chipTextWarn]}>
+            {bankOk ? 'Banco conectado' : 'Banco pendiente'}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.actions}>
@@ -30,7 +37,14 @@ export default function WalletHome() {
           <Text style={styles.btnText}>Depositar</Text>
         </Pressable>
         <Pressable style={[styles.btn, styles.btnSecondary]} onPress={() => router.push('/withdraw')}>
-          <Text style={[styles.btnText, styles.btnSecondaryText]}>Retirar</Text>
+          <Text style={[styles.btnText, styles.btnSecondaryText]}>
+            Retirar{canWithdraw ? '' : ' · requiere banco'}
+          </Text>
+        </Pressable>
+        <Pressable style={[styles.btn, styles.btnSecondary]} onPress={() => router.push('/settings/bank')}>
+          <Text style={[styles.btnText, styles.btnSecondaryText]}>
+            {bankOk ? 'Gestionar cuenta bancaria' : 'Conectar cuenta bancaria'}
+          </Text>
         </Pressable>
         <Pressable style={[styles.btn, styles.btnSecondary]} onPress={() => router.push('/auth/verify')}>
           <Text style={[styles.btnText, styles.btnSecondaryText]}>Verificar identidad</Text>
@@ -56,6 +70,18 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700', color: Colors.text },
   balance: { fontSize: 36, fontWeight: '800', color: Colors.primary },
   meta: { color: Colors.textSecondary },
+  chip: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  chipOk: { backgroundColor: '#DCFCE7' },
+  chipWarn: { backgroundColor: '#FEF3C7' },
+  chipText: { fontSize: 12, fontWeight: '700' },
+  chipTextOk: { color: '#166534' },
+  chipTextWarn: { color: '#92400E' },
   actions: { gap: Spacing.two },
   btn: { backgroundColor: Colors.primary, padding: Spacing.three, borderRadius: 12, alignItems: 'center' },
   btnSecondary: { backgroundColor: Colors.backgroundElement },

@@ -9,7 +9,6 @@ function resolveApiBaseUrl() {
     'http://127.0.0.1:3001'
   ).replace(/\/$/, '');
 
-  // Solo reescribir localhost → host actual (dev en LAN). Nunca pisar api.appquilax.com.
   try {
     const u = new URL(configured);
     if (u.hostname !== '127.0.0.1' && u.hostname !== 'localhost') {
@@ -34,6 +33,20 @@ async function resolveAuthToken() {
   return getToken();
 }
 
+export class ApiError extends Error {
+  status?: number;
+  code?: string;
+  payload?: any;
+
+  constructor(message: string, opts: { status?: number; code?: string; payload?: any } = {}) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = opts.status;
+    this.code = opts.code;
+    this.payload = opts.payload;
+  }
+}
+
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const token = await resolveAuthToken();
   const headers: Record<string, string> = {
@@ -52,8 +65,12 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error || 'Error en la petición');
+    const errBody = await response.json().catch(() => ({}));
+    throw new ApiError(errBody.error || errBody.message || 'Error en la petición', {
+      status: response.status,
+      code: errBody.code,
+      payload: errBody,
+    });
   }
 
   return response.json();

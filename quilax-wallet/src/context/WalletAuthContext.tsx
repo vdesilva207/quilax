@@ -12,6 +12,7 @@ type WalletStatus = {
     isBankVerified?: boolean;
     idVerified?: boolean;
     hasBankAccount?: boolean;
+    hasConnectAccount?: boolean;
   };
   eligibility?: { canDeposit?: boolean; canWithdraw?: boolean; reasons?: string[] };
 };

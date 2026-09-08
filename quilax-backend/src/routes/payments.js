@@ -3,6 +3,8 @@ import Stripe from "stripe";
 import speakeasy from "speakeasy";
 import prisma from "../lib/prisma.js";
 import { auth } from "../middleware/auth.js";
+import { requireMoneyEligibility } from "../middleware/moneyEligibility.js";
+import { requireAllowedGeo } from "../middleware/geo.js";
 import {
   createPaymentIntent,
   getUserPaymentHistory,
@@ -15,9 +17,13 @@ import { decrypt, encryptIBAN, encryptAccountName } from "../services/encryption
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const FRONTEND_BASE =
-  process.env.FRONTEND_APP_URL ||
+// Wallet web (Connect return/refresh). Prefer WALLET_APP_URL over marketing FRONTEND_APP_URL.
+const WALLET_BASE =
+  process.env.WALLET_APP_URL ||
   process.env.FRONTEND_URL ||
+  (process.env.FRONTEND_APP_URL?.includes("gestion.")
+    ? process.env.FRONTEND_APP_URL
+    : null) ||
   "https://gestion.appquilax.com";
 
 const PAYMENT_REGIONS = [
@@ -84,14 +90,28 @@ function requireTotpIfEnabled(user, totpCode) {
 }
 
 async function createConnectAccountLink(accountId) {
-  const refreshUrl = `${FRONTEND_BASE.replace(/\/$/, "")}/settings/bank?refresh=1`;
-  const returnUrl = `${FRONTEND_BASE.replace(/\/$/, "")}/settings/bank?return=1`;
+  const base = WALLET_BASE.replace(/\/$/, "");
+  const refreshUrl = `${base}/settings/bank?refresh=1`;
+  const returnUrl = `${base}/settings/bank?return=1`;
   return stripe.accountLinks.create({
     account: accountId,
     refresh_url: refreshUrl,
     return_url: returnUrl,
     type: "account_onboarding",
   });
+}
+
+/** Marca banco verificado en BD cuando Connect ya permite payouts / datos enviados. */
+async function syncBankVerifiedFromConnect(userId, { payoutsEnabled, detailsSubmitted }) {
+  if (!payoutsEnabled && !detailsSubmitted) return;
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isBankVerified: true },
+    });
+  } catch {
+    /* ignore */
+  }
 }
 
 // ============================
@@ -155,6 +175,8 @@ router.get("/connect/status", auth, async (req, res) => {
     const detailsSubmitted = !!account.details_submitted;
     const connected = chargesEnabled && payoutsEnabled;
 
+    await syncBankVerifiedFromConnect(req.user.id, { payoutsEnabled, detailsSubmitted });
+
     let bankLast4 = null;
     try {
       if (user.bankAccountIban) {
@@ -187,7 +209,7 @@ router.get("/connect/status", auth, async (req, res) => {
   }
 });
 
-router.post("/connect/onboard", auth, async (req, res) => {
+router.post("/connect/onboard", auth, requireAllowedGeo(), requireMoneyEligibility("BANK_UPDATE"), async (req, res) => {
   try {
     const userId = req.user.id;
     const { country } = req.body || {};
@@ -250,6 +272,26 @@ router.post("/connect/refresh", auth, async (req, res) => {
   }
 });
 
+/** Abre el Dashboard Express de Stripe para gestionar IBAN / identidad. */
+router.post("/connect/dashboard", auth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { stripeConnectAccountId: true },
+    });
+    if (!user?.stripeConnectAccountId) {
+      return res.status(400).json({ error: "Primero conecta tu cuenta bancaria" });
+    }
+    const link = await stripe.accounts.createLoginLink(user.stripeConnectAccountId);
+    res.json({ url: link.url });
+  } catch (error) {
+    console.error("Error creating Connect login link:", error);
+    res.status(400).json({
+      error: error.message || "No se pudo abrir el panel de Stripe. Completa el onboarding primero.",
+    });
+  }
+});
+
 // ============================
 // COMPRAR CRÉDITOS
 // ============================
@@ -266,7 +308,12 @@ router.get("/packages", auth, async (req, res) => {
 });
 
 // Crear payment intent para comprar créditos
-router.post("/create-intent", auth, async (req, res) => {
+router.post(
+  "/create-intent",
+  auth,
+  requireAllowedGeo(),
+  requireMoneyEligibility("DEPOSIT"),
+  async (req, res) => {
   try {
     const { credits, totpCode } = req.body;
     const userId = req.user.id;

@@ -111,13 +111,16 @@ export async function markTransactionAsSuspicious(transactionId, reasons) {
     where: { id: transactionId },
     include: {
       user: {
-        select: {
-          id: true,
-          email: true
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+          }
         }
       }
-    }
-  });
+    });
+
+  if (!transaction) return;
 
   // Notificar a todos los admins
   const admins = await prisma.user.findMany({
@@ -125,12 +128,13 @@ export async function markTransactionAsSuspicious(transactionId, reasons) {
   });
 
   const io = getIO();
+  const displayName = transaction.user?.fullName || transaction.user?.email || String(transaction.userId);
   admins.forEach(admin => {
     io.to(`user:${admin.id}`).emit("suspicious:transaction", {
       transactionId,
       userId: transaction.userId,
-      userEmail: transaction.user.email,
-      userName: transaction.user.fullName,
+      userEmail: transaction.user?.email,
+      userName: displayName,
       amount: transaction.amount,
       type: transaction.type,
       reasons,
@@ -145,7 +149,7 @@ export async function markTransactionAsSuspicious(transactionId, reasons) {
         userId: admin.id,
         type: "SUSPICIOUS_TRANSACTION",
         title: "Transacción sospechosa detectada",
-        body: `Usuario ${transaction.user.email} realizó una transacción de ${transaction.amount} EUR marcada como sospechosa. Razones: ${reasons.join(", ")}`,
+        body: `Usuario ${transaction.user?.email || transaction.userId} realizó una transacción de ${transaction.amount} marcada como sospechosa. Razones: ${reasons.join(", ")}`,
         data: {
           transactionId,
           userId: transaction.userId,
@@ -156,7 +160,7 @@ export async function markTransactionAsSuspicious(transactionId, reasons) {
     });
   }
 
-  console.log(`⚠️ Suspicious transaction detected: User ${transaction.user.email}, Amount ${transaction.amount}, Reasons: ${reasons.join(", ")}`);
+  console.log(`⚠️ Suspicious transaction detected: User ${transaction.user?.email}, Amount ${transaction.amount}, Reasons: ${reasons.join(", ")}`);
 }
 
 /**

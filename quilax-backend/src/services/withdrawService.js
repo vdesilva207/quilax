@@ -16,7 +16,7 @@ const WITHDRAW_SCHEDULE_HOURS = 24; // Horas entre retiros fraccionados
 SOLICITAR RETIRO DE PREMIOS
 ====================================
 */
-export async function createWithdrawRequest(userId, amount) {
+export async function createWithdrawRequest(userId, amount, ipAddress = null) {
   try {
     // Obtener configuración de límites
     const settings = await prisma.systemSettings.findFirst();
@@ -33,7 +33,10 @@ export async function createWithdrawRequest(userId, amount) {
         bankAccountBic: true,
         isBankVerified: true,
         isOver18: true,
-        largePrizeVerified: true
+        idVerified: true,
+        stripeConnectAccountId: true,
+        isBanned: true,
+        email: true,
       }
     });
 
@@ -41,12 +44,28 @@ export async function createWithdrawRequest(userId, amount) {
       throw new Error('Usuario no encontrado');
     }
 
+    if (user.isBanned) {
+      throw new Error('Tu cuenta está suspendida');
+    }
+
     // Validaciones
     if (!user.isOver18) {
       throw new Error('Debes ser mayor de 18 años para retirar fondos');
     }
 
-    if (!user.isBankVerified || !user.bankAccountIban) {
+    const kycRequired =
+      process.env.MONEY_REQUIRE_KYC !== 'false' &&
+      !(
+        process.env.NODE_ENV !== 'production' &&
+        (process.env.DEV_SKIP_KYC === 'true' || process.env.DEV_SKIP_KYC === '1')
+      );
+    if (kycRequired && !user.idVerified) {
+      throw new Error('Debes verificar tu identidad (KYC) antes de retirar');
+    }
+
+    const legacyBank = user.isBankVerified && !!user.bankAccountIban;
+    const connectBank = user.isBankVerified && !!user.stripeConnectAccountId;
+    if (!legacyBank && !connectBank) {
       throw new Error('Debes tener una cuenta bancaria verificada');
     }
 
@@ -98,8 +117,8 @@ export async function createWithdrawRequest(userId, amount) {
       throw new Error('Ya tienes un retiro en proceso');
     }
 
-    // Crear solicitud de retiro simple y procesar automáticamente
-    const withdraw = await prisma.$transaction(async (tx) => {
+    // Crear solicitud de retiro
+    const { withdraw, transactionId } = await prisma.$transaction(async (tx) => {
       // Descontar saldo del usuario
       await tx.user.update({
         where: { id: userId },
@@ -112,61 +131,80 @@ export async function createWithdrawRequest(userId, amount) {
           userId,
           type: 'WITHDRAW',
           amount: -amount,
-          currency: 'EUR'
+          currency: 'EUR',
+          ipAddress: ipAddress || null,
         }
       });
 
-      // Detectar transacción sospechosa
-      const suspicious = await detectSuspiciousTransaction(userId, amount, 'WITHDRAW');
-      if (suspicious.isSuspicious) {
-        await markTransactionAsSuspicious(transaction.id, suspicious.reasons);
-      }
-
-      // Crear retiro con estado PROCESSING (se procesa automáticamente)
-      return await tx.withdraw.create({
+      // Crear retiro (Connect puede no tener IBAN local)
+      const created = await tx.withdraw.create({
         data: {
           userId,
           amount,
           currency: 'EUR',
           status: 'PROCESSING',
-          bankAccountIban: user.bankAccountIban,
-          bankAccountName: user.bankAccountName,
+          bankAccountIban: user.bankAccountIban || `CONNECT:${user.stripeConnectAccountId}`,
+          bankAccountName: user.bankAccountName || user.email || 'Connect',
           processingFee: Math.round(processingFee * 100) // Convertir a centavos
         }
       });
+
+      return { withdraw: created, transactionId: transaction.id };
     });
 
-    // Procesar automáticamente con Stripe
+    // Detectar sospecha fuera de la tx (notifica admins)
+    let heldForReview = false;
     try {
-      await processWithdrawRequest(withdraw.id);
-    } catch (error) {
-      // Si falla el procesamiento, marcar como fallido
-      await prisma.withdraw.update({
-        where: { id: withdraw.id },
-        data: {
-          status: 'REJECTED',
-          failureReason: error.message
-        }
-      });
-
-      // Devolver saldo al usuario
-      await prisma.$transaction(async (tx) => {
-        await tx.user.update({
-          where: { id: userId },
-          data: { balance: { increment: amount } }
-        });
-
-        await tx.transaction.create({
+      const suspicious = await detectSuspiciousTransaction(userId, amount, 'WITHDRAW', ipAddress);
+      if (suspicious.isSuspicious) {
+        await markTransactionAsSuspicious(transactionId, suspicious.reasons);
+        await prisma.withdraw.update({
+          where: { id: withdraw.id },
           data: {
-            userId,
-            type: 'WITHDRAW',
-            amount: amount,
-            currency: 'EUR'
+            status: 'REQUESTED',
+            failureReason: `Revisión manual: ${suspicious.reasons.join('; ')}`.slice(0, 500),
+          },
+        });
+        heldForReview = true;
+        console.warn(`⚠️ Withdraw ${withdraw.id} held for review (user ${userId})`);
+      }
+    } catch (suspErr) {
+      console.error('Suspicious check failed (continuing):', suspErr?.message || suspErr);
+    }
+
+    // Procesar automáticamente con Stripe solo si no está en revisión
+    if (!heldForReview) {
+      try {
+        await processWithdrawRequest(withdraw.id);
+      } catch (error) {
+        // Si falla el procesamiento, marcar como fallido
+        await prisma.withdraw.update({
+          where: { id: withdraw.id },
+          data: {
+            status: 'REJECTED',
+            failureReason: error.message
           }
         });
-      });
 
-      throw error;
+        // Devolver saldo al usuario
+        await prisma.$transaction(async (tx) => {
+          await tx.user.update({
+            where: { id: userId },
+            data: { balance: { increment: amount } }
+          });
+
+          await tx.transaction.create({
+            data: {
+              userId,
+              type: 'WITHDRAW',
+              amount: amount,
+              currency: 'EUR'
+            }
+          });
+        });
+
+        throw error;
+      }
     }
 
     // Notificar al usuario
@@ -175,15 +213,21 @@ export async function createWithdrawRequest(userId, amount) {
       amount,
       processingFee,
       totalAmount,
-      message: `Solicitud de retiro de ${amount} EUR recibida. Procesando...`
+      heldForReview,
+      message: heldForReview
+        ? `Solicitud de retiro de ${amount} EUR en revisión de seguridad.`
+        : `Solicitud de retiro de ${amount} EUR recibida. Procesando...`
     });
 
     return {
-      withdraw,
+      withdraw: heldForReview
+        ? await prisma.withdraw.findUnique({ where: { id: withdraw.id } })
+        : withdraw,
       processingFee,
       totalAmount,
-      estimatedTime: '1-3 días hábiles',
-      fractionated: false
+      estimatedTime: heldForReview ? 'Revisión manual (1–3 días)' : '1-3 días hábiles',
+      fractionated: false,
+      heldForReview,
     };
 
   } catch (error) {

@@ -2,6 +2,7 @@ import express from "express";
 import prisma from "../lib/prisma.js";
 import redis from "../lib/redis.js";
 import { auth } from "../middleware/auth.js";
+import { requireMoneyEligibility } from "../middleware/moneyEligibility.js";
 import { getIO } from "../socket.js";
 import { aggregateMaxCredits, calculateMaxCredits } from "../utils/quizCredits.js";
 
@@ -34,7 +35,7 @@ function getEarlyJoinBonus(joinPosition) {
 // --------------------
 // 📝 Inscribirse en un quiz (antes del run)
 // --------------------
-router.post("/enroll/:quizId", auth, async (req, res) => {
+router.post("/enroll/:quizId", auth, requireMoneyEligibility("QUIZ_ENTRY"), async (req, res) => {
   try {
     const quizId = Number(req.params.quizId);
     const userId = req.user.id;
@@ -197,7 +198,7 @@ router.post("/:quizRunId/disconnect", auth, async (req, res) => {
 // --------------------
 // ⬆️ Unirse a un quiz en curso
 // --------------------
-router.post("/:quizRunId/join", auth, async (req, res) => {
+router.post("/:quizRunId/join", auth, requireMoneyEligibility("QUIZ_ENTRY"), async (req, res) => {
   try {
     const quizRunId = Number(req.params.quizRunId);
 

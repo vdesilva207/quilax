@@ -37,7 +37,11 @@ export default function LoginScreen() {
     try {
       const result = await login(email.trim(), password);
       if (!result.success) {
-        setError(result.error || t('auth.loginScreen.invalidCredentials'));
+        if (result.code === 'ACCOUNT_BANNED') {
+          setError(result.error || 'Tu cuenta está suspendida. Contacta con soporte.');
+        } else {
+          setError(result.error || t('auth.loginScreen.invalidCredentials'));
+        }
         return;
       }
       // Login = solo email + contraseña. No reanudar onboarding de registro.

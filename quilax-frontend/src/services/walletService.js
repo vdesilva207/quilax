@@ -18,7 +18,11 @@ export const walletService = {
       });
       return { success: true, data: data.paymentIntent };
     } catch (error) {
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error.message,
+        code: error.code || error.payload?.code,
+      };
     }
   },
 
@@ -54,7 +58,11 @@ export const walletService = {
       const data = await apiClient.post('/withdraws/request', { amount, totpCode });
       return { success: true, data };
     } catch (error) {
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error.message,
+        code: error.code || error.payload?.code,
+      };
     }
   },
 };

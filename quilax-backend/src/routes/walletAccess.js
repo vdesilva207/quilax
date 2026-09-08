@@ -29,6 +29,7 @@ router.get("/status", async (req, res) => {
           bankAccountIban: true,
           bankAccountName: true,
           idVerified: true,
+          stripeConnectAccountId: true,
         },
       }),
       checkMoneyEligibility(userId, "DEPOSIT"),
@@ -36,6 +37,9 @@ router.get("/status", async (req, res) => {
     ]);
 
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    const hasConnect = !!user.stripeConnectAccountId;
+    const hasBankAccount = !!user.bankAccountIban || hasConnect;
 
     res.json({
       success: true,
@@ -49,8 +53,9 @@ router.get("/status", async (req, res) => {
       verification: {
         isOver18: user.isOver18,
         isBankVerified: user.isBankVerified,
-        hasBankAccount: !!user.bankAccountIban,
+        hasBankAccount,
         idVerified: user.idVerified,
+        hasConnectAccount: hasConnect,
       },
       bankAccount: user.bankAccountIban
         ? {

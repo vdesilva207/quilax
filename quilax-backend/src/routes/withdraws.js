@@ -2,6 +2,8 @@ import express from 'express';
 import speakeasy from 'speakeasy';
 import prisma from '../lib/prisma.js';
 import { auth, roleMiddleware } from '../middleware/auth.js';
+import { requireMoneyEligibility } from '../middleware/moneyEligibility.js';
+import { requireAllowedGeo } from '../middleware/geo.js';
 import {
   createWithdrawRequest,
   getUserWithdrawHistory,
@@ -16,7 +18,12 @@ const router = express.Router();
 // ============================
 
 // Solicitar retiro
-router.post('/request', auth, async (req, res) => {
+router.post(
+  '/request',
+  auth,
+  requireAllowedGeo(),
+  requireMoneyEligibility('WITHDRAW'),
+  async (req, res) => {
   try {
     const userId = req.user.id;
     const { amount, totpCode } = req.body;
@@ -43,14 +50,20 @@ router.post('/request', auth, async (req, res) => {
       return res.status(400).json({ error: 'Monto inválido' });
     }
 
-    const result = await createWithdrawRequest(userId, parseFloat(amount));
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || null;
+    const result = await createWithdrawRequest(
+      userId,
+      parseFloat(amount),
+      typeof ipAddress === 'string' ? ipAddress.split(',')[0].trim() : null
+    );
     
     res.json({
       success: true,
       withdraw: result.withdraw,
       processingFee: result.processingFee,
       totalAmount: result.totalAmount,
-      estimatedTime: result.estimatedTime
+      estimatedTime: result.estimatedTime,
+      heldForReview: !!result.heldForReview,
     });
   } catch (error) {
     console.error('Error creating withdraw request:', error);

@@ -203,6 +203,14 @@ export const login = async (req, res) => {
       });
     }
 
+    if (user.isBanned) {
+      logLoginFailure(email, ipAddress, userAgent, "User banned");
+      return res.status(403).json({
+        error: "Tu cuenta está suspendida. Contacta con soporte.",
+        code: "ACCOUNT_BANNED",
+      });
+    }
+
     const valid = await bcrypt.compare(password, user.password);
 
     if (!valid) {

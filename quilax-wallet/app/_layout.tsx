@@ -23,6 +23,7 @@ function WalletNavigator() {
       <Stack.Screen name="auth/verify" />
       <Stack.Screen name="deposit" />
       <Stack.Screen name="withdraw" />
+      <Stack.Screen name="settings/bank" />
     </Stack>
   );
 }

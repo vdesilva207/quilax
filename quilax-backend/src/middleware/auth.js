@@ -38,9 +38,12 @@ export async function auth(req, res, next) {
       return res.status(401).json({ error: "User not found" });
     }
 
-    // (opcional pro futuro: banned user check)
+    // Cuenta suspendida
     if (user.isBanned) {
-      return res.status(403).json({ error: "User banned" });
+      return res.status(403).json({
+        error: "Tu cuenta está suspendida. Contacta con soporte.",
+        code: "ACCOUNT_BANNED",
+      });
     }
 
     req.user = user;

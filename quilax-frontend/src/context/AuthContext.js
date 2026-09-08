@@ -174,7 +174,11 @@ export function AuthProvider({ children }) {
       };
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error.message,
+        code: error.code || error.payload?.code,
+      };
     }
   };
 

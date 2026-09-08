@@ -1,5 +1,7 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useWalletAuth } from '../../src/context/WalletAuthContext';
+import { WalletScreen } from '../../src/components/WalletScreen';
 import { Colors, Spacing } from '../../src/constants/theme';
 
 function Flag({ ok, label }: { ok?: boolean; label: string }) {
@@ -12,32 +14,59 @@ function Flag({ ok, label }: { ok?: boolean; label: string }) {
 }
 
 export default function VerifyScreen() {
+  const router = useRouter();
   const { status } = useWalletAuth();
   const v = status?.verification;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Verificación</Text>
-      <Text style={styles.subtitle}>Estado de tu cuenta para operaciones con dinero</Text>
-      <Flag ok={v?.isOver18} label="Mayor de 18 años" />
-      <Flag ok={v?.idVerified} label="Identidad verificada (KYC)" />
-      <Flag ok={v?.hasBankAccount} label="Cuenta bancaria registrada" />
-      <Flag ok={v?.isBankVerified} label="Cuenta bancaria verificada" />
+    <WalletScreen
+      title="Verificación"
+      subtitle="Estado de tu cuenta para operaciones con dinero"
+    >
+      <View style={styles.card}>
+        <Flag ok={v?.isOver18} label="Mayor de 18 años" />
+        <Flag ok={v?.idVerified} label="Identidad verificada (KYC)" />
+        <Flag ok={v?.hasBankAccount || v?.hasConnectAccount} label="Cuenta bancaria registrada" />
+        <Flag ok={v?.isBankVerified} label="Cuenta bancaria verificada" />
+      </View>
+
+      {!v?.isBankVerified || !v?.hasBankAccount ? (
+        <Pressable style={styles.btn} onPress={() => router.push('/settings/bank')}>
+          <Text style={styles.btnText}>Conectar banco con Stripe</Text>
+        </Pressable>
+      ) : (
+        <Pressable style={[styles.btn, styles.btnSecondary]} onPress={() => router.push('/settings/bank')}>
+          <Text style={[styles.btnText, styles.btnSecondaryText]}>Ver cuenta bancaria</Text>
+        </Pressable>
+      )}
+
       <Text style={styles.hint}>
-        Si falta algún paso, contacta con soporte desde la app Quilax o por email en quilax@appquilax.com.
+        La identidad (KYC) se completa en la app Quilax. El banco se conecta aquí con Stripe Express.
       </Text>
-    </View>
+    </WalletScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: Spacing.four, backgroundColor: Colors.background, gap: Spacing.two },
-  title: { fontSize: 24, fontWeight: '800', color: Colors.text },
-  subtitle: { color: Colors.textSecondary, marginBottom: Spacing.two },
+  card: {
+    backgroundColor: Colors.backgroundElement,
+    borderRadius: 16,
+    padding: Spacing.four,
+    gap: Spacing.two,
+  },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   dot: { width: 24, textAlign: 'center', fontWeight: '700' },
   ok: { color: Colors.success },
   pending: { color: Colors.textSecondary },
   label: { color: Colors.text, fontSize: 16 },
-  hint: { color: Colors.textSecondary, lineHeight: 20, marginTop: Spacing.three },
+  btn: {
+    backgroundColor: Colors.primary,
+    padding: Spacing.three,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  btnSecondary: { backgroundColor: Colors.backgroundElement },
+  btnText: { color: '#fff', fontWeight: '700' },
+  btnSecondaryText: { color: Colors.text },
+  hint: { color: Colors.textSecondary, lineHeight: 20, marginTop: Spacing.two },
 });
