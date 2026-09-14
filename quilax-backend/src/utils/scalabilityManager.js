@@ -17,6 +17,12 @@ class ScalabilityManager extends EventEmitter {
       throughput: 0
     };
     
+    // Local/dev light mode: skip Bull queues + monitoring (exhausts FDs / kills listen).
+    if (process.env.DEV_LIGHT_WORKERS === "true") {
+      this.isInitialized = true;
+      return;
+    }
+
     this.initialize();
   }
 

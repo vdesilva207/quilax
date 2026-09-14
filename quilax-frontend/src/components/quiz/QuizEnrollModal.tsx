@@ -24,6 +24,7 @@ type QuizEnrollModalProps = {
   canConfirm?: boolean;
   earlyJoinLabel?: string | null;
   earlyJoinMax?: number;
+  confirmLabel?: string;
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -39,16 +40,18 @@ export default function QuizEnrollModal({
   canConfirm = true,
   earlyJoinLabel = null,
   earlyJoinMax,
+  confirmLabel,
   onCancel,
   onConfirm,
 }: QuizEnrollModalProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const busy = preparing || loading;
-  const confirmDisabled = busy || !!error || !canConfirm;
+  const confirmDisabled = busy || !canConfirm;
   const creditLabel =
     entryCost === 1 ? t('enroll.creditSingular') : t('enroll.creditPlural', { n: entryCost });
   const resolvedTitle = quizTitle || t('enroll.defaultQuizTitle');
+  const confirmText = confirmLabel || t('enroll.confirm');
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
@@ -130,7 +133,7 @@ export default function QuizEnrollModal({
                 {loading ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.confirmText}>{t('enroll.confirm')}</Text>
+                  <Text style={styles.confirmText}>{confirmText}</Text>
                 )}
               </Pressable>
             </View>

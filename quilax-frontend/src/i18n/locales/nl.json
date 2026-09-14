@@ -118,7 +118,8 @@
       "convertFailed": "Kan de afbeelding niet converteren",
       "prepareFailed": "Kan de afbeelding niet voorbereiden voor uploaden"
     },
-    "requestTimeout": "Verzoek is verlopen. Controleer uw verbinding."
+    "requestTimeout": "Verzoek is verlopen. Controleer uw verbinding.",
+    "networkError": "Verbinden mislukt. Controleer je verbinding en probeer het opnieuw."
   },
   "tabs": {
     "home": "Home",
@@ -175,7 +176,8 @@
       "webOnlyNote": "Let op: het kopen van credits en het opnemen van geld kan alleen op de Wallet-website.",
       "mustBe18": "Om u te kunnen registreren, moet u 18 jaar of ouder zijn",
       "dobInvalid": "Ongeldige geboortedatum",
-      "networkError": "Kan de server niet bereiken. Zorg ervoor dat de telefoon verbinding heeft met hetzelfde wifi-netwerk als uw Mac en dat de API actief is."
+      "networkError": "Kan de server niet bereiken. Zorg ervoor dat de telefoon verbinding heeft met hetzelfde wifi-netwerk als uw Mac en dat de API actief is.",
+      "alreadyExists": "Dit e-mailadres heeft al een account. Gebruik «Ik heb al een account» en log in."
     },
     "forgotPasswordScreen": {
       "description": "Voer uw e-mailadres in om instructies te ontvangen om uw wachtwoord opnieuw in te stellen.",
@@ -288,7 +290,11 @@
       "autoPendingBody": "Als u klaar bent in de browser, wacht dan een paar seconden of tik nogmaals op Automatisch verifiëren.",
       "autoPolling": "Wachten op Stripe-identiteit…",
       "manualReviewNote": "De handmatige route leest het document niet automatisch: geen OCR en geen check of het gekozen type klopt. 18+ komt van je geboortedatum bij registratie; een reviewer checkt scherpte. Voor automatische verificatie (document + selfie) gebruik Stripe Identity hierboven.",
-      "stripeOnlyHint": "Verificatie gebeurt via Stripe Identity: documentfoto + selfie (liveness). Geen handmatige upload of admin-fotoreview."
+      "stripeOnlyHint": "Verificatie gebeurt via Stripe Identity: documentfoto + selfie (liveness). Geen handmatige upload of admin-fotoreview.",
+      "autoNeedLogin": "Sessie verlopen. Log opnieuw in en probeer het opnieuw.",
+      "autoTimeout": "Stripe duurde te lang. Probeer opnieuw of gebruik handmatige upload.",
+      "skipFailed": "Verificatie kon niet worden overgeslagen.",
+      "skipForNow": "Voor nu overslaan (alleen tests)"
     },
     "faceScanScreen": {
       "title": "Gezichtsscan",
@@ -366,7 +372,8 @@
     "noRanking": "Nog geen scores. Wees de eerste.",
     "viewFullRanking": "Bekijk de volledige ranglijst →",
     "loadError": "Kan quizzen niet laden",
-    "loadErrorHint": "Controleer uw verbinding en tik op opnieuw proberen. Je kunt ook naar beneden trekken om te vernieuwen."
+    "loadErrorHint": "Controleer uw verbinding en tik op opnieuw proberen. Je kunt ook naar beneden trekken om te vernieuwen.",
+    "liveNow": "Nu live"
   },
   "seasonDetail": {
     "title": "Seizoenen",
@@ -482,7 +489,7 @@
       "loadError": "Kan niet laden",
       "refreshStatus": "Status vernieuwen",
       "continueVerification": "Ga door met de verificatie",
-      "linkWithStripe": "Link met Streep",
+      "linkWithStripe": "Koppelen met Stripe",
       "refreshLink": "Link vernieuwen"
     },
     "blocked": {
@@ -632,7 +639,7 @@
       "twoFactorSection": "Tweefactorauthenticatie",
       "twoFactorOn": "2FA ingeschakeld",
       "twoFactorOff": "2FA uitgeschakeld",
-      "twoFactorHelp": "Als 2FA is ingeschakeld, heb je het nodig voor stortingen en opnames in Gestión.",
+      "twoFactorHelp": "Als 2FA is ingeschakeld, heb je het nodig voor stortingen en opnames in Portemonnee.",
       "twoFactorStart": "2FA instellen",
       "twoFactorCodeLabel": "6-cijferige code",
       "twoFactorConfirm": "Bevestig en schakel in",
@@ -807,7 +814,7 @@
     "warnDontLeave": "Verlaat de app niet halverwege de wedstrijd; je kunt niet meer meedoen.",
     "startSection": "Wanneer het begint",
     "startDateTbd": "Startdatum nog niet gepland",
-    "entryInfo": "Toegang: 1 studiepunt",
+    "entryInfo": "Toegang: 1 credit",
     "joinButton": "Ik doe mee",
     "notAvailableYet": "Je kunt nog niet deelnemen aan deze quiz.",
     "cannotJoinRightNow": "Je kunt momenteel niet deelnemen aan deze quiz.",
@@ -862,7 +869,8 @@
       "title": "Bevestigen",
       "subtitle": "Er wordt nu 1 credit afgeschreven",
       "quizFallback": "Quiz #{{id}}"
-    }
+    },
+    "enterLiveButton": "Deelnemen aan wedstrijd"
   },
   "quizPlay": {
     "loadingEntry": "Meedoen aan de quiz…",
@@ -919,7 +927,10 @@
     "exitConfirmBody": "Als u nu vertrekt, kunt u dit prijzenscherm niet opnieuw openen.",
     "exitConfirmOk": "Uitgang",
     "reconnecting": "Opnieuw verbinding maken…",
-    "reconnectingHint": "Spelen blijft open. Opnieuw proberen op de achtergrond."
+    "reconnectingHint": "Spelen blijft open. Opnieuw proberen op de achtergrond.",
+    "creditsPrize": "+{{n}} credits",
+    "leaveCountdown": "In de app blijven",
+    "noCreditsPrize": "0 credits"
   },
   "enroll": {
     "kicker": "Inschrijving",
@@ -1120,7 +1131,9 @@
     "recoverEmpty": "Geen credits om terug te vragen",
     "recoverReasonCancelled": "Quiz geannuleerd",
     "recoverReasonNeverRan": "Niet gespeeld (storing of vertraging)",
-    "recoverError": "Credit kon niet worden teruggevraagd"
+    "recoverError": "Credit kon niet worden teruggevraagd",
+    "noPlayedHistory": "Nog geen quizzes gespeeld.",
+    "scorePoints": "{{n}} pts"
   },
   "messages": {
     "title": "Berichten",
@@ -1197,7 +1210,7 @@
         "body": "Elke live quiz doorloopt fases: voorbereiding, het lezen van de vraag, tijd om te antwoorden, automatisch scoren en gedeeltelijke en definitieve rangschikking. Alles wordt gesynchroniseerd: niemand ziet het antwoord eerder dan iedereen."
       },
       "oneCreditEntry": {
-        "title": "1 studiepunt = deelname",
+        "title": "1 credit = deelname",
         "body": "Deelnemen kost 1 credit. Dat tegoed wordt niet terugbetaald; het gaat volledig naar de prijzenpot van de quiz. Hoe meer mensen meedoen, hoe groter de pot voor de winnaars."
       },
       "earlyJoinBonus": {
@@ -1231,17 +1244,20 @@
     }
   },
   "wallet": {
-    "title": "Portemonnee",
-    "subtitle": "Koop credits en neem ze op via de Wallet-website.",
-    "balanceLabel": "Saldo in app",
-    "creditsUnit": "tegoeden",
-    "description": "We openen Wallet waarop u al bent ingelogd. Daar kunt u uw saldo bekijken, tegoeden toevoegen of opnemen en indien nodig uw bank koppelen.",
-    "openWeb": "Open Wallet op internet",
-    "appOnlyHint": "Wallet kan alleen vanuit deze app worden geopend (niet via een willekeurige link).",
-    "openErrorTitle": "Kon niet openen",
-    "openErrorBody": "Probeer het opnieuw. U moet ingelogd zijn bij Quilax.",
-    "openErrorHint": "Als het blijft mislukken, logt u uit en weer in, of controleert u of de API bereikbaar is.",
-    "emptyBalanceHint": "Het saldo is 0. Open Wallet om tegoeden toe te voegen en deel te nemen aan betaalde quizzen."
+    "title": "Jouw geld,",
+    "subtitle": "Zelfde sessie, zelfde account. Open Portemonnee op het web om credits te kopen en prijzen op te nemen.",
+    "balanceLabel": "Saldo in de app",
+    "creditsUnit": "credits",
+    "description": "We openen Portemonnee al ingelogd. Beheer daar saldo, stortingen, opnames en je bankrekening.",
+    "openWeb": "Portemonnee openen",
+    "appOnlyHint": "Voor de veiligheid opent Portemonnee alleen vanuit deze app.",
+    "openErrorTitle": "Openen mislukt",
+    "openErrorBody": "Probeer het over een paar seconden opnieuw. Blijft het falen, log uit en weer in.",
+    "openErrorHint": "",
+    "emptyBalanceHint": "Saldo is 0. Open Portemonnee om credits te laden en meedoen aan betaalde quizzes.",
+    "badge": "Credits · opnames · bank",
+    "openSameTab": "Openen in dit tabblad",
+    "titleAccent": "onder controle."
   },
   "notif": {
     "title": "Meldingen toestaan?",

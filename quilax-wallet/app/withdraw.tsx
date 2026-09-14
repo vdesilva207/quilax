@@ -1,163 +1,281 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { apiFetch } from '../src/lib/api';
-import { describeMoneyGateError } from '../src/lib/moneyGate';
-import { useWalletAuth } from '../src/context/WalletAuthContext';
-import { WalletScreen } from '../src/components/WalletScreen';
-import { Colors, Spacing } from '../src/constants/theme';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Text,
+  StyleSheet,
+  TextInput,
+  ActivityIndicator,
+  View,
+} from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { WalletShell, PrimaryButton, SecondaryButton } from '@/components/WalletShell';
+import { TotpVerifyStep } from '@/components/TotpVerifyStep';
+import { apiFetch, getToken } from '@/lib/api';
+import { Colors, Fonts, Spacing } from '@/constants/theme';
+import { creditsToFiat, getBankStatusLabel } from '@/constants/money';
+
+const MIN_WITHDRAW = 5;
 
 export default function WithdrawScreen() {
   const router = useRouter();
-  const { status, refreshStatus } = useWalletAuth();
+  const { t } = useTranslation();
   const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState('EUR');
+  const [ibanMasked, setIbanMasked] = useState<string | null>(null);
+  const [bankStatus, setBankStatus] = useState<string>('NONE');
+  const [canWithdraw, setCanWithdraw] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [step, setStep] = useState<'amount' | 'totp'>('amount');
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
 
-  const canWithdraw = !!status?.eligibility?.canWithdraw;
-  const bankMissing = !status?.verification?.isBankVerified || !status?.verification?.hasBankAccount;
-  const kycMissing = !status?.verification?.idVerified;
+  const load = useCallback(async () => {
+    const token = await getToken();
+    if (!token) {
+      router.replace('/login');
+      return;
+    }
+    try {
+      const [status, security, connect] = await Promise.all([
+        apiFetch('/wallet-access/status'),
+        apiFetch('/profile/security').catch(() => null),
+        apiFetch('/payments/connect/status').catch(() => null),
+      ]);
+      setCurrency(status.currency || 'EUR');
+      setIbanMasked(
+        status.bankAccount?.ibanMasked ||
+          (connect?.bankLast4 ? `····${connect.bankLast4}` : null)
+      );
+      setBankStatus(
+        connect?.bankVerificationStatus ||
+          status.verification?.bankVerificationStatus ||
+          'NONE'
+      );
+      setCanWithdraw(
+        !!connect?.canWithdraw ||
+          (status.eligibility?.canWithdraw === true &&
+            status.verification?.bankVerificationStatus === 'VERIFIED')
+      );
+      setTwoFactorEnabled(!!security?.security?.twoFactorEnabled);
+    } catch (err: any) {
+      setError(err?.message || t('errors.loadFailed'));
+    } finally {
+      setLoading(false);
+    }
+  }, [router, t]);
 
-  const showGate = (error: any) => {
-    const info = describeMoneyGateError(error);
-    const buttons: any[] = [{ text: 'OK', style: 'cancel' }];
-    if (info.action === 'kyc') {
-      buttons.unshift({ text: 'Ver verificación', onPress: () => router.push('/auth/verify') });
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load])
+  );
+
+  const value = Math.floor(Number(amount) || 0);
+  const formattedValue = creditsToFiat(value, currency);
+
+  const continueToTotp = () => {
+    setError('');
+    setInfo('');
+    if (!canWithdraw || bankStatus !== 'VERIFIED') {
+      setError(t('withdraw.needBankVerification'));
+      return;
     }
-    if (info.action === 'bank') {
-      buttons.unshift({ text: 'Conectar banco', onPress: () => router.push('/settings/bank') });
+    if (!Number.isFinite(value) || value < MIN_WITHDRAW) {
+      setError(t('withdraw.minWithdraw', { min: MIN_WITHDRAW }));
+      return;
     }
-    Alert.alert(info.title, info.body, buttons);
+    if (!twoFactorEnabled) {
+      setError(t('withdraw.need2fa'));
+      return;
+    }
+    setStep('totp');
   };
 
-  const handleWithdraw = async () => {
-    if (kycMissing) {
-      Alert.alert(
-        'Verificación requerida',
-        'Completa el KYC en la app Quilax antes de retirar.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Ver estado', onPress: () => router.push('/auth/verify') },
-        ]
-      );
-      return;
-    }
-    if (bankMissing || !canWithdraw) {
-      Alert.alert('Cuenta bancaria', 'Conecta tu banco con Stripe antes de retirar.', [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Conectar', onPress: () => router.push('/settings/bank') },
-      ]);
-      return;
-    }
-
-    const value = Number(amount);
-    if (!Number.isFinite(value) || value < 5) {
-      Alert.alert('Error', 'El mínimo de retiro es 5 créditos');
-      return;
-    }
-
+  const submitWithTotp = async (totpCode: string) => {
     setSubmitting(true);
+    setError('');
+    setInfo('');
     try {
       const data = await apiFetch('/withdraws/request', {
         method: 'POST',
-        body: JSON.stringify({ amount: value }),
+        body: JSON.stringify({ amount: value, totpCode }),
       });
-      if (data?.heldForReview) {
-        Alert.alert(
-          'En revisión',
-          data.estimatedTime ||
-            'Tu retiro está en revisión de seguridad. Te avisaremos cuando se procese.'
-        );
-      } else {
-        Alert.alert('Solicitado', 'Tu retiro está en proceso');
-      }
+      setStep('amount');
       setAmount('');
-      await refreshStatus();
-    } catch (error) {
-      showGate(error);
+      if (data?.pendingReview || data?.withdraw?.status === 'PENDING_REVIEW') {
+        setInfo(data?.estimatedTime || t('withdraw.pendingReview'));
+        return;
+      }
+      router.replace('/');
+    } catch (err: any) {
+      setError(err?.message || t('errors.withdrawCheckFailed'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  return (
-    <WalletScreen
-      title="Retirar fondos"
-      subtitle="El dinero se envía a la cuenta bancaria que conectaste con Stripe."
-    >
-      <View style={styles.card}>
-        <Text style={styles.meta}>Balance disponible</Text>
-        <Text style={styles.balance}>{status?.balance ?? 0} cr</Text>
-      </View>
+  if (loading) {
+    return (
+      <WalletShell showBack title={t('withdraw.title')} subtitle={t('withdraw.loading')}>
+        <ActivityIndicator color={Colors.primary} />
+      </WalletShell>
+    );
+  }
 
-      {kycMissing ? (
-        <View style={styles.warnBox}>
-          <Text style={styles.warnTitle}>KYC pendiente</Text>
-          <Text style={styles.warning}>Verifica tu identidad en la app Quilax antes de retirar.</Text>
-          <Pressable style={styles.btn} onPress={() => router.push('/auth/verify')}>
-            <Text style={styles.btnText}>Ver estado de verificación</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {!kycMissing && bankMissing ? (
-        <View style={styles.warnBox}>
-          <Text style={styles.warnTitle}>Banco no conectado</Text>
-          <Text style={styles.warning}>
-            {status?.eligibility?.reasons?.join(' · ') ||
-              'Necesitas completar el alta bancaria en Stripe.'}
-          </Text>
-          <Pressable style={styles.btn} onPress={() => router.push('/settings/bank')}>
-            <Text style={styles.btnText}>Conectar cuenta bancaria</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      <TextInput
-        style={styles.input}
-        keyboardType="numeric"
-        value={amount}
-        onChangeText={setAmount}
-        placeholder="Cantidad a retirar"
-        placeholderTextColor={Colors.textSecondary}
-        editable={!bankMissing && !kycMissing}
-      />
-      <Pressable
-        style={[styles.btn, (submitting || bankMissing || kycMissing) && styles.btnDisabled]}
-        onPress={handleWithdraw}
-        disabled={submitting || bankMissing || kycMissing}
+  if (!canWithdraw || bankStatus !== 'VERIFIED') {
+    const statusLabel = getBankStatusLabel(
+      bankStatus === 'PENDING' ? 'PENDING' : undefined,
+      t
+    );
+    return (
+      <WalletShell
+        showBack
+        title={t('withdraw.titleBank')}
+        subtitle={t('withdraw.verificationRequired')}
+        footer={
+          <PrimaryButton
+            label={t('withdraw.verifyWithStripe')}
+            onPress={() => router.replace('/bank')}
+          />
+        }
       >
-        <Text style={styles.btnText}>{submitting ? 'Enviando…' : 'Solicitar retiro'}</Text>
-      </Pressable>
-    </WalletScreen>
+        <Text style={styles.copy}>{t('withdraw.verificationCopy')}</Text>
+        <Text style={styles.meta}>
+          {t('common.currentStatus', { status: statusLabel })}
+        </Text>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+      </WalletShell>
+    );
+  }
+
+  const subtitle =
+    step === 'totp'
+      ? t('withdraw.subtitleTotp')
+      : ibanMasked
+        ? t('common.destination', { iban: ibanMasked, min: MIN_WITHDRAW })
+        : t('common.minimumCredits', { min: MIN_WITHDRAW });
+
+  return (
+    <WalletShell
+      showBack
+      title={t('withdraw.titleBank')}
+      subtitle={subtitle}
+      footer={
+        step === 'amount' ? (
+          submitting ? (
+            <ActivityIndicator color={Colors.primary} />
+          ) : (
+            <PrimaryButton
+              label={
+                value >= MIN_WITHDRAW
+                  ? t('common.continueWithAmount', { amount: formattedValue })
+                  : t('common.enterAmount')
+              }
+              onPress={continueToTotp}
+              disabled={value < MIN_WITHDRAW}
+            />
+          )
+        ) : null
+      }
+    >
+      {step === 'totp' ? (
+        <View>
+          <TotpVerifyStep
+            title={t('withdraw.confirmWithdraw')}
+            hint={t('withdraw.confirmWithdrawHint', {
+              credits: value,
+              amount: formattedValue,
+            })}
+            submitting={submitting}
+            onConfirm={submitWithTotp}
+            onCancel={() => {
+              setError('');
+              setStep('amount');
+            }}
+            confirmLabel={t('withdraw.withdrawAmount', { amount: formattedValue })}
+          />
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+        </View>
+      ) : (
+        <View>
+          <Text style={styles.label}>{t('withdraw.amountLabel')}</Text>
+          <TextInput
+            style={styles.input}
+            value={amount}
+            onChangeText={(v) => {
+              setError('');
+              setAmount(v.replace(/[^\d]/g, ''));
+            }}
+            keyboardType="number-pad"
+            placeholder="0"
+            placeholderTextColor={Colors.textSecondary}
+          />
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {info ? <Text style={styles.info}>{info}</Text> : null}
+          {!twoFactorEnabled ? (
+            <SecondaryButton
+              label={t('common.configure2fa')}
+              onPress={() => router.push('/security/2fa')}
+            />
+          ) : null}
+        </View>
+      )}
+    </WalletShell>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.backgroundElement,
-    borderRadius: 16,
-    padding: Spacing.four,
-    gap: 4,
+  copy: {
+    fontFamily: Fonts.body,
+    fontSize: 16,
+    lineHeight: 24,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.md,
   },
-  meta: { color: Colors.textSecondary },
-  balance: { fontSize: 28, fontWeight: '800', color: Colors.primary },
-  warnBox: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 12,
-    padding: Spacing.three,
-    gap: Spacing.two,
+  meta: {
+    fontFamily: Fonts.body,
+    fontSize: 14,
+    color: Colors.text,
+    marginBottom: Spacing.sm,
   },
-  warnTitle: { fontWeight: '800', color: '#92400E' },
-  warning: { color: '#92400E', lineHeight: 20 },
+  label: {
+    fontFamily: Fonts.body,
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xs,
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: Spacing.three,
+    borderColor: Colors.surfaceMuted,
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
+    fontSize: 28,
+    fontWeight: '700',
     color: Colors.text,
-    backgroundColor: '#fff',
+    fontFamily: Fonts.display,
+    marginBottom: Spacing.sm,
   },
-  btn: { backgroundColor: Colors.primary, padding: Spacing.three, borderRadius: 12, alignItems: 'center' },
-  btnDisabled: { opacity: 0.5 },
-  btnText: { color: '#fff', fontWeight: '700' },
+  error: {
+    fontFamily: Fonts.body,
+    fontSize: 14,
+    color: '#B91C1C',
+    marginTop: Spacing.sm,
+    lineHeight: 20,
+  },
+  info: {
+    fontFamily: Fonts.body,
+    fontSize: 14,
+    color: Colors.success,
+    marginTop: Spacing.sm,
+    lineHeight: 20,
+  },
 });

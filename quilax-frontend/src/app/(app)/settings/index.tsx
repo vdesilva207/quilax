@@ -1,7 +1,7 @@
 import { Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Colors } from '@/constants/theme';
+import { Colors, sora } from '@/constants/theme';
 import { AppScreen, AppHeader, AppSection, AppCard } from '@/components/ui/AppScreen';
 
 export default function SettingsScreen() {
@@ -9,28 +9,28 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
 
   const SETTINGS_LINKS = [
-    { title: t('settings.personalInfo'), href: '/(app)/settings/account' },
-    { title: t('settings.bankAccount'), href: '/(app)/settings/bank' },
+    { title: t('settings.personalInfo'), href: '/settings/account' },
+    { title: t('settings.bankAccount'), href: '/settings/bank' },
     {
       title: t('settings.currency'),
-      href: '/(app)/settings/currency',
+      href: '/settings/currency',
       hint: t('settings.currencyHint'),
     },
-    { title: t('settings.privacy'), href: '/(app)/settings/privacy' },
-    { title: t('settings.security'), href: '/(app)/settings/security' },
-    { title: t('settings.notifications'), href: '/(app)/settings/notifications' },
-    { title: t('settings.language'), href: '/(app)/settings/language' },
-    { title: t('settings.blockedUsers'), href: '/(app)/settings/blocked' },
-    { title: t('settings.helpCenter'), href: '/(app)/settings/help', hint: t('settings.helpHint') },
-    { title: t('settings.faq'), href: '/(app)/settings/faq' },
+    { title: t('settings.privacy'), href: '/settings/privacy' },
+    { title: t('settings.security'), href: '/settings/security' },
+    { title: t('settings.notifications'), href: '/settings/notifications' },
+    { title: t('settings.language'), href: '/settings/language' },
+    { title: t('settings.blockedUsers'), href: '/settings/blocked' },
+    { title: t('settings.helpCenter'), href: '/settings/help', hint: t('settings.helpHint') },
+    { title: t('settings.faq'), href: '/settings/faq' },
     {
       title: t('settings.support'),
-      href: '/(app)/settings/tickets',
+      href: '/settings/tickets',
       hint: t('settings.supportHint'),
     },
     {
       title: t('settings.terms'),
-      href: '/(app)/settings/terms',
+      href: '/settings/terms',
       hint: t('settings.termsHint'),
     },
   ];
@@ -56,6 +56,16 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  itemTitle: { fontSize: 16, fontWeight: '600', color: Colors.light.text },
-  itemHint: { marginTop: 4, fontSize: 12, color: Colors.light.textSecondary },
+  itemTitle: {
+    ...sora(600),
+    fontSize: 16,
+    color: Colors.light.text,
+  },
+  itemHint: {
+    ...sora(500),
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.light.textSecondary,
+  },
 });

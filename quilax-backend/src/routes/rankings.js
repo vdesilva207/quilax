@@ -204,14 +204,7 @@ router.get('/winners', async (req, res) => {
               email: true
             }
           },
-          quiz: {
-            select: {
-              id: true,
-              title: true,
-              category: true,
-              difficulty: true
-            }
-          }
+          quiz: { select: { id: true, title: true, difficulty: true } }
         },
         orderBy: { creditsWon: 'desc' },
         take: parseInt(limit),
@@ -275,7 +268,7 @@ router.get('/seasons/:seasonId', async (req, res) => {
     const season = await prisma.season.findUnique({
       where: { id: parseInt(seasonId) },
       include: {
-        seasonUsers: {
+        users: {
           include: {
             user: {
               select: {
@@ -300,7 +293,7 @@ router.get('/seasons/:seasonId', async (req, res) => {
       where: { seasonId: parseInt(seasonId) }
     });
 
-    const rankings = season.seasonUsers.map((seasonUser, index) => ({
+    const rankings = season.users.map((seasonUser, index) => ({
       position: skip + index + 1,
       userId: seasonUser.userId,
       user: seasonUser.user,
@@ -363,12 +356,12 @@ router.get('/my-rankings', auth, async (req, res) => {
           quizRun: {
             include: {
               quiz: {
-                select: { title: true, category: true }
+                select: { title: true }
               }
             }
           }
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ lastAnswerAt: 'desc' }, { id: 'desc' }],
         take: 10
       }),
       // Mejores scores
@@ -416,9 +409,9 @@ router.get('/my-rankings', auth, async (req, res) => {
         score: score.score,
         quiz: {
           title: score.quizRun.quiz.title,
-          category: score.quizRun.quiz.category
+          category: null
         },
-        createdAt: score.createdAt
+        createdAt: score.lastAnswerAt || score.answeredAt || null
       })),
       bestScores: bestScores.map(score => ({
         id: score.id,
@@ -427,7 +420,7 @@ router.get('/my-rankings', auth, async (req, res) => {
           title: score.quizRun.quiz.title,
           difficulty: score.quizRun.quiz.difficulty
         },
-        createdAt: score.createdAt
+        createdAt: score.lastAnswerAt || score.answeredAt || null
       })),
       totalWinnings: {
         totalCredits: totalWinnings._sum.creditsWon || 0,
@@ -499,18 +492,7 @@ router.get('/stats', async (req, res) => {
         _count: { userId: true }
       }),
       // Top categorías
-      prisma.quiz.groupBy({
-        by: ['category'],
-        where: { 
-          category: { not: null },
-          status: 'PUBLISHED'
-        },
-        _count: true,
-        orderBy: {
-          _count: { category: 'desc' }
-        },
-        take: 10
-      }),
+      Promise.resolve([]),
       // Estadísticas por dificultad
       prisma.quiz.groupBy({
         by: ['difficulty'],
@@ -539,10 +521,7 @@ router.get('/stats', async (req, res) => {
         totalWins: totalWinnings._count.userId || 0,
         averagePrizePerWin: totalWinnings._count.userId > 0 ? Math.floor((totalWinnings._sum.creditsWon || 0) / totalWinnings._count.userId) : 0
       },
-      categories: topCategories.map(cat => ({
-        name: cat.category,
-        count: cat._count
-      })),
+      categories: [],
       difficulty: difficultyStats.map(diff => ({
         level: diff.difficulty,
         count: diff._count

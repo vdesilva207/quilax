@@ -30,8 +30,57 @@ function run(cmd, args, env = {}) {
   });
 }
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Wait until TCP 5433 accepts connections (avoids Prisma P1001 race). */
+async function waitForPostgres(port, attempts = 40) {
+  const net = await import('node:net');
+  for (let i = 0; i < attempts; i++) {
+    const ok = await new Promise((resolve) => {
+      const s = net.createConnection({ host: '127.0.0.1', port }, () => {
+        s.end();
+        resolve(true);
+      });
+      s.on('error', () => resolve(false));
+      s.setTimeout(800, () => {
+        s.destroy();
+        resolve(false);
+      });
+    });
+    if (ok) {
+      // Extra settle time after accept
+      await sleep(500);
+      return;
+    }
+    await sleep(250);
+  }
+  throw new Error(`Postgres no responde en 127.0.0.1:${port}`);
+}
+
 async function main() {
   fs.mkdirSync(pgDir, { recursive: true });
+
+  // Stale lock after crash → Prisma P1001 / failed start
+  const pidFile = path.join(pgDir, 'postmaster.pid');
+  if (fs.existsSync(pidFile)) {
+    const first = String(fs.readFileSync(pidFile, 'utf8').split('\n')[0] || '').trim();
+    const stalePid = Number(first);
+    let alive = false;
+    if (Number.isFinite(stalePid) && stalePid > 0) {
+      try {
+        process.kill(stalePid, 0);
+        alive = true;
+      } catch {
+        alive = false;
+      }
+    }
+    if (!alive) {
+      console.log('🧹 Removing stale postmaster.pid');
+      fs.unlinkSync(pidFile);
+    }
+  }
 
   const pg = new EmbeddedPostgres({
     databaseDir: pgDir,
@@ -47,6 +96,7 @@ async function main() {
     await pg.initialise();
   }
   await pg.start();
+  await waitForPostgres(PG_PORT);
 
   try {
     await pg.createDatabase(PG_DB);

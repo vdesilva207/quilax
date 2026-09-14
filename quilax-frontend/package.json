@@ -12,7 +12,10 @@
     "lint": "expo lint",
     "eas:whoami": "npx eas-cli@latest whoami",
     "eas:link": "npx eas-cli@latest init",
-    "eas:preview": "npx eas-cli@latest build --profile preview --platform all"
+    "eas:preview": "npx eas-cli@latest build --profile preview --platform all",
+    "eas:ios:preview": "npx eas-cli@latest build --profile preview --platform ios",
+    "eas:ios:testflight": "npx eas-cli@latest build --profile testflight --platform ios",
+    "eas:ios:submit": "npx eas-cli@latest submit --platform ios --profile testflight --latest"
   },
   "dependencies": {
     "@expo-google-fonts/sora": "^0.4.2",

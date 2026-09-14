@@ -118,7 +118,8 @@
       "convertFailed": "Não foi possível converter a imagem",
       "prepareFailed": "Não foi possível preparar a imagem para upload"
     },
-    "requestTimeout": "Tempo esgotado. Verifica a tua ligação."
+    "requestTimeout": "Tempo esgotado. Verifica a tua ligação.",
+    "networkError": "Não foi possível ligar. Verifique a ligação e tente novamente."
   },
   "tabs": {
     "home": "Início",
@@ -175,7 +176,8 @@
       "webOnlyNote": "Lembra-te: comprar créditos e levantar dinheiro só é possível no site Gestão.",
       "mustBe18": "Você deve ter 18 anos ou mais para se registrar",
       "dobInvalid": "Data de nascimento inválida",
-      "networkError": "Não foi possível acessar o servidor. Certifique-se de que o telefone esteja no mesmo Wi-Fi do seu Mac e que a API esteja em execução."
+      "networkError": "Não foi possível acessar o servidor. Certifique-se de que o telefone esteja no mesmo Wi-Fi do seu Mac e que a API esteja em execução.",
+      "alreadyExists": "Este e-mail já tem conta. Usa «Já tenho conta» e inicia sessão."
     },
     "forgotPasswordScreen": {
       "description": "Digite seu e-mail para receber instruções para redefinir sua senha.",
@@ -288,7 +290,11 @@
       "autoPendingBody": "Se você terminou no navegador, aguarde alguns segundos ou toque em Verificar automaticamente novamente.",
       "autoPolling": "Aguardando identidade de listra…",
       "manualReviewNote": "O caminho manual não lê o documento automaticamente: sem OCR e sem verificar se o tipo marcado coincide. A idade 18+ vem da data de nascimento no registo; um revisor vê nitidez e coerência. Para verificação automática (documento + selfie), use Stripe Identity acima.",
-      "stripeOnlyHint": "A verificação é feita pelo Stripe Identity: foto do documento + selfie (prova de vida). Sem upload manual nem revisão admin de fotos."
+      "stripeOnlyHint": "A verificação é feita pelo Stripe Identity: foto do documento + selfie (prova de vida). Sem upload manual nem revisão admin de fotos.",
+      "autoNeedLogin": "Sessão expirada. Inicia sessão novamente e tenta outra vez.",
+      "autoTimeout": "O Stripe demorou demasiado. Tenta outra vez ou usa o envio manual.",
+      "skipFailed": "Não foi possível saltar a verificação.",
+      "skipForNow": "Saltar por agora (só testes)"
     },
     "faceScanScreen": {
       "title": "Escaneamento facial",
@@ -366,7 +372,8 @@
     "noRanking": "Nenhuma pontuação ainda. Seja o primeiro.",
     "viewFullRanking": "Ver classificação completa →",
     "loadError": "Não foi possível carregar os questionários",
-    "loadErrorHint": "Verifique sua conexão e toque em tentar novamente. Você também pode puxar para baixo para atualizar."
+    "loadErrorHint": "Verifique sua conexão e toque em tentar novamente. Você também pode puxar para baixo para atualizar.",
+    "liveNow": "A decorrer agora"
   },
   "seasonDetail": {
     "title": "Estações",
@@ -632,7 +639,7 @@
       "twoFactorSection": "Autenticação de dois fatores",
       "twoFactorOn": "2FA ativado",
       "twoFactorOff": "2FA desativado",
-      "twoFactorHelp": "Com o 2FA ativado, você precisará dele para depósitos e saques no Gestión.",
+      "twoFactorHelp": "Com o 2FA ativado, você precisará dele para depósitos e saques no Gestão.",
       "twoFactorStart": "Configurar 2FA",
       "twoFactorCodeLabel": "Código de 6 dígitos",
       "twoFactorConfirm": "Confirme e ative",
@@ -862,7 +869,8 @@
       "title": "Confirmar",
       "subtitle": "1 crédito será deduzido agora",
       "quizFallback": "Quiz #{{id}}"
-    }
+    },
+    "enterLiveButton": "Entrar na partida"
   },
   "quizPlay": {
     "loadingEntry": "Entrando no quiz…",
@@ -919,7 +927,10 @@
     "exitConfirmBody": "Se você sair agora, não poderá reabrir esta tela de prêmios.",
     "exitConfirmOk": "Sair",
     "reconnecting": "A reconectar…",
-    "reconnectingHint": "A partida continua aberta. A tentar de novo em segundo plano."
+    "reconnectingHint": "A partida continua aberta. A tentar de novo em segundo plano.",
+    "creditsPrize": "+{{n}} créditos",
+    "leaveCountdown": "Ficar na app",
+    "noCreditsPrize": "0 créditos"
   },
   "enroll": {
     "kicker": "Inscrição",
@@ -1120,7 +1131,9 @@
     "recoverEmpty": "Não há créditos a recuperar",
     "recoverReasonCancelled": "Quiz cancelado",
     "recoverReasonNeverRan": "Não foi jogado (falha ou atraso)",
-    "recoverError": "Não foi possível recuperar o crédito"
+    "recoverError": "Não foi possível recuperar o crédito",
+    "noPlayedHistory": "Ainda não há quizzes jogados.",
+    "scorePoints": "{{n}} pts"
   },
   "messages": {
     "title": "Mensagens",
@@ -1231,17 +1244,20 @@
     }
   },
   "wallet": {
-    "title": "Gestão",
-    "subtitle": "Compre créditos e retire no site da Gestão.",
-    "balanceLabel": "Equilíbrio no aplicativo",
+    "title": "O teu dinheiro,",
+    "subtitle": "A mesma sessão, a mesma conta. Abre a Gestão na web para comprar créditos e levantar prémios.",
+    "balanceLabel": "Saldo na app",
     "creditsUnit": "créditos",
-    "description": "Abriremos a Gestão já logada. Lá você poderá ver seu saldo, adicionar ou sacar créditos e vincular seu banco se necessário.",
-    "openWeb": "Abra a carteira na web",
-    "appOnlyHint": "Wallet só pode ser aberto neste aplicativo (não em um link aleatório).",
+    "description": "Abrimos a Gestão já com sessão iniciada. Gere saldo, depósitos, levantamentos e a conta bancária lá.",
+    "openWeb": "Abrir Gestão",
+    "appOnlyHint": "Por segurança, a Gestão só abre a partir desta app.",
     "openErrorTitle": "Não foi possível abrir",
-    "openErrorBody": "Tente novamente. Você precisa estar conectado ao Quilax.",
-    "openErrorHint": "Se continuar falhando, saia e faça login novamente ou verifique se a API está acessível.",
-    "emptyBalanceHint": "O saldo é 0. Abra a Carteira para adicionar créditos e participar de questionários pagos."
+    "openErrorBody": "Tenta outra vez dentro de segundos. Se continuar a falhar, termina sessão e volta a iniciar.",
+    "openErrorHint": "",
+    "emptyBalanceHint": "Saldo a 0. Abre a Gestão para adicionar créditos e entrar em quizzes pagos.",
+    "badge": "Créditos · levantamentos · banco",
+    "openSameTab": "Abrir neste separador",
+    "titleAccent": "sob controlo."
   },
   "notif": {
     "title": "Permitir notificações?",

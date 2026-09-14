@@ -33,6 +33,7 @@ import {
   EARLY_JOIN_BONUS_RANGES,
 } from '@/utils/earlyJoinBonus';
 import { APP_GRADIENT_SOFT, GRADIENT_HORIZONTAL } from '@/constants/gradients';
+import { useAuth } from '@/context/AuthContext';
 
 /** Prize pool / payout breakdown is hidden until this many players have joined. */
 const PRIZE_POOL_REVEAL_AT = 20;
@@ -45,6 +46,7 @@ function formatCredits(n: number, lang?: string) {
 
 export default function QuizDetailScreen() {
   const { t, i18n } = useTranslation();
+  const { refreshProfile } = useAuth() as any;
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -118,7 +120,12 @@ export default function QuizDetailScreen() {
     [quiz?.viewerTimezone]
   );
 
-  const startsAt = quiz?.startsAt || quiz?.nextScheduledAt || null;
+  const startsAt =
+    quiz?.startsAt ||
+    quiz?.nextScheduledAt ||
+    quiz?.schedules?.[0]?.scheduledAt ||
+    quiz?.activeRun?.startedAt ||
+    null;
 
   const startFmt = useMemo(() => {
     if (!startsAt) return null;
@@ -145,6 +152,12 @@ export default function QuizDetailScreen() {
         return;
       }
 
+      if (joinResult.data?.alreadyInRun && joinResult.data?.runId) {
+        setSheetVisible(false);
+        router.replace(`/(app)/quiz/run/${joinResult.data.runId}`);
+        return;
+      }
+
       if (joinResult.data?.canJoin === false) {
         setJoinError(joinResult.data.reason || t('quizDetail.cannotJoinNow'));
         return;
@@ -168,23 +181,19 @@ export default function QuizDetailScreen() {
         return;
       }
 
-      const lobbyOpen = !!enroll.data?.lobbyOpen;
-      const nextRunId = enroll.data?.runId ? Number(enroll.data.runId) : null;
+      await refreshProfile?.({ full: false }).catch(() => null);
 
-      if (lobbyOpen && nextRunId) {
-        const joinResult = await quizRunService.joinQuiz(nextRunId);
-        if (!joinResult.success) {
-          setJoinError(joinResult.error || t('quizDetail.joinError'));
-          Alert.alert(t('common.error'), joinResult.error || t('quizDetail.joinError'));
-          return;
-        }
-        setSheetVisible(false);
-        router.replace(`/(app)/quiz/run/${nextRunId}`);
-        return;
-      }
+      let lobbyOpen = !!enroll.data?.lobbyOpen;
+      let nextRunId = enroll.data?.runId ? Number(enroll.data.runId) : null;
 
+      // Stay on quiz info after enroll. Countdown is only for T−1min (lobbyOpen)
+      // and auto-entry happens globally at T−30s — never trap the user here.
       setSheetVisible(false);
       setJoinedSuccess(true);
+      if (lobbyOpen && nextRunId) {
+        // Soft hint only: user can open lobby, or keep browsing
+        setRunId(nextRunId);
+      }
     } catch (err: any) {
       setJoinError(err?.message || t('quizDetail.joinError'));
       Alert.alert(t('common.error'), err?.message || t('quizDetail.joinError'));
@@ -346,7 +355,12 @@ export default function QuizDetailScreen() {
             </View>
           ) : null}
 
-          {quiz.canJoin ? (
+          {quiz.canReenter && quiz.activeRun?.id ? (
+            <GradientButton
+              label={t('quizDetail.enterLiveButton')}
+              onPress={() => router.replace(`/(app)/quiz/run/${quiz.activeRun.id}`)}
+            />
+          ) : quiz.canJoin ? (
             <GradientButton label={t('quizDetail.joinButton')} onPress={openJoinSheet} />
           ) : (
             <InfoBar>
@@ -360,9 +374,7 @@ export default function QuizDetailScreen() {
         </AppSection>
 
         <AppSection title={t('quizDetail.prizesSection')} accentIndex={1}>
-          {prizes.length === 0 ? (
-            <Text style={styles.meta}>{t('quizDetail.noPrizeRules')}</Text>
-          ) : !prizePoolUnlocked ? (
+          {!prizePoolUnlocked ? (
             <View style={styles.prizeLockedCard}>
               <Text style={styles.prizeLockedMessage}>
                 {t('quizDetail.prizesLockedUntil', { n: PRIZE_POOL_REVEAL_AT })}
@@ -377,10 +389,11 @@ export default function QuizDetailScreen() {
                 {t('quizDetail.prizesEnrollmentCaption')}
               </Text>
             </View>
+          ) : prizes.length === 0 ? (
+            <Text style={styles.meta}>{t('quizDetail.noPrizeRules')}</Text>
           ) : totalPool <= 0 ? (
             <Text style={styles.meta}>{t('quizDetail.prizesNeedEntries')}</Text>
-          ) : (
-            <View style={styles.prizePanel}>
+          ) : (            <View style={styles.prizePanel}>
               <LinearGradient
                 colors={[...APP_GRADIENT_SOFT]}
                 {...GRADIENT_HORIZONTAL}
@@ -479,14 +492,15 @@ export default function QuizDetailScreen() {
         preparing={preparing}
         loading={joining}
         error={joinError}
-        canConfirm={!preparing && !joinError}
+        canConfirm={!preparing}
         earlyJoinLabel={showEarlyJoin ? earlyJoinNowLabel : null}
         earlyJoinMax={showEarlyJoin ? earlyJoinRaw?.maxBonus : undefined}
         onCancel={() => {
           if (joining) return;
           setSheetVisible(false);
         }}
-        onConfirm={confirmJoin}
+        onConfirm={joinError ? openJoinSheet : confirmJoin}
+        confirmLabel={joinError ? t('common.retry') : undefined}
       />
 
       {joinedSuccess ? (

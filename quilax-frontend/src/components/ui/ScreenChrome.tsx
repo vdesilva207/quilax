@@ -28,8 +28,7 @@ type ScreenChromeProps = ScrollViewProps & {
 };
 
 /**
- * Shared chrome matching quiz/create.tsx:
- * diagonal brand gradient header + white body (móvil / columna centrada).
+ * Shared chrome: diagonal brand gradient header + warm body.
  */
 export function ScreenChrome({
   title,
@@ -137,6 +136,9 @@ const styles = StyleSheet.create({
   },
   containerCenter: {
     alignItems: 'center',
+  },
+  scrollFlex: {
+    flex: 1,
   },
   scrollContent: {
     paddingBottom: Spacing.six,

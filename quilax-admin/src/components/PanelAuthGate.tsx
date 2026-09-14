@@ -1,16 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { Redirect, useRouter, useSegments } from 'expo-router';
+import { Redirect, useRouter, useSegments, usePathname } from 'expo-router';
 import apiClient, { restoreStoredSession } from '@/lib/api';
 import { getStoredAuthUser } from '@/lib/secureStorage';
+import { WORKER_ALLOWED_PATH_PREFIXES } from '@/constants/adminNav';
 
 type Props = {
   children: React.ReactNode;
 };
 
+function isWorkerAllowedPath(pathname: string): boolean {
+  return WORKER_ALLOWED_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
 export default function PanelAuthGate({ children }: Props) {
   const router = useRouter();
   const segments = useSegments();
+  const pathname = usePathname();
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -44,8 +52,8 @@ export default function PanelAuthGate({ children }: Props) {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' }}>
+        <ActivityIndicator size="large" color="#3B82F6" />
       </View>
     );
   }
@@ -59,6 +67,15 @@ export default function PanelAuthGate({ children }: Props) {
   if (authenticated && inAuth) {
     const isWorker = userRole === 'ADMIN_WORKER';
     return <Redirect href={isWorker ? '/panel/worker-dashboard' : '/panel/dashboard'} />;
+  }
+
+  if (
+    authenticated &&
+    userRole === 'ADMIN_WORKER' &&
+    pathname?.startsWith('/panel') &&
+    !isWorkerAllowedPath(pathname)
+  ) {
+    return <Redirect href="/panel/worker-dashboard" />;
   }
 
   return <>{children}</>;

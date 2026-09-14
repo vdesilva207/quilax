@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TextInput,
   Pressable,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing } from '@/constants/theme';
@@ -32,6 +33,7 @@ type AdminUser = {
   role: string;
   balance?: number;
   points?: number;
+  isBanned?: boolean;
 };
 
 const FILTERS: { id: RoleFilter; label: string }[] = [
@@ -87,11 +89,13 @@ export default function AdminUsersScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('ALL');
+  const [banningId, setBanningId] = useState<number | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async (query: string) => {
     try {
       setLoading(true);
-      const result = await adminService.getUsers(1, 100);
+      const result = await adminService.getUsers(1, 100, query);
       if (result.success) {
         setUsers(result.data?.users ?? []);
       }
@@ -103,21 +107,113 @@ export default function AdminUsersScreen() {
   }, []);
 
   useEffect(() => {
-    loadUsers();
+    loadUsers('');
   }, [loadUsers]);
 
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      loadUsers(search.trim());
+    }, 350);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [search, loadUsers]);
+
   const filteredUsers = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return users.filter((user) => {
-      if (roleFilter !== 'ALL' && user.role !== roleFilter) return false;
-      if (!query) return true;
-      const haystack = [user.email, user.username, user.fullName]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return haystack.includes(query);
-    });
-  }, [users, search, roleFilter]);
+    return users.filter((user) => roleFilter === 'ALL' || user.role === roleFilter);
+  }, [users, roleFilter]);
+
+  const handleBan = (user: AdminUser) => {
+    if (user.role !== 'USER') {
+      Alert.alert('No permitido', 'Solo se pueden banear cuentas de usuario normales.');
+      return;
+    }
+
+    if (user.isBanned) {
+      Alert.alert(
+        'Desbanear usuario',
+        `¿Reactivar a ${user.username ? `@${user.username}` : user.email}?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Desbanear',
+            onPress: async () => {
+              setBanningId(user.id);
+              const result = await adminService.unbanUser(user.id);
+              setBanningId(null);
+              if (result.success) {
+                Alert.alert('Éxito', 'Usuario desbaneado');
+                loadUsers(search.trim());
+              } else {
+                Alert.alert('Error', result.error || 'No se pudo desbanear');
+              }
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Banear usuario',
+      `¿Seguro que quieres banear a ${user.username ? `@${user.username}` : user.email}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Banear',
+          style: 'destructive',
+          onPress: async () => {
+            setBanningId(user.id);
+            const result = await adminService.banUser(user.id, {
+              category: 'CONTENT',
+              permanent: true,
+              reason: 'Baneado desde el panel admin',
+              message:
+                'Tu cuenta ha sido suspendida. Si el motivo es contenido inapropiado, puedes recuperar el saldo restante desde Gestión (Wallet).',
+            });
+            setBanningId(null);
+            if (result.success) {
+              Alert.alert('Éxito', 'Usuario baneado correctamente');
+              loadUsers(search.trim());
+            } else {
+              Alert.alert('Error', result.error || 'No se pudo banear al usuario');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleHistory = async (user: AdminUser) => {
+    const result = await adminService.getUserHistory(user.id);
+    if (!result.success) {
+      Alert.alert('Error', result.error || 'No se pudo cargar el historial');
+      return;
+    }
+    const hist = result.data?.history || result.data;
+    const played = hist?.participated || [];
+    const prizes = hist?.prizes || [];
+    const privacy =
+      result.data?.user?.showQuizHistory === false
+        ? ' (historial privado en app — visible para admin)'
+        : '';
+    const lines = [
+      `Jugados: ${played.length}${privacy}`,
+      ...played.slice(0, 8).map(
+        (p: any) => `· ${p.title || 'Quiz'} — ${p.score ?? 0} pts`,
+      ),
+      '',
+      `Premios: ${prizes.length}`,
+      ...prizes.slice(0, 5).map(
+        (p: any) => `· ${p.title || 'Quiz'} — +${p.creditsWon ?? 0} cr.`,
+      ),
+    ];
+    Alert.alert(
+      user.username ? `@${user.username}` : user.email,
+      lines.join('\n') || 'Sin historial',
+    );
+  };
 
   return (
     <AppScreen>
@@ -178,18 +274,35 @@ export default function AdminUsersScreen() {
               <View style={styles.statsRow}>
                 <Text style={styles.stat}>Saldo: {user.balance ?? 0} cr.</Text>
                 <Text style={styles.stat}>Puntos: {user.points ?? 0}</Text>
+                {user.isBanned ? <Text style={[styles.stat, { color: Colors.light.error }]}>Baneado</Text> : null}
               </View>
 
               <View style={styles.actionsRow}>
-                <Pressable style={styles.actionGradientWrap}>
-                  <LinearGradient
-                    colors={[...APP_GRADIENT]}
-                    style={styles.actionGradient}
-                    {...GRADIENT_HORIZONTAL}
-                  >
-                    <Text style={styles.actionGradientText}>Gestionar</Text>
-                  </LinearGradient>
+                <Pressable
+                  style={styles.banButtonWrap}
+                  onPress={() => handleHistory(user)}
+                >
+                  <View style={[styles.banButton, styles.historyButton]}>
+                    <Text style={styles.banButtonText}>Historial</Text>
+                  </View>
                 </Pressable>
+                {user.role === 'USER' ? (
+                  <Pressable
+                    style={styles.banButtonWrap}
+                    onPress={() => handleBan(user)}
+                    disabled={banningId === user.id}
+                  >
+                    <View style={[styles.banButton, banningId === user.id && styles.buttonDisabled, user.isBanned && styles.unbanButton]}>
+                      <Text style={styles.banButtonText}>
+                        {banningId === user.id
+                          ? '…'
+                          : user.isBanned
+                            ? 'Desbanear'
+                            : 'Banear'}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ) : null}
               </View>
             </AppCard>
           ))
@@ -305,19 +418,31 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
   },
-  actionGradientWrap: {
+  banButtonWrap: {
     flex: 1,
     borderRadius: 12,
     overflow: 'hidden',
   },
-  actionGradient: {
+  banButton: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.two,
+    backgroundColor: Colors.light.error,
+    borderRadius: 12,
   },
-  actionGradientText: {
+  historyButton: {
+    backgroundColor: Colors.light.primary,
+    marginRight: Spacing.two,
+  },
+  banButtonText: {
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  unbanButton: {
+    backgroundColor: Colors.light.success,
   },
 });

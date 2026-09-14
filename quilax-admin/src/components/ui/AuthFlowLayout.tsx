@@ -7,13 +7,13 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Spacing } from '@/constants/theme';
+import { Colors, Spacing, titleTypeface } from '@/constants/theme';
 import {
-  APP_GRADIENT,
-  GRADIENT_HORIZONTAL,
+  brandGradientProps,
   SCREEN_BACKGROUND,
 } from '@/constants/gradients';
 import { AppScreen, AppHeader } from '@/components/ui/AppScreen';
+import { PressScale } from '@/components/motion';
 
 type AuthFlowLayoutProps = {
   title: string;
@@ -51,19 +51,16 @@ export function AuthPrimaryButton({
   disabled?: boolean;
 }) {
   return (
-    <Pressable
+    <PressScale
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [pressed && !disabled && styles.pressed, disabled && styles.disabled]}
+      scaleTo={0.96}
+      style={disabled ? styles.disabled : undefined}
     >
-      <LinearGradient
-        colors={[...APP_GRADIENT]}
-        style={styles.primaryBtn}
-        {...GRADIENT_HORIZONTAL}
-      >
+      <LinearGradient {...brandGradientProps} style={styles.primaryBtn}>
         <Text style={styles.primaryBtnText}>{label}</Text>
       </LinearGradient>
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -75,9 +72,9 @@ export function AuthSecondaryButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.secondaryBtn} onPress={onPress}>
+    <PressScale style={styles.secondaryBtn} onPress={onPress} scaleTo={0.97}>
       <Text style={styles.secondaryBtnText}>{label}</Text>
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -127,8 +124,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     borderRadius: 14,
     alignItems: 'center',
+    // @ts-expect-error web-only
+    boxShadow: '0 6px 24px rgba(239, 68, 68, 0.28), 0 2px 12px rgba(59, 130, 246, 0.16)',
   },
   primaryBtnText: {
+    ...titleTypeface,
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '800',
@@ -157,8 +157,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: Spacing.four,
     borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.12)',
+    borderColor: 'rgba(28,25,23,0.06)',
     marginBottom: Spacing.three,
+    // @ts-expect-error web-only
+    boxShadow: '0 4px 24px rgba(28, 25, 23, 0.08)',
   },
   dotsRow: {
     flexDirection: 'row',

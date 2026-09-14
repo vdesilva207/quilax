@@ -13,11 +13,29 @@
     },
     "preview": {
       "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
       "android": {
         "buildType": "apk"
       },
       "env": {
         "APP_ENV": "preview",
+        "EXPO_PUBLIC_DEV_SKIP_ONBOARDING": "false",
+        "EXPO_PUBLIC_SKIP_EMAIL_VERIFICATION": "false",
+        "EXPO_PUBLIC_API_URL": "https://api.appquilax.com",
+        "EXPO_PUBLIC_WALLET_URL": "https://gestion.appquilax.com",
+        "EXPO_PUBLIC_SOCKET_URL": "https://api.appquilax.com"
+      }
+    },
+    "testflight": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "APP_ENV": "production",
         "EXPO_PUBLIC_DEV_SKIP_ONBOARDING": "false",
         "EXPO_PUBLIC_SKIP_EMAIL_VERIFICATION": "false",
         "EXPO_PUBLIC_API_URL": "https://api.appquilax.com",
@@ -38,6 +56,7 @@
     }
   },
   "submit": {
+    "testflight": {},
     "production": {}
   }
 }

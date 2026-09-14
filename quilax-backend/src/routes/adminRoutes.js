@@ -112,7 +112,7 @@ router.get("/dashboard", async (req, res) => {
 
     // Quizzes pendientes de aprobación
     const pendingQuizzes = await prisma.quiz.count({
-      where: { status: "PENDING" }
+      where: { status: "PENDING_REVIEW" }
     });
 
     // Retiros pendientes (ahora son automáticos, pero mostramos los procesados hoy)
@@ -127,12 +127,11 @@ router.get("/dashboard", async (req, res) => {
       where: { status: "OPEN" }
     });
 
-    // Usuarios activos hoy
-    const activeUsersToday = await prisma.quizRun.groupBy({
+    // Usuarios activos hoy (participantes únicos)
+    const activeUsersToday = await prisma.quizParticipant.groupBy({
       by: ["userId"],
-      where: {
-        createdAt: { gte: today }
-      }
+      where: { joinedAt: { gte: today } },
+      _count: { _all: true },
     });
 
     // Transacciones sospechosas
@@ -269,8 +268,7 @@ router.get("/users", async (req, res) => {
           createdAt: true,
           _count: {
             select: {
-              quizzes: true,
-              quizRuns: true
+              createdQuizzes: true
             }
           }
         },
@@ -323,11 +321,10 @@ router.get("/users/:userId", async (req, res) => {
         bankAccountIban: true,
         bankAccountName: true,
         createdAt: true,
-        updatedAt: true,
+
         _count: {
           select: {
-            quizzes: true,
-            quizRuns: true,
+            createdQuizzes: true,
             followers: true,
             following: true
           }
@@ -391,31 +388,74 @@ POST /admin/users/:userId/ban
 */
 router.post("/users/:userId/ban", async (req, res) => {
   try {
-    const userId = parseInt(req.params.userId);
-    const { reason } = req.body;
+    const userId = parseInt(req.params.userId, 10);
+    const { reason } = req.body || {};
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true }
+      select: { id: true, role: true, isBanned: true },
     });
 
     if (!user) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    if (user.role === "ADMIN") {
+    if (user.role === "ADMIN" || user.role === "ADMIN_WORKER") {
       return res.status(403).json({ error: "No puedes banear a un admin" });
     }
 
-    // Aquí deberías implementar la lógica de ban
-    // Por ahora, solo devolvemos éxito
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { isBanned: true },
+      select: { id: true, email: true, isBanned: true },
+    });
+
+    if (reason) {
+      console.log(`[ban] user=${userId} reason=${String(reason).slice(0, 200)}`);
+    }
+
     res.json({
       success: true,
-      message: "Usuario baneado"
+      message: "Usuario baneado",
+      user: updated,
     });
   } catch (error) {
     console.error("Error banning user:", error);
     res.status(500).json({ error: "Error al banear usuario" });
+  }
+});
+
+/*
+====================================
+UNBAN USER
+POST /admin/users/:userId/unban
+====================================
+*/
+router.post("/users/:userId/unban", async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId, 10);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { isBanned: false },
+      select: { id: true, email: true, isBanned: true },
+    });
+
+    res.json({
+      success: true,
+      message: "Usuario desbaneado",
+      user: updated,
+    });
+  } catch (error) {
+    console.error("Error unbanning user:", error);
+    res.status(500).json({ error: "Error al desbanear usuario" });
   }
 });
 
@@ -479,19 +519,49 @@ router.get("/users/:userId/analytics", async (req, res) => {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    // Quiz runs del usuario
-    const quizRuns = await prisma.quizRun.findMany({
+    // Participaciones del usuario (QuizRun no tiene userId)
+    const quizRuns = await prisma.quizParticipant.findMany({
       where: { userId },
       include: {
-        quiz: {
-          select: {
-            title: true,
-            category: true
-          }
-        }
+        quizRun: {
+          include: {
+            quiz: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
+          },
+        },
       },
+      orderBy: { joinedAt: "desc" },
+      take: 50,
+    });
+
+    const scores = await prisma.quizScore.findMany({
+      where: { userId },
+      orderBy: { lastAnswerAt: "desc" },
+      take: 50,
+      include: {
+        quizRun: {
+          select: {
+            id: true,
+            quizId: true,
+            phase: true,
+            finishedAt: true,
+            quiz: { select: { id: true, title: true } },
+          },
+        },
+      },
+    });
+
+    const prizes = await prisma.quizWinner.findMany({
+      where: { userId },
       orderBy: { createdAt: "desc" },
-      take: 50
+      take: 50,
+      include: {
+        quiz: { select: { id: true, title: true } },
+      },
     });
 
     // Quizzes creados por el usuario
@@ -504,10 +574,11 @@ router.get("/users/:userId/analytics", async (req, res) => {
         createdAt: true,
         _count: {
           select: {
-            quizRuns: true
-          }
-        }
-      }
+            quizRuns: true,
+            enrollments: true,
+          },
+        },
+      },
     });
 
     // Transacciones del usuario
@@ -529,6 +600,10 @@ router.get("/users/:userId/analytics", async (req, res) => {
         user,
         totalQuizRuns: quizRuns.length,
         quizRuns,
+        scores,
+        prizes,
+        totalPrizesWon: prizes.length,
+        totalCreditsWon: prizes.reduce((s, p) => s + (p.creditsWon || 0), 0),
         totalQuizzesCreated: quizzesCreated.length,
         quizzesCreated,
         totalTransactions: transactions.length,
@@ -539,6 +614,116 @@ router.get("/users/:userId/analytics", async (req, res) => {
   } catch (error) {
     console.error("Error getting user analytics:", error);
     res.status(500).json({ error: "Error al obtener analytics del usuario" });
+  }
+});
+
+/*
+====================================
+USER PLAY / PRIZE HISTORY (admin always sees, even if private)
+GET /admin/users/:userId/history
+====================================
+*/
+router.get("/users/:userId/history", async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId, 10);
+    if (!userId) return res.status(400).json({ error: "userId inválido" });
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        showQuizHistory: true,
+        showPrizes: true,
+      },
+    });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    const [participants, scores, prizes] = await Promise.all([
+      prisma.quizParticipant.findMany({
+        where: { userId },
+        take: 100,
+        orderBy: { joinedAt: "desc" },
+        include: {
+          quizRun: {
+            select: {
+              id: true,
+              quizId: true,
+              phase: true,
+              finishedAt: true,
+              quiz: { select: { id: true, title: true } },
+            },
+          },
+        },
+      }),
+      prisma.quizScore.findMany({
+        where: { userId },
+        take: 100,
+        orderBy: { lastAnswerAt: "desc" },
+        include: {
+          quizRun: {
+            select: {
+              id: true,
+              quizId: true,
+              quiz: { select: { id: true, title: true } },
+            },
+          },
+        },
+      }),
+      prisma.quizWinner.findMany({
+        where: { userId },
+        take: 100,
+        orderBy: { createdAt: "desc" },
+        include: {
+          quiz: { select: { id: true, title: true } },
+        },
+      }),
+    ]);
+
+    const participatedMap = new Map();
+    for (const p of participants) {
+      participatedMap.set(p.quizRunId, {
+        quizRunId: p.quizRunId,
+        quizId: p.quizRun?.quizId,
+        title: p.quizRun?.quiz?.title,
+        status: p.status,
+        score: p.score,
+        joinedAt: p.joinedAt,
+        finishedAt: p.quizRun?.finishedAt || null,
+      });
+    }
+    for (const s of scores) {
+      const existing = participatedMap.get(s.quizRunId) || {
+        quizRunId: s.quizRunId,
+        quizId: s.quizRun?.quizId,
+        title: s.quizRun?.quiz?.title,
+      };
+      participatedMap.set(s.quizRunId, {
+        ...existing,
+        score: s.score ?? existing.score,
+        lastAnswerAt: s.lastAnswerAt,
+      });
+    }
+
+    res.json({
+      success: true,
+      user,
+      history: {
+        participated: Array.from(participatedMap.values()),
+        prizes: prizes.map((p) => ({
+          quizId: p.quizId,
+          title: p.quiz?.title,
+          creditsWon: p.creditsWon,
+          percent: p.percent,
+          type: p.type,
+          createdAt: p.createdAt,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Error admin user history:", error);
+    res.status(500).json({ error: "Error al obtener historial" });
   }
 });
 
@@ -689,23 +874,40 @@ GET /admin/system/settings
 PUT /admin/system/settings
 ====================================
 */
+const AI_PROVIDER_NOTE_OFF =
+  "Preferencia guardada como desactivada. Los quizzes y posts se revisan solo de forma manual.";
+const AI_PROVIDER_NOTE_ON =
+  "Preferencia activada, pero la cola de revisión automática con IA aún no está conectada a un proveedor. Mientras tanto sigue valiendo la moderación manual (calendario y posts).";
+
+async function getOrCreateSystemSettings() {
+  let settings = await prisma.systemSettings.findFirst();
+  if (!settings) {
+    settings = await prisma.systemSettings.create({ data: {} });
+  }
+  return settings;
+}
+
 router.get("/system/settings", async (req, res) => {
   try {
-    // Aquí deberías obtener las configuraciones del sistema
-    // Por ahora, devolvemos una configuración por defecto
-    const settings = {
-      maintenanceMode: false,
-      maxQuizParticipants: 1000,
-      minQuizParticipants: 2,
-      platformFeePercentage: 10,
-      withdrawalMinAmount: 10,
-      withdrawalMaxAmount: 10000,
-      quizApprovalRequired: true
-    };
-
+    const settings = await getOrCreateSystemSettings();
+    const aiOn = Boolean(settings.aiModerationEnabled);
     res.json({
       success: true,
-      settings
+      settings: {
+        maintenanceMode: false,
+        maxQuizParticipants: 1000,
+        minQuizParticipants: 2,
+        platformFeePercentage: 10,
+        withdrawalMinAmount: 10,
+        withdrawalMaxAmount: 10000,
+        quizApprovalRequired: true,
+        maxWithdrawPerMonth: settings.maxWithdrawPerMonth,
+        maxWithdrawPerTransaction: settings.maxWithdrawPerTransaction,
+        largePrizeThreshold: settings.largePrizeThreshold,
+        aiModerationEnabled: aiOn,
+        aiProviderNote: aiOn ? AI_PROVIDER_NOTE_ON : AI_PROVIDER_NOTE_OFF,
+        aiPipelineReady: false,
+      },
     });
   } catch (error) {
     console.error("Error getting system settings:", error);
@@ -715,14 +917,31 @@ router.get("/system/settings", async (req, res) => {
 
 router.put("/system/settings", async (req, res) => {
   try {
-    const settings = req.body;
+    const { aiModerationEnabled } = req.body || {};
+    const current = await getOrCreateSystemSettings();
 
-    // Aquí deberías actualizar las configuraciones del sistema
-    // Por ahora, solo devolvemos éxito
+    const data = {};
+    if (typeof aiModerationEnabled === "boolean") {
+      data.aiModerationEnabled = aiModerationEnabled;
+    }
+
+    const settings =
+      Object.keys(data).length > 0
+        ? await prisma.systemSettings.update({
+            where: { id: current.id },
+            data,
+          })
+        : current;
+
+    const aiOn = Boolean(settings.aiModerationEnabled);
     res.json({
       success: true,
       message: "Configuraciones actualizadas",
-      settings
+      settings: {
+        aiModerationEnabled: aiOn,
+        aiProviderNote: aiOn ? AI_PROVIDER_NOTE_ON : AI_PROVIDER_NOTE_OFF,
+        aiPipelineReady: false,
+      },
     });
   } catch (error) {
     console.error("Error updating system settings:", error);
@@ -786,9 +1005,10 @@ async function generateUserReport(start, end) {
     where: { createdAt: { gte: start, lte: end } }
   });
 
-  const activeUsers = await prisma.quizRun.groupBy({
+  const activeUsers = await prisma.quizParticipant.groupBy({
     by: ["userId"],
-    where: { createdAt: { gte: start, lte: end } }
+    where: { joinedAt: { gte: start, lte: end } },
+    _count: { _all: true },
   });
 
   const verifiedUsers = await prisma.user.count({
@@ -867,24 +1087,9 @@ DELETE /admin/categories/:id
 */
 router.get("/categories", async (req, res) => {
   try {
-    const categories = await prisma.quiz.groupBy({
-      by: ["category"],
-      where: {
-        category: { not: null },
-        status: "PUBLISHED"
-      },
-      _count: true,
-      orderBy: {
-        _count: { category: "desc" }
-      }
-    });
-
     res.json({
       success: true,
-      categories: categories.map(c => ({
-        name: c.category,
-        count: c._count
-      }))
+      categories: [],
     });
   } catch (error) {
     console.error("Error getting categories:", error);
@@ -973,7 +1178,7 @@ router.get("/quizzes/analytics", async (req, res) => {
       prisma.quiz.count({
         where: {
           createdAt: { gte: start, lte: end },
-          status: "PENDING"
+          status: "PENDING_REVIEW"
         }
       }),
       prisma.quizRun.count({
@@ -993,7 +1198,7 @@ router.get("/quizzes/analytics", async (req, res) => {
       },
       include: {
         _count: {
-          select: { quizRuns: true }
+          select: { createdQuizzes: true }
         }
       },
       orderBy: {
@@ -1002,14 +1207,7 @@ router.get("/quizzes/analytics", async (req, res) => {
       take: 10
     });
 
-    const quizzesByCategory = await prisma.quiz.groupBy({
-      by: ["category"],
-      where: {
-        createdAt: { gte: start, lte: end },
-        category: { not: null }
-      },
-      _count: true
-    });
+    const quizzesByCategory = [] /* category not in schema */;
 
     res.json({
       success: true,
@@ -2454,12 +2652,11 @@ router.get("/worker/dashboard", async (req, res) => {
       where: { status: 'OPEN' }
     });
 
-    // Usuarios activos hoy
-    const activeUsersToday = await prisma.quizRun.groupBy({
+    // Usuarios activos hoy (participantes únicos)
+    const activeUsersToday = await prisma.quizParticipant.groupBy({
       by: ["userId"],
-      where: {
-        createdAt: { gte: today }
-      }
+      where: { joinedAt: { gte: today } },
+      _count: { _all: true },
     });
 
     res.json({
@@ -2561,7 +2758,7 @@ router.get("/worker/quizzes", async (req, res) => {
           },
           _count: {
             select: {
-              quizRuns: true
+              createdQuizzes: true
             }
           }
         },
@@ -2958,7 +3155,7 @@ router.get("/financial/stats", async (req, res) => {
     const pendingWithdrawals = await prisma.transaction.count({
       where: {
         type: "WITHDRAWAL",
-        status: "PENDING"
+        status: "PENDING_REVIEW"
       }
     });
 
@@ -2972,7 +3169,7 @@ router.get("/financial/stats", async (req, res) => {
     const pendingPayments = await prisma.transaction.count({
       where: {
         type: "PAYMENT",
-        status: "PENDING"
+        status: "PENDING_REVIEW"
       }
     });
 

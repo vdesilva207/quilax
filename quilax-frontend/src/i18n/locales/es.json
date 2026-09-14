@@ -118,7 +118,8 @@
       "convertFailed": "No se pudo convertir la imagen",
       "prepareFailed": "No se pudo preparar la imagen para subirla"
     },
-    "requestTimeout": "Tiempo de espera agotado. Revisa la conexión."
+    "requestTimeout": "Tiempo de espera agotado. Revisa la conexión.",
+    "networkError": "No se pudo conectar. Comprueba tu conexión e inténtalo de nuevo."
   },
   "tabs": {
     "home": "Inicio",
@@ -371,7 +372,8 @@
     "noRanking": "Aún nadie ha puntuado. Sé el primero.",
     "viewFullRanking": "Ver ranking completo →",
     "loadError": "No se pudieron cargar los quizzes",
-    "loadErrorHint": "Comprueba la conexión y pulsa reintentar. También puedes deslizar hacia abajo para refrescar."
+    "loadErrorHint": "Comprueba la conexión y pulsa reintentar. También puedes deslizar hacia abajo para refrescar.",
+    "liveNow": "En juego ahora"
   },
   "seasonDetail": {
     "title": "Temporadas",
@@ -814,6 +816,7 @@
     "startDateTbd": "Fecha de inicio aún no programada",
     "entryInfo": "Entrada: 1 crédito",
     "joinButton": "Apuntarme",
+    "enterLiveButton": "Entrar a la partida",
     "notAvailableYet": "Este quiz aún no está disponible para unirse.",
     "cannotJoinRightNow": "Ahora mismo no puedes unirte a este quiz.",
     "prizesSection": "Premios",
@@ -886,7 +889,8 @@
     "startBurstDone": "¡Ya!",
     "startBurstHint": "Empezamos",
     "almostThere": "Ya casi",
-    "keepAppOpen": "La entrada ya está cerrada. Mantén la app abierta.",
+    "keepAppOpen": "El quiz empieza pronto. Puedes salir y seguir en la app; te metemos automáticamente 30 s antes.",
+    "leaveCountdown": "Seguir en la app",
     "lobbyCountdown": "Empieza en {{time}}",
     "readCarefully": "Lee con atención",
     "correct": "Correcto",
@@ -906,6 +910,8 @@
     "matchEnded": "Así quedó la partida",
     "scoreLine": "{{score}} pts",
     "scoreLineWithPrize": "{{score}} pts  ·  +{{prize}} créditos",
+    "creditsPrize": "+{{n}} créditos",
+    "noCreditsPrize": "0 créditos",
     "resultsExpiry": "Disponible ~1 hora desde el final del quiz",
     "noRankingYet": "Sin ranking todavía",
     "backToCreate": "Volver a Crear",
@@ -1035,6 +1041,8 @@
     "historyPrivateNote": "Tu historial es privado. Solo tú lo ves aquí.",
     "historyPrivateLabel": "Historial privado",
     "playedQuizzesSection": "Quizzes jugados",
+    "noPlayedHistory": "Aún no hay quizzes jugados.",
+    "scorePoints": "{{n}} pts",
     "prizesWonSection": "Premios ganados",
     "creditsWon": "+{{n}} créditos",
     "createdQuizzesSection": "Quizzes creados",
@@ -1236,16 +1244,19 @@
     }
   },
   "wallet": {
-    "title": "Gestión",
-    "subtitle": "Compra créditos y retira en la web de Gestión.",
+    "badge": "Créditos · retiros · banco",
+    "title": "Tu dinero,",
+    "titleAccent": "bajo control.",
+    "subtitle": "Misma sesión, misma cuenta. Abre Gestión en la web para comprar créditos y retirar premios.",
     "balanceLabel": "Saldo en app",
     "creditsUnit": "créditos",
-    "description": "Te abrimos la web de Gestión ya con tu sesión. Allí verás el saldo, añadirás o retirarás créditos y podrás vincular el banco si hace falta.",
-    "openWeb": "Abrir Gestión en la web",
-    "appOnlyHint": "Gestión solo se puede abrir desde esta app (no desde un enlace suelto).",
+    "description": "Te llevamos a la web de Gestión ya identificado. Allí gestionas saldo, depósitos, retiros y la cuenta bancaria.",
+    "openWeb": "Abrir Gestión",
+    "openSameTab": "Abrir en esta pestaña",
+    "appOnlyHint": "Por seguridad, Gestión solo se abre desde esta app.",
     "openErrorTitle": "No se pudo abrir",
-    "openErrorBody": "Inténtalo de nuevo. Necesitas estar conectado en Quilax.",
-    "openErrorHint": "Si sigue fallando, cierra sesión y vuelve a entrar, o comprueba que la API esté accesible.",
+    "openErrorBody": "Inténtalo de nuevo en unos segundos. Si sigue fallando, cierra sesión y vuelve a entrar.",
+    "openErrorHint": "",
     "emptyBalanceHint": "Saldo a 0. Abre Gestión para añadir créditos y jugar quizzes de pago."
   },
   "notif": {

@@ -20,6 +20,44 @@ async function loadUser(userId) {
   });
 }
 
+/** Edad en años cumplidos a partir de fecha de nacimiento. */
+export function ageFromDateOfBirth(dateOfBirth) {
+  if (!dateOfBirth) return null;
+  const birth = dateOfBirth instanceof Date ? dateOfBirth : new Date(dateOfBirth);
+  if (Number.isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age -= 1;
+  return age;
+}
+
+/**
+ * Mayoría de edad: flag, DOB del registro, o KYC ya verificado (Stripe Identity).
+ * Si el DOB / KYC prueban ≥18 pero el flag está mal, lo corregimos en BD.
+ */
+async function resolveIsOver18(user) {
+  if (user.isOver18) return true;
+
+  const age = ageFromDateOfBirth(user.dateOfBirth);
+  const fromDob = age != null && age >= 18;
+  // Identity verificada implica adulto en la práctica (registro ya exige 18+).
+  const fromKyc = !!user.idVerified;
+
+  if (fromDob || fromKyc) {
+    try {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { isOver18: true },
+      });
+    } catch {
+      /* ignore heal errors */
+    }
+    return true;
+  }
+  return false;
+}
+
 /** KYC obligatorio salvo bypass explícito de desarrollo. */
 function isKycRequired() {
   if (process.env.MONEY_REQUIRE_KYC === "false") return false;
@@ -63,6 +101,8 @@ export async function checkMoneyEligibility(userId, action, opts = {}) {
     };
   }
 
+  const isOver18 = await resolveIsOver18(user);
+
   const country = opts.country !== undefined ? opts.country : null;
   if (country !== null && country !== undefined && !isAllowedCountry(country)) {
     return {
@@ -76,7 +116,7 @@ export async function checkMoneyEligibility(userId, action, opts = {}) {
 
   switch (action) {
     case "DEPOSIT":
-      if (!user.isOver18) {
+      if (!isOver18) {
         return {
           allowed: false,
           status: 403,
@@ -95,7 +135,7 @@ export async function checkMoneyEligibility(userId, action, opts = {}) {
       return { allowed: true };
 
     case "QUIZ_ENTRY":
-      if (!user.isOver18) {
+      if (!isOver18) {
         return {
           allowed: false,
           status: 403,
@@ -115,7 +155,7 @@ export async function checkMoneyEligibility(userId, action, opts = {}) {
       return { allowed: true };
 
     case "WITHDRAW":
-      if (!user.isOver18) {
+      if (!isOver18) {
         return {
           allowed: false,
           status: 403,
@@ -142,7 +182,7 @@ export async function checkMoneyEligibility(userId, action, opts = {}) {
       return { allowed: true };
 
     case "BANK_UPDATE":
-      if (!user.isOver18) {
+      if (!isOver18) {
         return {
           allowed: false,
           status: 403,

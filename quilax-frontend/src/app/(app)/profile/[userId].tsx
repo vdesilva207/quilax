@@ -47,6 +47,8 @@ export default function PublicProfileScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [reportPostId, setReportPostId] = useState<number | null>(null);
+  const [history, setHistory] = useState<any>(null);
+  const [historyHidden, setHistoryHidden] = useState(false);
 
   useEffect(() => {
     if (!numericId) {
@@ -77,6 +79,22 @@ export default function PublicProfileScreen() {
         setFollowingCount(p.statistics?.following ?? null);
         setSeasonPoints(p.seasonPoints ?? p.season?.seasonPoints ?? p.statistics?.seasonPoints ?? 0);
         setSeasonRank(p.seasonRank ?? p.season?.seasonRank ?? p.statistics?.seasonRank ?? null);
+
+        if (p.showQuizHistory !== false) {
+          const histRes = await apiClient.get(`/profile/${numericId}/history`).catch((e: any) => ({
+            private: e?.status === 403 || e?.private,
+            error: e?.message,
+          }));
+          if (histRes?.private || histRes?.error) {
+            setHistoryHidden(true);
+            setHistory(null);
+          } else {
+            setHistoryHidden(false);
+            setHistory(histRes?.history || histRes || null);
+          }
+        } else {
+          setHistoryHidden(true);
+        }
       } else if (publicRes?.private || publicRes?.error) {
         setDisplayName(t('profile.userFallback', { id: numericId }));
         setIsPrivate(true);
@@ -211,6 +229,51 @@ export default function PublicProfileScreen() {
         </AppSection>
       ) : null}
 
+      {!isPrivate ? (
+        <AppSection title={t('profile.tabHistory')} accentIndex={2}>
+          {historyHidden ? (
+            <AppPlaceholder text={t('profile.historyPrivateLabel')} />
+          ) : (
+            <>
+              <Text style={styles.histSection}>{t('profile.playedQuizzesSection')}</Text>
+              {(history?.participated || []).length === 0 ? (
+                <Text style={styles.emptyPosts}>{t('profile.noPlayedHistory')}</Text>
+              ) : (
+                (history.participated || []).slice(0, 12).map((item: any, index: number) => (
+                  <AppCard key={`p-${item.quizRunId || index}`}>
+                    <Text style={styles.postText}>
+                      {item.title || t('profile.quizFallback')}
+                    </Text>
+                    <Text style={styles.postDate}>
+                      {item.score != null
+                        ? t('profile.scorePoints', { n: item.score })
+                        : ''}
+                    </Text>
+                  </AppCard>
+                ))
+              )}
+              <Text style={[styles.histSection, { marginTop: Spacing.three }]}>
+                {t('profile.prizesWonSection')}
+              </Text>
+              {(history?.prizes || []).length === 0 ? (
+                <Text style={styles.emptyPosts}>{t('profile.noPrizesYet')}</Text>
+              ) : (
+                (history.prizes || []).slice(0, 12).map((item: any, index: number) => (
+                  <AppCard key={`w-${item.quizId || index}`}>
+                    <Text style={styles.postText}>
+                      {item.title || t('profile.quizFallback')}
+                    </Text>
+                    <Text style={styles.postDate}>
+                      {t('profile.creditsWon', { n: item.creditsWon ?? 0 })}
+                    </Text>
+                  </AppCard>
+                ))
+              )}
+            </>
+          )}
+        </AppSection>
+      ) : null}
+
       <ReportSheet
         visible={reportPostId != null}
         title={t('report.titlePost')}
@@ -286,5 +349,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 8,
     backgroundColor: Colors.light.backgroundSelected,
+  },
+  histSection: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.light.text,
+    marginBottom: Spacing.two,
   },
 });

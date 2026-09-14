@@ -1,74 +1,41 @@
-import prisma from "../lib/prisma.js";
+import { buildGlobalPrizePreview } from "../services/prizeConfigService.js";
 
 /**
- * Calcula preview de premios máximos posibles
- * NO hace reparto real
+ * Calcula preview de premios máximos posibles.
+ * Usa las mismas reglas globales que el payout (panel admin).
  */
 export async function calculateMaxCredits(quizId, totalPrizeCredits) {
-  const rules = await prisma.rewardRule.findMany({
-    where: { quizId },
-    orderBy: { positionFrom: "asc" },
-  });
-
-  function roundCredits(value) {
-  return Math.round(value * 100) / 100;
-}
-
-  let totalPercent = 0;
-
-  const result = rules.map((rule) => {
-    const from = rule.positionFrom ?? rule.positionFrom;
-    const to = rule.positionTo ?? rule.positionTo;
-
-    if (from == null || to == null || to < from) {
-      throw new Error("RewardRule inválida");
-    }
-
+  void quizId;
+  const preview = await buildGlobalPrizePreview(totalPrizeCredits);
+  return (preview.positions || []).map((p, idx) => {
+    const from = p.fromPosition;
+    const to = p.toPosition;
     const positionsCount = to - from + 1;
-
-    const percent = Number(rule.percent ?? rule.percentage ?? 0);
-
-    totalPercent += percent;
-
-    const totalCredits =
-  totalPrizeCredits * (percent / 100);
-
- const creditsPerWinner = roundCredits(
-  totalCredits / positionsCount
- );
-
- const totalCreditsRounded = roundCredits(totalCredits);
-
-      function roundCredits(value) {
-     return Math.round(value * 100) / 100; // 2 decimales
-     }
-
+    const totalCredits = Number(p.credits || 0) * positionsCount;
     return {
-      id: rule.id,
-      type: rule.type,
+      id: idx + 1,
+      type: "POSITION",
       from,
       to,
-      percent,
+      percent: p.percentage,
       positionsCount,
-      creditsPerWinner,
+      creditsPerWinner: p.credits,
       totalCredits,
     };
   });
+}
 
-  if (totalPercent > 100) {
-    throw new Error("Las reward rules exceden el 100%");
-  }
-
-  return result;
+export function aggregateMaxCredits(rulesWithCredits = []) {
+  return rulesWithCredits.reduce(
+    (sum, rule) => sum + Number(rule.totalCredits || 0),
+    0
+  );
 }
 
 /**
- * Suma total de créditos asignados en el preview
+ * Shape expected by the quiz detail FE — aligned with live payout.
  */
-export function aggregateMaxCredits(preview) {
-  if (!Array.isArray(preview)) return 0;
-
-  return preview.reduce((sum, item) => {
-    return sum + Number(item.totalCredits || 0);
-  }, 0);
+export async function buildPrizePreview(quizId, totalPrizeCredits = 0) {
+  void quizId;
+  return buildGlobalPrizePreview(totalPrizeCredits);
 }

@@ -212,6 +212,11 @@ function getEarlyJoinBonus(joinPosition) {
     { from: 71, to: 80, bonus: 95 },
     { from: 81, to: 89, bonus: 80 },
     { from: 90, to: 100, bonus: 70 },
+    { from: 101, to: 150, bonus: 55 },
+    { from: 151, to: 200, bonus: 45 },
+    { from: 201, to: 300, bonus: 35 },
+    { from: 301, to: 400, bonus: 25 },
+    { from: 401, to: 500, bonus: 15 },
   ];
 
   const range = EARLY_JOIN_BONUS_RANGES.find(

@@ -51,8 +51,7 @@ export async function isDuplicateQuiz(quiz) {
 
   const existing = await prisma.quiz.findFirst({
     where: {
-      contentHash: hash,
-    },
+},
   });
 
   return existing !== null;
@@ -69,8 +68,7 @@ export async function saveQuizHash(quizId, quiz) {
   await prisma.quiz.update({
     where: { id: quizId },
     data: {
-      contentHash: hash,
-    },
+},
   });
 
   return hash;

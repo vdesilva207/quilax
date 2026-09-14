@@ -2,15 +2,18 @@ import Stripe from 'stripe';
 import prisma from '../lib/prisma.js';
 import { getIO } from '../socket.js';
 import { encrypt } from './encryption.js';
+import { creditsToCurrency } from './currencyService.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Configuración de precios (1 crédito = 1 EUR)
-const CREDIT_PRICE_EUROS = 1; // 1 EUR por crédito
-const STRIPE_FEE_PERCENTAGE = 0.029; // 2.9%
-const STRIPE_FEE_FIXED = 0.30; // 0.30 EUR
+// 1 crédito = 1 unidad de la moneda base del usuario (vía tasa respecto a EUR)
+const CREDIT_PRICE_EUROS = 1;
+const STRIPE_FEE_PERCENTAGE = 0.029;
+const STRIPE_FEE_FIXED = 0.30;
+const MIN_DEPOSIT_CREDITS = 1;
+const MAX_DEPOSIT_CREDITS = 10000;
 
-// Paquetes de créditos disponibles
+// Paquetes opcionales (bonus si el usuario elige exactamente esos importes)
 const CREDIT_PACKAGES = [
   { credits: 10, bonus: 0, label: "10 Créditos" },
   { credits: 25, bonus: 2, label: "25 Créditos (+2 gratis)" },
@@ -19,6 +22,32 @@ const CREDIT_PACKAGES = [
   { credits: 200, bonus: 40, label: "200 Créditos (+40 gratis)" },
 ];
 
+function zeroDecimalCurrency(code) {
+  return ['jpy', 'krw', 'clp', 'vnd', 'xaf', 'xof', 'xpf'].includes(String(code).toLowerCase());
+}
+
+export function quoteDepositCredits(credits, currency = 'EUR') {
+  const creditsNum = Math.floor(Number(credits));
+  if (!Number.isFinite(creditsNum) || creditsNum < MIN_DEPOSIT_CREDITS) {
+    throw new Error(`Mínimo ${MIN_DEPOSIT_CREDITS} crédito`);
+  }
+  if (creditsNum > MAX_DEPOSIT_CREDITS) {
+    throw new Error(`Máximo ${MAX_DEPOSIT_CREDITS} créditos`);
+  }
+  const cur = (currency || 'EUR').toUpperCase();
+  const creditsValueMajor = creditsToCurrency(creditsNum, cur);
+  // Cargo = valor de créditos (sin fee de plataforma extra; Stripe cobra aparte en el PI)
+  const chargeMajor = creditsValueMajor;
+  const processingFeeMajor = 0;
+  return {
+    credits: creditsNum,
+    currency: cur,
+    creditsValueMajor,
+    chargeMajor,
+    processingFeeMajor,
+  };
+}
+
 /*
 ====================================
 COMPRAR CRÉDITOS CON STRIPE
@@ -26,70 +55,106 @@ COMPRAR CRÉDITOS CON STRIPE
 */
 export async function createPaymentIntent(userId, credits) {
   try {
-    // Validar usuario
+    const creditsNum = Math.floor(Number(credits));
+    if (!Number.isFinite(creditsNum) || creditsNum < MIN_DEPOSIT_CREDITS) {
+      throw new Error(`Mínimo ${MIN_DEPOSIT_CREDITS} crédito`);
+    }
+    if (creditsNum > MAX_DEPOSIT_CREDITS) {
+      throw new Error(`Máximo ${MAX_DEPOSIT_CREDITS} créditos`);
+    }
+
     const user = await prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: userId },
     });
 
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
-    // Validar paquete de créditos
-    const packageInfo = CREDIT_PACKAGES.find(p => p.credits === credits);
-    if (!packageInfo) {
-      throw new Error('Paquete de créditos no válido');
+    const packageInfo =
+      CREDIT_PACKAGES.find((p) => p.credits === creditsNum) || {
+        credits: creditsNum,
+        bonus: 0,
+        label: `${creditsNum} créditos`,
+      };
+
+    const totalCredits = creditsNum + packageInfo.bonus;
+    const currency = (user.currency || 'EUR').toUpperCase();
+    const quote = quoteDepositCredits(creditsNum, currency);
+    const amountMinor = zeroDecimalCurrency(currency)
+      ? Math.round(quote.chargeMajor)
+      : Math.round(quote.chargeMajor * 100);
+
+    if (!Number.isFinite(amountMinor) || amountMinor < 1) {
+      throw new Error('Importe de pago inválido');
     }
 
-    // Calcular total con bonus
-    const totalCredits = credits + packageInfo.bonus;
-    const totalAmount = credits * CREDIT_PRICE_EUROS * 100; // Convertir a centavos
+    // Cancelar pagos PENDING viejos para no bloquear depósitos nuevos
+    const stale = await prisma.payment.findMany({
+      where: { userId, status: 'PENDING' },
+      select: { id: true, stripePaymentIntentId: true },
+    });
+    for (const row of stale) {
+      if (row.stripePaymentIntentId) {
+        try {
+          await stripe.paymentIntents.cancel(row.stripePaymentIntentId);
+        } catch {
+          /* already canceled / succeeded */
+        }
+      }
+      await prisma.payment.update({
+        where: { id: row.id },
+        data: { status: 'CANCELLED' },
+      });
+    }
 
-    // Crear cliente Stripe
     const customer = await stripe.customers.create({
       email: user.email,
       metadata: {
-        userId: userId.toString()
-      }
+        userId: userId.toString(),
+      },
     });
 
-    // Crear Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: totalAmount,
-      currency: 'eur',
+      amount: amountMinor,
+      currency: currency.toLowerCase(),
       customer: customer.id,
       metadata: {
         userId: userId.toString(),
-        credits: credits.toString(),
+        credits: creditsNum.toString(),
         totalCredits: totalCredits.toString(),
-        bonus: packageInfo.bonus.toString()
+        bonus: packageInfo.bonus.toString(),
       },
       automatic_payment_methods: {
-        enabled: true
-      }
+        enabled: true,
+      },
     });
 
-    // Guardar registro de pago en BD
     await prisma.payment.create({
       data: {
         userId,
-        amount: totalAmount,
-        currency: 'EUR',
+        amount: amountMinor,
+        currency,
         status: 'PENDING',
         stripePaymentIntentId: paymentIntent.id,
         creditsPurchased: totalCredits,
-        paymentType: 'CREDIT_PURCHASE'
-      }
+        paymentType: 'CREDIT_PURCHASE',
+      },
     });
 
     return {
       clientSecret: paymentIntent.client_secret,
+      client_secret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
-      amount: totalAmount,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+      amount: amountMinor,
+      amountMajor: quote.chargeMajor,
+      creditsValueMajor: quote.creditsValueMajor,
+      processingFeeMajor: quote.processingFeeMajor,
+      currency,
       credits: totalCredits,
-      packageInfo
+      packageInfo,
     };
-
   } catch (error) {
     console.error('Error creating payment intent:', error);
     throw new Error(`Error al crear pago: ${error.message}`);
@@ -369,6 +434,7 @@ export async function updateUserAgeVerification(userId, verificationData) {
 
 export default {
   createPaymentIntent,
+  quoteDepositCredits,
   processStripeWebhook,
   getUserPaymentHistory,
   getAvailablePackages,

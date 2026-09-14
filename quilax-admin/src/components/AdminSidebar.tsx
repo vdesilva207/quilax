@@ -1,10 +1,13 @@
 import React from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, usePathname } from 'expo-router';
-import { Colors, Spacing } from '@/constants/theme';
+import { Colors, Spacing, titleTypeface } from '@/constants/theme';
+import { brandGradientProps, APP_GRADIENT_SOFT, GRADIENT_VERTICAL } from '@/constants/gradients';
 import { ADMIN_NAV_ITEMS } from '@/constants/adminNav';
 import { getStoredAuthUser, clearAuthSession } from '@/lib/secureStorage';
 import apiClient from '@/lib/api';
+import { HeroEnter, PressScale, StaggerItem } from '@/components/motion';
 
 export default function AdminSidebar() {
   const router = useRouter();
@@ -31,65 +34,132 @@ export default function AdminSidebar() {
 
   return (
     <View style={styles.sidebar}>
-      <Text style={styles.brand}>Quilax Admin</Text>
-      <ScrollView style={styles.nav}>
-        {items.map((item) => {
+      <HeroEnter>
+        <LinearGradient {...brandGradientProps} style={styles.brandBlock}>
+          <Text style={styles.brandMark}>QUILAX</Text>
+          <Text style={styles.brandSub}>Panel de gestión</Text>
+        </LinearGradient>
+      </HeroEnter>
+      <ScrollView style={styles.nav} showsVerticalScrollIndicator={false}>
+        {items.map((item, index) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          if (active) {
+            return (
+              <StaggerItem key={item.href} index={index}>
+                <PressScale onPress={() => router.push(item.href as any)} scaleTo={0.98}>
+                  <LinearGradient
+                    colors={['#EFF6FF', '#F5F3FF', '#FEE2E2']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.linkActive}
+                  >
+                    <View style={styles.activeBar} />
+                    <Text style={styles.linkTextActive}>{item.label}</Text>
+                  </LinearGradient>
+                </PressScale>
+              </StaggerItem>
+            );
+          }
           return (
-            <Pressable
-              key={item.href}
-              style={[styles.link, active && styles.linkActive]}
-              onPress={() => router.push(item.href as any)}
-            >
-              <Text style={[styles.linkText, active && styles.linkTextActive]}>{item.label}</Text>
-            </Pressable>
+            <StaggerItem key={item.href} index={index}>
+              <PressScale
+                style={styles.link}
+                onPress={() => router.push(item.href as any)}
+                scaleTo={0.98}
+              >
+                <Text style={styles.linkText}>{item.label}</Text>
+              </PressScale>
+            </StaggerItem>
           );
         })}
       </ScrollView>
-      <Pressable style={styles.logout} onPress={handleLogout}>
+      <PressScale style={styles.logout} onPress={handleLogout} scaleTo={0.97}>
         <Text style={styles.logoutText}>Cerrar sesión</Text>
-      </Pressable>
+      </PressScale>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   sidebar: {
-    width: 240,
-    backgroundColor: '#1e293b',
-    paddingVertical: Spacing.four,
+    width: 260,
+    backgroundColor: 'rgba(255,252,248,0.92)',
+    paddingBottom: Spacing.three,
     height: '100%',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(28,25,23,0.06)',
+    // @ts-expect-error web-only
+    backdropFilter: 'blur(12px)',
+    boxShadow: '4px 0 24px rgba(28,25,23,0.04)',
   },
-  brand: {
+  brandBlock: {
+    paddingVertical: Spacing.four,
+    paddingHorizontal: Spacing.three,
+    marginBottom: Spacing.two,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 18,
+  },
+  brandMark: {
+    ...titleTypeface,
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-    paddingHorizontal: Spacing.three,
-    marginBottom: Spacing.four,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: 3.2,
   },
-  nav: { flex: 1 },
+  brandSub: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+    letterSpacing: 0.2,
+  },
+  nav: { flex: 1, paddingHorizontal: Spacing.two, paddingTop: Spacing.two },
   link: {
-    paddingVertical: Spacing.two,
+    paddingVertical: 11,
     paddingHorizontal: Spacing.three,
+    borderRadius: 12,
+    marginBottom: 2,
   },
   linkActive: {
-    backgroundColor: '#334155',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 11,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 12,
+    marginBottom: 2,
+    gap: 10,
+    // @ts-expect-error web-only
+    boxShadow: '0 4px 16px rgba(28,25,23,0.06)',
+  },
+  activeBar: {
+    width: 4,
+    height: 18,
+    borderRadius: 4,
+    backgroundColor: Colors.light.gradientEnd,
   },
   linkText: {
-    color: '#94a3b8',
+    color: Colors.light.textSecondary,
     fontSize: 14,
+    fontWeight: '500',
   },
   linkTextActive: {
-    color: '#fff',
-    fontWeight: '600',
+    ...titleTypeface,
+    color: Colors.light.text,
+    fontSize: 14,
+    fontWeight: '700',
   },
   logout: {
+    marginHorizontal: Spacing.two,
+    marginTop: Spacing.two,
     padding: Spacing.three,
-    borderTopWidth: 1,
-    borderTopColor: '#334155',
+    borderRadius: 12,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.12)',
   },
   logoutText: {
-    color: '#f87171',
-    fontWeight: '600',
+    color: Colors.light.error,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

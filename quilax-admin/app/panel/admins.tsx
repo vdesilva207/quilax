@@ -5,6 +5,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '@/lib/api';
+import PasswordInput from '@/components/ui/PasswordInput';
 
 interface Admin {
   id: number;
@@ -221,12 +222,11 @@ export default function AdminsScreen() {
               onChangeText={setUsername}
               autoCapitalize="none"
             />
-            <TextInput
-              style={styles.input}
+            <PasswordInput
               placeholder="Contraseña"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              containerStyle={styles.passwordInModal}
             />
             <View style={styles.roleSelector}>
               <Text style={styles.roleLabel}>Rol:</Text>
@@ -391,6 +391,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.light.backgroundSelected,
+  },
+  passwordInModal: {
+    marginBottom: 0,
   },
   roleSelector: {
     gap: Spacing.two,

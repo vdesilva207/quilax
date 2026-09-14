@@ -1,6 +1,6 @@
 /**
  * Quilax Theme — light-only, mobile-first.
- * Warm white (still reads as white, not cream paper).
+ * Tokens match quilax-website/css/styles.css (warm white, Sora, blue→purple→red).
  */
 
 import '@/global.css';

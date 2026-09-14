@@ -193,6 +193,7 @@ model QuizQuestion {
   id         Int          @id @default(autoincrement())
   quizId     Int
   text       String
+  imageUrl   String?
   maxPoints  Int          @default(1000)
   readTime   Int
   answerTime Int
@@ -303,6 +304,10 @@ model SystemSettings {
   maxWithdrawPerMonth         Int      @default(200000) // 200k€ por mes (cuentas verificadas)
   maxWithdrawPerTransaction   Int      @default(50000) // 50k€ por transacción (cuentas verificadas)
   largePrizeThreshold         Int      @default(100000) // 100k€ requiere KYC enhanced
+  /// Preferencia del panel: revisión automática de quizzes/posts (cola IA aún no cableada).
+  aiModerationEnabled         Boolean  @default(false)
+  /// Config global de reparto de premios (JSON: quizDistribution, seasonJackpotDistribution, minPrizePool).
+  prizeConfig                 Json?
   updatedAt                   DateTime @updatedAt
 }
 

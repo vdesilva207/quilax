@@ -5,9 +5,10 @@ import { AppScreen, AppHeader } from '@/components/ui/AppScreen';
 import { Pressable } from 'react-native';
 
 const REPORT_LINKS = [
+  { label: 'Moderar publicaciones', href: '/panel/posts' },
   { label: 'Analytics de quizzes', href: '/panel/quizzes' },
   { label: 'Finanzas', href: '/panel/financial' },
-  { label: 'Historial jackpot', href: '/panel/jackpot-history' },
+  { label: 'Temporadas y jackpot', href: '/panel/seasons' },
   { label: 'Logs del sistema', href: '/panel/logs' },
 ];
 

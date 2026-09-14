@@ -35,18 +35,21 @@ export default function SecuritySettingsScreen() {
   const [disableCode, setDisableCode] = useState('');
   const [disablePassword, setDisablePassword] = useState('');
 
+  const [securityError, setSecurityError] = useState('');
+
   useEffect(() => {
     (async () => {
+      setSecurityError('');
       try {
         const data = await apiClient.get('/profile/security');
         setTwoFactorEnabled(!!data?.security?.twoFactorEnabled);
-      } catch {
-        /* ignore */
+      } catch (e: any) {
+        setSecurityError(e?.message || t('common.requestError'));
       } finally {
         setLoadingSecurity(false);
       }
     })();
-  }, []);
+  }, [t]);
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -189,6 +192,10 @@ export default function SecuritySettingsScreen() {
       <AppSection title={t('settings.securityPage.twoFactorSection')} accentIndex={1}>
         {loadingSecurity ? (
           <ActivityIndicator color={Colors.light.primary} />
+        ) : securityError ? (
+          <AppCard>
+            <Text style={styles.twoFactorHelp}>{securityError}</Text>
+          </AppCard>
         ) : (
           <AppCard>
             <Text style={styles.twoFactorStatus}>

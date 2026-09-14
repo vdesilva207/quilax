@@ -9,6 +9,7 @@ import { useQuizPlayUi } from '@/context/QuizPlayUiContext';
 import { PressScale } from '@/components/motion';
 import Animated, { FadeInUp, Easing } from 'react-native-reanimated';
 import { useChromeInsets } from '@/hooks/useChromeInsets';
+import { BrandGradientBar } from '@/components/ui/BrandGradientBar';
 
 export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const { width } = useWindowDimensions();
@@ -21,6 +22,7 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
   return (
     <Animated.View entering={FadeInUp.duration(280).easing(Easing.out(Easing.cubic))} style={styles.outer}>
+      <BrandGradientBar style={styles.topStripe} />
       <View
         style={[
           styles.container,
@@ -85,9 +87,16 @@ export default function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 const styles = StyleSheet.create({
   outer: {
     backgroundColor: Colors.light.backgroundElement,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.backgroundSelected,
+    borderTopWidth: 0,
     alignItems: 'center',
+    shadowColor: '#1C1917',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 8,
+  },
+  topStripe: {
+    height: 3,
   },
   container: {
     flexDirection: 'row',

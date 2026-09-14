@@ -136,7 +136,7 @@ function EnrolledUpcomingList({
 }: {
   items: any[];
   now: number;
-  onOpen: (quizId: number) => void;
+  onOpen: (item: any) => void;
 }) {
   const { t } = useTranslation();
   if (!items.length) return null;
@@ -148,23 +148,28 @@ function EnrolledUpcomingList({
         {items.map((item) => {
           const ms = item.startsAt ? new Date(item.startsAt).getTime() - now : 0;
           const time = formatShortCountdown(ms) || '—';
+          const live = Boolean(item.activeRunId);
           return (
             <Pressable
               key={item.enrollmentId || item.quizId}
-              onPress={() => onOpen(item.quizId)}
+              onPress={() => onOpen(item)}
               style={({ pressed }) => [styles.enrolledRow, pressed && styles.ctaPressed]}
             >
               <View style={styles.enrolledMain}>
                 <Text style={styles.enrolledName} numberOfLines={1}>
                   {item.title}
                 </Text>
-                {item.category ? (
+                {live ? (
+                  <Text style={styles.enrolledCat} numberOfLines={1}>
+                    {t('home.liveNow')}
+                  </Text>
+                ) : item.category ? (
                   <Text style={styles.enrolledCat} numberOfLines={1}>
                     {getCategoryLabel(item.category, t)}
                   </Text>
                 ) : null}
               </View>
-              <Text style={styles.enrolledCountdownValue}>{time}</Text>
+              <Text style={styles.enrolledCountdownValue}>{live ? 'LIVE' : time}</Text>
             </Pressable>
           );
         })}
@@ -380,7 +385,12 @@ export default function HomeScreen() {
             .get('/home/season-ranking')
             .then((rankRes) => {
               const rankData = rankRes?.data || rankRes;
-              const rows = rankData?.seasonRanking || rankRes?.seasonRanking || [];
+              const rows =
+                rankData?.seasonRanking ||
+                rankData?.ranking ||
+                rankRes?.seasonRanking ||
+                rankRes?.ranking ||
+                [];
               const paid =
                 rankData?.paidPlaces ||
                 rankRes?.paidPlaces ||
@@ -529,6 +539,18 @@ export default function HomeScreen() {
 
       <HomeHero upcomingCount={upcomingCount} seasonEndsLabel={seasonEndsLabel} />
 
+      <EnrolledUpcomingList
+        items={myUpcoming}
+        now={now}
+        onOpen={(item) => {
+          if (item?.activeRunId) {
+            router.push(`/(app)/quiz/run/${item.activeRunId}`);
+            return;
+          }
+          router.push(`/(app)/quiz/${item.quizId || item}`);
+        }}
+      />
+
       {loadError ? (
         <AppSection title={t('common.error')} accentIndex={3}>
           <View style={styles.errorBox}>
@@ -568,12 +590,6 @@ export default function HomeScreen() {
           <Text style={styles.streakText}>{t('home.streakLine', { n: playStreak })}</Text>
         ) : null}
       </View>
-
-      <EnrolledUpcomingList
-        items={myUpcoming}
-        now={now}
-        onOpen={(quizId) => router.push(`/(app)/quiz/${quizId}`)}
-      />
 
       {hotCategories.length > 0 ? (
         <View style={styles.catsBlock}>
@@ -706,14 +722,14 @@ const styles = StyleSheet.create({
     ...sora(800),
     fontSize: 40,
     color: '#FFFFFF',
-    letterSpacing: 1.2,
+    letterSpacing: 2.4,
   },
   heroScreen: {
     ...sora(700),
-    marginTop: 2,
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.78)',
-    letterSpacing: 0.4,
+    marginTop: 4,
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.88)',
+    letterSpacing: 0.3,
   },
   liveRow: {
     flexDirection: 'row',

@@ -116,7 +116,7 @@ router.get("/:id/analytics", auth, async (req, res) => {
     // Verificar que el usuario es el creador del quiz
     const quiz = await prisma.quiz.findUnique({
       where: { id: quizId },
-      select: { creatorId: true, scheduledEnd: true, status: true }
+      select: { creatorId: true, status: true, schedules: { orderBy: { scheduledAt: "desc" }, take: 1 } }
     });
 
     if (!quiz) {
@@ -128,12 +128,12 @@ router.get("/:id/analytics", auth, async (req, res) => {
     }
 
     // Verificar si el quiz ya terminó
-    if (quiz.status !== "COMPLETED") {
+    if (quiz.status !== "FINISHED" && quiz.status !== "PUBLISHED") {
       return res.status(400).json({ error: "El quiz aún no ha terminado" });
     }
 
     // Verificar si han pasado 7 días desde que terminó
-    const sevenDaysAfterEnd = new Date(new Date(quiz.scheduledEnd).getTime() + 7 * 24 * 60 * 60 * 1000);
+    const sevenDaysAfterEnd = new Date(new Date((quiz.schedules?.[0]?.scheduledAt || null)).getTime() + 7 * 24 * 60 * 60 * 1000);
     const now = new Date();
 
     if (now > sevenDaysAfterEnd) {
@@ -142,7 +142,7 @@ router.get("/:id/analytics", auth, async (req, res) => {
         where: {
           userId,
           quizRun: {
-            createdAt: { gte: quiz.scheduledEnd }
+            createdAt: { gte: (quiz.schedules?.[0]?.scheduledAt || null) }
           }
         }
       });
@@ -165,76 +165,58 @@ router.get("/:id/analytics", auth, async (req, res) => {
             user: {
               select: {
                 id: true,
-                username: true
-              }
-            }
-          }
+                username: true,
+              },
+            },
+          },
         },
-        answers: true
-      }
+        scores: true,
+      },
     });
 
-    const totalPlayers = quizRuns.length;
-    const completedRuns = quizRuns.filter(run => run.status === "COMPLETED");
-    const completionRate = totalPlayers > 0 ? (completedRuns.length / totalPlayers) * 100 : 0;
+    const totalPlayers = quizRuns.reduce(
+      (sum, run) => sum + (run.participants?.length || 0),
+      0
+    );
+    const completedRuns = quizRuns.filter((run) => run.phase === "FINISHED");
+    const completionRate =
+      quizRuns.length > 0 ? (completedRuns.length / quizRuns.length) * 100 : 0;
 
-    // Tiempo promedio de juego
-    const avgPlayTime = completedRuns.length > 0
-      ? completedRuns.reduce((sum, run) => {
-          const duration = new Date(run.updatedAt).getTime() - new Date(run.createdAt).getTime();
-          return sum + duration;
-        }, 0) / completedRuns.length / 1000 // Convertir a segundos
-      : 0;
-
-    // Análisis de preguntas
-    const questions = await prisma.question.findMany({
-      where: { quizId },
-      include: {
-        answers: {
-          include: {
-            quizRun: {
-              where: { status: "COMPLETED" }
-            }
-          }
-        }
-      }
-    });
-
-    const questionAnalysis = questions.map(q => {
-      const totalAnswers = q.answers.length;
-      const correctAnswers = q.answers.filter(a => a.isCorrect).length;
-      const accuracy = totalAnswers > 0 ? (correctAnswers / totalAnswers) * 100 : 0;
-      const avgTime = totalAnswers > 0
-        ? q.answers.reduce((sum, a) => sum + (a.timeTaken || 0), 0) / totalAnswers
+    const avgPlayTime =
+      completedRuns.length > 0
+        ? completedRuns.reduce((sum, run) => {
+            const end = run.finishedAt || run.phaseEndsAt || run.createdAt;
+            const duration =
+              new Date(end).getTime() - new Date(run.createdAt).getTime();
+            return sum + Math.max(0, duration);
+          }, 0) /
+          completedRuns.length /
+          1000
         : 0;
 
-      return {
-        questionId: q.id,
-        question: q.question,
-        totalAnswers,
-        correctAnswers,
-        accuracy,
-        avgTime
-      };
+    const questions = await prisma.quizQuestion.findMany({
+      where: { quizId },
+      include: { answers: true },
     });
 
-    // Análisis económico
-    const totalPrizes = quizRuns.reduce((sum, run) => sum + (run.prize || 0), 0);
-    const creatorEarnings = quizRuns.reduce((sum, run) => sum + (run.creatorEarnings || 0), 0);
+    const questionAnalysis = questions.map((q) => ({
+      questionId: q.id,
+      question: q.text,
+      totalAnswers: q.answers?.length || 0,
+      correctAnswers: (q.answers || []).filter((a) => a.isCorrect).length,
+      accuracy: null,
+      avgTime: null,
+    }));
 
-    // Lista de ganadores
-    const winners = quizRuns
-      .filter(run => run.prize > 0)
-      .map(run => {
-        const participant = run.participants[0];
-        return {
-          userId: participant?.userId,
-          username: participant?.user?.username,
-          prize: run.prize,
-          score: participant?.score || 0
-        };
-      })
-      .sort((a, b) => b.prize - a.prize);
+    const winners = await prisma.quizWinner.findMany({
+      where: { quizId },
+      include: {
+        user: { select: { id: true, username: true } },
+      },
+      orderBy: { creditsWon: "desc" },
+    });
+
+    const totalPrizes = winners.reduce((sum, w) => sum + (w.creditsWon || 0), 0);
 
     res.json({
       success: true,
@@ -244,9 +226,14 @@ router.get("/:id/analytics", auth, async (req, res) => {
         avgPlayTime,
         questionAnalysis,
         totalPrizes,
-        creatorEarnings,
-        winners
-      }
+        creatorEarnings: 0,
+        winners: winners.map((w) => ({
+          userId: w.userId,
+          username: w.user?.username,
+          prize: w.creditsWon,
+          score: null,
+        })),
+      },
     });
   } catch (error) {
     console.error("Error getting quiz analytics:", error);
@@ -262,6 +249,7 @@ router.get("/my-quizzes", auth, async (req, res) => {
     const quizzes = await prisma.quiz.findMany({
       where: { creatorId: userId },
       include: {
+        schedules: { orderBy: { scheduledAt: "desc" }, take: 1 },
         _count: {
           select: {
             quizRuns: true
@@ -274,13 +262,13 @@ router.get("/my-quizzes", auth, async (req, res) => {
     });
 
     const quizzesWithAnalytics = quizzes.map(quiz => {
-      const sevenDaysAfterEnd = quiz.scheduledEnd
-        ? new Date(new Date(quiz.scheduledEnd).getTime() + 7 * 24 * 60 * 60 * 1000)
+      const sevenDaysAfterEnd = (quiz.schedules?.[0]?.scheduledAt || null)
+        ? new Date(new Date((quiz.schedules?.[0]?.scheduledAt || null)).getTime() + 7 * 24 * 60 * 60 * 1000)
         : null;
       const now = new Date();
 
       let analyticsAvailable = false;
-      if (quiz.status === "COMPLETED" && sevenDaysAfterEnd) {
+      if (quiz.status === "FINISHED" || quiz.status === "PUBLISHED" && sevenDaysAfterEnd) {
         analyticsAvailable = now <= sevenDaysAfterEnd;
       }
 

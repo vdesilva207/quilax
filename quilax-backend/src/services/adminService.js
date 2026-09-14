@@ -12,9 +12,9 @@ export async function getQuizzes(filters) {
   if (filters.creatorId) where.creatorId = Number(filters.creatorId);
 
   if (filters.scheduled !== undefined) {
-    where.scheduledAt = filters.scheduled
-      ? { not: null }
-      : null;
+    where.schedules = filters.scheduled
+      ? { some: {} }
+      : { none: {} };
   }
 
   if (filters.dateFrom || filters.dateTo) {
@@ -61,7 +61,7 @@ VALIDAR SLOT (1 QUIZ / MINUTO)
 ====================================
 */
 export async function validateMinuteSlot(date) {
-  const existing = await prisma.quiz.findFirst({
+  const existing = await prisma.quizSchedule.findFirst({
     where: {
       scheduledAt: {
         gte: date,
@@ -98,9 +98,12 @@ export async function approveQuiz(quizId, scheduledAt) {
   return prisma.quiz.update({
     where: { id: quizId },
     data: {
-      status: "SCHEDULED",
-      scheduledAt: date,
+      status: "PUBLISHED",
+      schedules: {
+        create: { scheduledAt: date },
+      },
     },
+    include: { schedules: true },
   });
 }
 
@@ -126,6 +129,6 @@ CANCEL QUIZ
 export async function cancelQuiz(quizId) {
   return prisma.quiz.update({
     where: { id: quizId },
-    data: { status: "CANCELLED" },
+    data: { status: "REJECTED" },
   });
 }

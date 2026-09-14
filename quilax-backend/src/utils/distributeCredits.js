@@ -9,24 +9,12 @@ import { distributePrizes } from "../services/prizeDistributionService.js";
 export async function distributeQuizCredits(quizRunId) {
   try {
     console.log(`🏆 Starting prize distribution for quiz run ${quizRunId}`);
-    
-    // Usar el sistema de premios completo
     const distribution = await distributePrizes(quizRunId);
-    
-    console.log(`✅ Prize distribution completed for quiz run ${quizRunId}:`, distribution);
-    
+    console.log(`✅ Prize distribution completed for quiz run ${quizRunId}`);
     return distribution;
   } catch (error) {
-    console.error(`❌ Error distributing prizes for quiz run ${quizRunId}:`, error);
-    
-    // Si falla la distribución automática, registrar el error
-    await prisma.quizRun.update({
-      where: { id: quizRunId },
-      data: {
-        // Podríamos añadir un campo para marcar error de distribución
-      }
-    });
-    
+    console.error(`❌ Error distributing prizes for quiz run ${quizRunId}:`, error?.message || error);
+    // Do not crash the finish path permanently — surface for admin retry via POST /prizes/distribute
     throw error;
   }
 }
@@ -41,7 +29,7 @@ export async function distributeQuizCreditsLegacy(quizRunId) {
       include: {
         quiz: { include: { rewardRules: true } },
         participants: {
-          orderBy: { finalPosition: "asc" },
+          orderBy: [{ score: "desc" }, { joinedAt: "asc" }],
         },
       },
     });

@@ -118,7 +118,8 @@
       "convertFailed": "Impossible de convertir l'image",
       "prepareFailed": "Impossible de préparer l'image pour le téléchargement"
     },
-    "requestTimeout": "Délai dépassé. Vérifie ta connexion."
+    "requestTimeout": "Délai dépassé. Vérifie ta connexion.",
+    "networkError": "Impossible de se connecter. Vérifiez votre connexion et réessayez."
   },
   "tabs": {
     "home": "Accueil",
@@ -175,7 +176,8 @@
       "webOnlyNote": "N'oubliez pas : l'achat de crédits et le retrait d'argent se font uniquement sur le site Gestion.",
       "mustBe18": "Vous devez avoir 18 ans ou plus pour vous inscrire",
       "dobInvalid": "Date de naissance invalide",
-      "networkError": "Impossible d'atteindre le serveur. Assurez-vous que le téléphone est sur le même réseau Wi-Fi que votre Mac et que l'API est en cours d'exécution."
+      "networkError": "Impossible d'atteindre le serveur. Assurez-vous que le téléphone est sur le même réseau Wi-Fi que votre Mac et que l'API est en cours d'exécution.",
+      "alreadyExists": "Cet e-mail a déjà un compte. Utilisez « J’ai déjà un compte » et connectez-vous."
     },
     "forgotPasswordScreen": {
       "description": "Entrez votre email pour recevoir les instructions pour réinitialiser votre mot de passe.",
@@ -288,7 +290,11 @@
       "autoPendingBody": "Si vous avez terminé dans le navigateur, attendez quelques secondes ou appuyez à nouveau sur Vérifier automatiquement.",
       "autoPolling": "En attente de l'identité Stripe…",
       "manualReviewNote": "La voie manuelle ne lit pas automatiquement la pièce : pas d’OCR et pas de contrôle que le type choisi correspond. L’âge 18+ vient de la date de naissance à l’inscription ; un relecteur vérifie la clarté. Pour la vérif automatique (document + selfie), utilisez Stripe Identity ci-dessus.",
-      "stripeOnlyHint": "La vérification est faite par Stripe Identity : photo du document + selfie (preuve de vie). Pas d’upload manuel ni de revue admin des photos."
+      "stripeOnlyHint": "La vérification est faite par Stripe Identity : photo du document + selfie (preuve de vie). Pas d’upload manuel ni de revue admin des photos.",
+      "autoNeedLogin": "Session expirée. Reconnectez-vous et réessayez.",
+      "autoTimeout": "Stripe a mis trop de temps. Réessayez ou utilisez l’envoi manuel.",
+      "skipFailed": "Impossible de passer la vérification.",
+      "skipForNow": "Passer pour l’instant (tests uniquement)"
     },
     "faceScanScreen": {
       "title": "Analyse du visage",
@@ -366,7 +372,8 @@
     "noRanking": "Aucun score pour l'instant. Soyez le premier.",
     "viewFullRanking": "Voir le classement complet →",
     "loadError": "Impossible de charger les quiz",
-    "loadErrorHint": "Vérifiez votre connexion et appuyez sur Réessayer. Vous pouvez également dérouler vers le bas pour actualiser."
+    "loadErrorHint": "Vérifiez votre connexion et appuyez sur Réessayer. Vous pouvez également dérouler vers le bas pour actualiser.",
+    "liveNow": "En direct"
   },
   "seasonDetail": {
     "title": "Saisons",
@@ -632,7 +639,7 @@
       "twoFactorSection": "Authentification à deux facteurs",
       "twoFactorOn": "2FA activé",
       "twoFactorOff": "2FA désactivé",
-      "twoFactorHelp": "Avec 2FA activé, vous en aurez besoin pour les dépôts et les retraits dans Gestión.",
+      "twoFactorHelp": "Avec 2FA activé, vous en aurez besoin pour les dépôts et les retraits dans Gestion.",
       "twoFactorStart": "Configurer 2FA",
       "twoFactorCodeLabel": "Code à 6 chiffres",
       "twoFactorConfirm": "Confirmer et activer",
@@ -830,7 +837,7 @@
     "sharePlayStore": "Google Play",
     "tipsSection": "Conseils",
     "localTimeNote": "Votre heure locale ({{tz}})",
-    "earlyJoinKicker": "Bonus d'adhésion anticipée",
+    "earlyJoinKicker": "Bonus d'inscription anticipée",
     "earlyJoinTitle": "Jusqu'à +{{max}} points si vous vous inscrivez tôt",
     "earlyJoinSpots": "Sièges bonus restants (jusqu'au #{{maxPos}}) · vous seriez #{{position}} maintenant",
     "earlyJoinShowTable": "Voir tous les bonus",
@@ -862,7 +869,8 @@
       "title": "Confirmer",
       "subtitle": "1 crédit sera déduit maintenant",
       "quizFallback": "Quiz #{{id}}"
-    }
+    },
+    "enterLiveButton": "Entrer dans la partie"
   },
   "quizPlay": {
     "loadingEntry": "Entrer dans le quiz…",
@@ -919,7 +927,10 @@
     "exitConfirmBody": "Si vous partez maintenant, vous ne pourrez pas rouvrir cet écran de récompenses.",
     "exitConfirmOk": "Quitter",
     "reconnecting": "Reconnexion…",
-    "reconnectingHint": "La partie reste ouverte. Nouvelle tentative en arrière-plan."
+    "reconnectingHint": "La partie reste ouverte. Nouvelle tentative en arrière-plan.",
+    "creditsPrize": "+{{n}} crédits",
+    "leaveCountdown": "Rester dans l’app",
+    "noCreditsPrize": "0 crédit"
   },
   "enroll": {
     "kicker": "Inscription",
@@ -1120,7 +1131,9 @@
     "recoverEmpty": "Aucun crédit à récupérer",
     "recoverReasonCancelled": "Quiz annulé",
     "recoverReasonNeverRan": "N’a pas eu lieu (panne ou retard)",
-    "recoverError": "Impossible de récupérer le crédit"
+    "recoverError": "Impossible de récupérer le crédit",
+    "noPlayedHistory": "Aucun quiz joué pour le moment.",
+    "scorePoints": "{{n}} pts"
   },
   "messages": {
     "title": "Messages",
@@ -1198,11 +1211,11 @@
       },
       "oneCreditEntry": {
         "title": "1 crédit = entrée",
-        "body": "L'adhésion coûte 1 crédit. Ce crédit n'est pas remboursé : il est entièrement reversé à la cagnotte du quiz. Plus il y a de personnes, plus la cagnotte pour les gagnants est importante."
+        "body": "Participer coûte 1 crédit. Ce crédit n'est pas remboursé : il alimente entièrement la cagnotte du quiz. Plus il y a de joueurs, plus la cagnotte pour les gagnants est importante."
       },
       "earlyJoinBonus": {
-        "title": "Un avantage pour adhérer tôt",
-        "body": "Les 500 premiers à adhérer reçoivent un bonus de points lors de leur inscription (adhésion anticipée). La 1ère place peut rapporter jusqu'à +600 points de départ ; les niveaux suivants s'additionnent également, jusqu'au spot 500. Rejoindre les premières questions."
+        "title": "Un avantage à s'inscrire tôt",
+        "body": "Les 500 premiers inscrits reçoivent un bonus de points à l'entrée (inscription anticipée). La 1ʳᵉ place peut rapporter jusqu'à +600 points de départ ; les paliers suivants aussi, jusqu'à la 500ᵉ place. S'inscrire tôt compte."
       },
       "createYourOwnQuizzes": {
         "title": "Créez vos propres quiz",
@@ -1210,15 +1223,15 @@
       },
       "seasonsAndRanking": {
         "title": "Saisons et classement",
-        "body": "Il y a des saisons de 45 jours avec un classement par points. On grimpe en jouant bien (et en adhérant tôt). Lorsqu'une saison se termine, le jackpot est versé et la saison suivante démarre automatiquement."
+        "body": "Il y a des saisons de 45 jours avec un classement par points. On grimpe en jouant bien (et en s'inscrivant tôt). Lorsqu'une saison se termine, le jackpot est versé et la saison suivante démarre automatiquement."
       },
       "creditsAndMoney": {
         "title": "Crédits et argent",
-        "body": "Les crédits représentent une valeur réelle à l'intérieur de Quilax (≈1 EUR). Vous achetez des crédits, participez à des quiz, gagnez des prix et pouvez vous retirer. Chaque mouvement est enregistré dans votre historique de transactions."
+        "body": "Les crédits ont une valeur réelle dans Quilax (≈1 EUR). Vous achetez des crédits, participez à des quiz, gagnez des prix et pouvez retirer vos gains. Chaque mouvement est enregistré dans votre historique de transactions."
       },
       "secureApp": {
         "title": "Une application sécurisée",
-        "body": "Authentification protégée, vérification d'identité si nécessaire, contrôles anti-triche sur les réponses et comptes bancaires vérifiés pour les retraits. Nous jouons franc-jeu."
+        "body": "Authentification protégée, vérification d'identité si nécessaire, contrôles anti-triche sur les réponses et comptes bancaires vérifiés pour les retraits. Le fair-play avant tout."
       },
       "moneyOnlyOnWeb": {
         "title": "Argent uniquement sur le web",
@@ -1226,22 +1239,25 @@
       },
       "readyToStart": {
         "title": "Prêt à démarrer",
-        "body": "Dans l'étape suivante, vous créerez votre compte avec vos coordonnées. Vous pourrez ensuite vérifier votre adresse e-mail, compléter votre profil et participer à votre premier quiz. Bienvenue à Quilax !"
+        "body": "À l'étape suivante, vous créerez votre compte. Ensuite vous pourrez vérifier votre e-mail, compléter votre profil et rejoindre votre premier quiz. Bienvenue sur Quilax !"
       }
     }
   },
   "wallet": {
-    "title": "Gestion",
-    "subtitle": "Achetez des crédits et retirez-les sur le site Gestion.",
-    "balanceLabel": "Solde dans l'application",
+    "title": "Votre argent,",
+    "subtitle": "Même session, même compte. Ouvrez Gestion sur le web pour acheter des crédits et retirer vos gains.",
+    "balanceLabel": "Solde dans l’app",
     "creditsUnit": "crédits",
-    "description": "Nous ouvrirons Gestion déjà connecté. Vous pourrez y voir votre solde, ajouter ou retirer des crédits et lier votre banque si nécessaire.",
-    "openWeb": "Ouvrir le portefeuille sur le Web",
-    "appOnlyHint": "Wallet ne peut être ouvert qu'à partir de cette application (pas à partir d'un lien aléatoire).",
-    "openErrorTitle": "Impossible d'ouvrir",
-    "openErrorBody": "Réessayez. Vous devez être connecté à Quilax.",
-    "openErrorHint": "Si l'échec persiste, déconnectez-vous et reconnectez-vous, ou vérifiez que l'API est accessible.",
-    "emptyBalanceHint": "Le solde est de 0. Ouvrez Gestion pour ajouter des crédits et participer à des quiz payants."
+    "description": "Nous ouvrirons Gestion déjà connecté. Gérez solde, dépôts, retraits et compte bancaire là-bas.",
+    "openWeb": "Ouvrir Gestion",
+    "appOnlyHint": "Pour la sécurité, Gestion ne s’ouvre que depuis cette app.",
+    "openErrorTitle": "Impossible d’ouvrir",
+    "openErrorBody": "Réessayez dans quelques secondes. Si ça continue, déconnectez-vous et reconnectez-vous.",
+    "openErrorHint": "",
+    "emptyBalanceHint": "Solde à 0. Ouvrez Gestion pour ajouter des crédits et rejoindre des quiz payants.",
+    "badge": "Crédits · retraits · banque",
+    "openSameTab": "Ouvrir dans cet onglet",
+    "titleAccent": "sous contrôle."
   },
   "notif": {
     "title": "Autoriser les notifications ?",

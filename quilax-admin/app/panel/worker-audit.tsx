@@ -83,7 +83,7 @@ export default function WorkerAuditScreen() {
       >
         <View style={styles.headerContent}>
           <Text style={styles.title}>Auditoría</Text>
-          <Text style={styles.subtitle}>Logs de Admin Workers</Text>
+          <Text style={styles.subtitle}>Registro de actividad</Text>
         </View>
       </LinearGradient>
 

@@ -1,8 +1,5 @@
 import prisma from "../lib/prisma.js";
-import {
-  generateQuizHash,
-  calculateQuizSimilarity,
-} from "./quizHashService.js";
+import { calculateQuizSimilarity } from "./quizHashService.js";
 import { getIO } from "../socket.js";
 import { canPublishQuiz } from "../utils/quizValidationService.js";
 
@@ -38,79 +35,48 @@ export async function publishQuiz(userId, quizId, scheduledAt) {
     throw new Error(`No se puede publicar el quiz: ${errorMessage}`);
   }
 
-  // ⚠️ ADAPTADO A TU MODELO
-  const fullQuiz = {
-    title: quiz.title,
-    questions: quiz.questions.map((q) => ({
-      text: q.text,
-      answers: q.options || [], // 👈 importante según tu modelo
-    })),
-  };
-
-  const hash = generateQuizHash(fullQuiz);
-
   // Socket opcional
   let io = null;
   try {
     io = getIO();
   } catch {}
 
-  /*
-  ====================================
-  DUPLICADO EXACTO
-  ====================================
-  */
-  const existing = await prisma.quiz.findFirst({
-    where: {
-      contentHash: hash,
-    },
-  });
-
-  if (existing) {
-    if (io) {
-      io.to(`user:${userId}`).emit("quiz:duplicate", { quizId });
-    }
-    throw new Error("Este quiz ya existe");
-  }
-
-  /*
-  ====================================
-  SIMILITUD (WARNING SOLO)
-  ====================================
-  */
+  // Soft similarity warning vs other quizzes by same creator (no contentHash in schema)
+  const fullQuiz = {
+    title: quiz.title,
+    questions: quiz.questions.map((q) => ({ text: q.text, answers: [] })),
+  };
   const userQuizzes = await prisma.quiz.findMany({
-    where: { creatorId: userId },
+    where: { creatorId: userId, id: { not: quizId } },
     include: { questions: true },
   });
-
   for (const q of userQuizzes) {
     const sim = calculateQuizSimilarity(fullQuiz, {
       title: q.title,
-      questions: q.questions.map((qq) => ({
-        text: qq.text,
-      })),
+      questions: q.questions.map((qq) => ({ text: qq.text })),
     });
-
     if (sim > 0.85) {
-      console.warn("⚠️ Quiz muy similar", {
-        quizId,
-        similarity: sim,
-      });
+      console.warn("Quiz muy similar", { quizId, otherId: q.id, similarity: sim });
     }
   }
 
-  /*
-  ====================================
-  UPDATE QUIZ + CREAR SCHEDULE + ESTABLECER quizSubmittedAt
-  ====================================
-  */
+  // Slot check: one quiz per minute
+  const slotTaken = await prisma.quizSchedule.findFirst({
+    where: {
+      scheduledAt: {
+        gte: date,
+        lt: new Date(date.getTime() + 60000),
+      },
+    },
+  });
+  if (slotTaken) {
+    throw new Error("Ya hay un quiz en ese minuto");
+  }
+
   const updated = await prisma.quiz.update({
     where: { id: quizId },
     data: {
       status: "PENDING_REVIEW",
-      contentHash: hash,
-
-      // 🔥 AQUÍ ESTÁ LA CLAVE
       schedules: {
         create: {
           scheduledAt: date,

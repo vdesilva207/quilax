@@ -18,6 +18,9 @@ export const APP_GRADIENT_SOFT = ['#EFF6FF', '#F5F3FF', '#FEE2E2', '#FEF2F2'] as
 
 export const SCREEN_BACKGROUND = Colors.light.background;
 
+/** Marketing / Gestión gate — thin top brand stripe */
+export const GRADIENT_BAR_HEIGHT = 4;
+
 
 export const SECTION_ACCENTS = [
   Colors.light.gradientStart,

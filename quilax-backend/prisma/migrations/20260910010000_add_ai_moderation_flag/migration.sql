@@ -1,0 +1,1 @@
+ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "aiModerationEnabled" BOOLEAN NOT NULL DEFAULT false;

@@ -116,7 +116,6 @@ export default function BankAccountSettingsScreen() {
     (status?.canWithdraw || status?.isBankVerified);
   const locked = !!status?.countryLocked;
   const activeRegions = regions.filter((r) => r.active);
-  const comingSoon = regions.filter((r) => r.comingSoon && !r.active);
 
   return (
     <AppScreen>
@@ -142,7 +141,7 @@ export default function BankAccountSettingsScreen() {
                 })}
               </Text>
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <ScrollView style={styles.countryList} nestedScrollEnabled>
                 {activeRegions.map((r) => (
                   <Pressable
                     key={r.country}
@@ -152,20 +151,12 @@ export default function BankAccountSettingsScreen() {
                     <Text
                       style={[styles.chipText, country === r.country && styles.chipTextOn]}
                     >
-                      {r.name}
+                      {r.name} · {r.currency}
                     </Text>
                   </Pressable>
                 ))}
               </ScrollView>
             )}
-
-            {comingSoon.length > 0 ? (
-              <Text style={styles.soon}>
-                {t('settings.bank.comingSoon', {
-                  list: comingSoon.slice(0, 5).map((r) => r.name).join(', '),
-                })}
-              </Text>
-            ) : null}
 
             {ibanMasked ? (
               <Text style={styles.meta}>{t('settings.bank.accountLabel', { iban: ibanMasked })}</Text>
@@ -232,12 +223,15 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
     marginTop: Spacing.two,
   },
+  countryList: {
+    maxHeight: 240,
+    marginTop: 4,
+  },
   chip: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
     backgroundColor: Colors.light.backgroundSelected,
-    marginRight: 8,
     marginTop: 8,
   },
   chipOn: { backgroundColor: Colors.light.primary },

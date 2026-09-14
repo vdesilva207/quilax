@@ -8,17 +8,25 @@ import jwt from 'jsonwebtoken';
 const router = express.Router();
 const ENTRY_COST = 1;
 
-async function getOptionalViewerId(req) {
+async function getOptionalViewer(req) {
   try {
     const header = req.headers.authorization;
-    if (!header?.startsWith('Bearer ')) return null;
+    if (!header?.startsWith('Bearer ')) return { id: null, role: null };
     const token = header.split(' ')[1];
-    if (!token) return null;
+    if (!token) return { id: null, role: null };
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    return decoded?.id ? Number(decoded.id) : null;
+    return {
+      id: decoded?.id ? Number(decoded.id) : null,
+      role: decoded?.role || null,
+    };
   } catch {
-    return null;
+    return { id: null, role: null };
   }
+}
+
+async function getOptionalViewerId(req) {
+  const v = await getOptionalViewer(req);
+  return v.id;
 }
 
 async function findRecoverableEnrollments(userId) {
@@ -198,7 +206,6 @@ router.get('/me', auth, async (req, res) => {
                   quizParticipants: true,
                   quizScores: true,
                   quizWinners: true,
-                  payments: true,
                   withdrawals: true,
                   transactions: true,
                 },
@@ -266,7 +273,7 @@ router.get('/me', auth, async (req, res) => {
         quizzesParticipated: user._count.quizParticipants,
         quizzesCompleted: user._count.quizScores,
         quizzesWon: user._count.quizWinners,
-        totalPayments: user._count.payments,
+        totalPayments: 0,
         totalWithdrawals: user._count.withdrawals,
         totalTransactions: user._count.transactions
       },
@@ -1316,6 +1323,67 @@ router.post('/security/2fa/confirm', auth, async (req, res) => {
   }
 });
 
+/**
+ * Rotar secreto 2FA (nuevo QR) cuando ya está activo.
+ * Requiere el código TOTP actual — si perdiste el móvil, hace falta soporte.
+ */
+router.post('/security/2fa/reset', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Código 2FA requerido' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, twoFactorSecret: true, twoFactorEnabled: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+      return res.status(400).json({ error: '2FA no está activo' });
+    }
+
+    const verified = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: 'base32',
+      token: String(token).trim(),
+      window: 1,
+    });
+    if (!verified) {
+      return res.status(400).json({ error: 'Código 2FA incorrecto' });
+    }
+
+    const secret = speakeasy.generateSecret({
+      name: `Quilax (${user.email})`,
+      issuer: 'Quilax',
+    });
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        twoFactorSecret: secret.base32,
+        twoFactorEnabled: false,
+      },
+    });
+
+    res.json({
+      success: true,
+      secret: secret.base32,
+      otpauthUrl: secret.otpauth_url,
+      message: 'Escanea el nuevo QR y confirma el código para reactivar 2FA',
+    });
+  } catch (error) {
+    console.error('Error resetting 2FA:', error);
+    res.status(500).json({ error: 'Error al regenerar 2FA' });
+  }
+});
+
 // Deshabilitar 2FA (password + TOTP)
 router.post('/security/2fa/disable', auth, async (req, res) => {
   try {
@@ -1480,16 +1548,12 @@ router.get('/prizes/history', auth, async (req, res) => {
       prisma.quizWinner.findMany({
         where: { userId },
         include: {
-          quizRun: {
-            include: {
-              quiz: {
-                select: {
-                  title: true,
-                  category: true
-                }
-              }
-            }
-          }
+          quiz: {
+            select: {
+              id: true,
+              title: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -1500,7 +1564,10 @@ router.get('/prizes/history', auth, async (req, res) => {
 
     res.json({
       success: true,
-      prizes,
+      prizes: prizes.map((prize) => ({
+        ...prize,
+        quiz: prize.quiz ? { ...prize.quiz, category: null } : null,
+      })),
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -1527,32 +1594,39 @@ router.get('/statistics/win-rate', auth, async (req, res) => {
       where: { userId },
       include: {
         quizRun: {
-          include: {
-            quiz: {
-              select: {
-                title: true,
-                category: true
-              }
-            }
-          }
-        }
+          select: {
+            id: true,
+            phase: true,
+            quiz: { select: { id: true, title: true } },
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { joinedAt: 'desc' },
     });
 
-    const quizRuns = participants.map(p => p.quizRun).filter(Boolean);
+    const winners = await prisma.quizWinner.findMany({
+      where: { userId },
+      select: { creditsWon: true, quizRunId: true },
+    });
+    const winnerRunIds = new Set(winners.map((w) => w.quizRunId).filter(Boolean));
+
+    const quizRuns = participants.map((p) => p.quizRun).filter(Boolean);
     const totalQuizRuns = quizRuns.length;
-    const finishedQuizRuns = quizRuns.filter(run => run.phase === 'FINISHED');
-    const wonQuizRuns = finishedQuizRuns.filter(run => run.prize > 0);
+    const finishedQuizRuns = quizRuns.filter((run) => run.phase === 'FINISHED');
+    const wonQuizRuns = finishedQuizRuns.filter((run) => winnerRunIds.has(run.id));
 
     const winRate = totalQuizRuns > 0 ? (wonQuizRuns.length / totalQuizRuns) * 100 : 0;
     const completionRate = totalQuizRuns > 0 ? (finishedQuizRuns.length / totalQuizRuns) * 100 : 0;
 
-    const averageScore = finishedQuizRuns.length > 0
-      ? finishedQuizRuns.reduce((sum, run) => sum + (run.score || 0), 0) / finishedQuizRuns.length
+    const scores = await prisma.quizScore.findMany({
+      where: { userId },
+      select: { score: true },
+    });
+    const averageScore = scores.length
+      ? scores.reduce((sum, row) => sum + (row.score || 0), 0) / scores.length
       : 0;
 
-    const totalPrizesWon = wonQuizRuns.reduce((sum, run) => sum + (run.prize || 0), 0);
+    const totalPrizesWon = winners.reduce((sum, w) => sum + (w.creditsWon || 0), 0);
 
     res.json({
       success: true,
@@ -1912,7 +1986,8 @@ router.get('/:userId/history', async (req, res) => {
     const userId = parseInt(req.params.userId, 10);
     if (!userId) return res.status(400).json({ error: 'userId inválido' });
 
-    const viewerId = await getOptionalViewerId(req);
+    const viewer = await getOptionalViewer(req);
+    const viewerId = viewer.id;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -1924,7 +1999,8 @@ router.get('/:userId/history', async (req, res) => {
     }
 
     const isOwner = viewerId === userId;
-    if (!user.showQuizHistory && !isOwner) {
+    const isAdmin = viewer.role === 'ADMIN' || viewer.role === 'ADMIN_WORKER';
+    if (!user.showQuizHistory && !isOwner && !isAdmin) {
       return res.status(403).json({ error: 'Historial privado', private: true });
     }
 

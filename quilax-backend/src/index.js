@@ -56,9 +56,15 @@ import { advanceExpiredQuizRuns } from "./services/quizEngine.js";
 import { startSeasonWorker } from "./workers/seasonWorker.js";
 import { startWithdrawScheduler } from "./workers/withdrawScheduler.js";
 import { startPasswordChangeScheduler } from "./workers/passwordChangeScheduler.js";
-import "./workers/answerWorker.js";
 
 dotenv.config();
+
+const lightWorkers = process.env.DEV_LIGHT_WORKERS === "true";
+// Answer worker is required for live quiz score persistence even in light mode.
+await import("./workers/answerWorker.js");
+if (lightWorkers) {
+  console.log("⚡ DEV_LIGHT_WORKERS: non-quiz schedulers will be skipped");
+}
 
 // Validar que los secrets sean suficientemente seguros en producción
 if (process.env.NODE_ENV === 'production') {
@@ -213,6 +219,27 @@ app.get("/health/db", async (req, res) => {
   }
 });
 
+/** Readiness: DB + Redis (use for keep-alive / uptime monitors). */
+app.get("/health/ready", async (req, res) => {
+  const out = { ok: true, db: false, redis: false };
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    out.db = true;
+  } catch (err) {
+    out.ok = false;
+    out.dbError = err?.message || "db";
+  }
+  try {
+    const pong = await redis.ping();
+    out.redis = pong === "PONG" || pong === true;
+    if (!out.redis) out.ok = false;
+  } catch (err) {
+    out.ok = false;
+    out.redisError = err?.message || "redis";
+  }
+  res.status(out.ok ? 200 : 503).json(out);
+});
+
 // Endpoint de métricas Prometheus
 app.get("/metrics", metricsEndpoint);
 
@@ -226,11 +253,16 @@ app.use((err, req, res, next) => {
 
 
 if (process.env.NODE_ENV !== "test") {
+  // Quiz phase loop must always run (even with DEV_LIGHT_WORKERS).
   startQuizScheduler();
-  startSeasonWorker();
-  startNotificationWorker();
-  startWithdrawScheduler();
-  startPasswordChangeScheduler();
+  if (lightWorkers) {
+    console.log("⚡ DEV_LIGHT_WORKERS: season/notification/withdraw/password schedulers skipped");
+  } else {
+    startSeasonWorker();
+    startNotificationWorker();
+    startWithdrawScheduler();
+    startPasswordChangeScheduler();
+  }
 }
 
 
@@ -292,19 +324,26 @@ if (process.env.NODE_ENV === 'production' && process.env.ENABLE_CLUSTERING === '
   // Modo desarrollo - sin clustering
   if (process.env.NODE_ENV !== "test") {
     // Iniciar el servidor
-    server.listen(PORT, () => {
+    server.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Backend + Socket.IO running on ${PORT} (development mode)`);
     });
 
-    // Intentar inicializar Scalability Manager en segundo plano
-    console.log('🔄 Initializing Scalability Manager...');
-    scalabilityManager.on('initialized', () => {
-      console.log(`🎯 Scalability Manager ready`);
+    server.on("close", () => {
+      console.error("❌ HTTP server closed unexpectedly");
     });
 
-    scalabilityManager.on('error', (error) => {
-      console.error('❌ Scalability Manager error:', error);
-    });
+    if (!lightWorkers) {
+      console.log('🔄 Initializing Scalability Manager...');
+      scalabilityManager.on('initialized', () => {
+        console.log(`🎯 Scalability Manager ready`);
+      });
+
+      scalabilityManager.on('error', (error) => {
+        console.error('❌ Scalability Manager error:', error);
+      });
+    } else {
+      console.log('⚡ DEV_LIGHT_WORKERS: Scalability Manager skipped');
+    }
   } else {
     server.listen(PORT, () => {
       console.log(`🚀 Backend + Socket.IO running on ${PORT} (test mode)`);

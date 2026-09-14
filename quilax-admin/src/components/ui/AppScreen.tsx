@@ -9,13 +9,15 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Spacing } from '@/constants/theme';
+import { Colors, Spacing, titleTypeface } from '@/constants/theme';
 import {
-  APP_GRADIENT,
   SCREEN_BACKGROUND,
   SECTION_ACCENTS,
-  GRADIENT_VERTICAL,
+  brandGradientProps,
+  APP_GRADIENT_SOFT,
+  GRADIENT_DIAGONAL,
 } from '@/constants/gradients';
+import { FadeBlock, HeroEnter, PressScale, ScreenEnter } from '@/components/motion';
 
 type AppScreenProps = ScrollViewProps & {
   children: React.ReactNode;
@@ -26,9 +28,10 @@ export function AppScreen({ children, style, contentContainerStyle, ...rest }: A
     <ScrollView
       style={[styles.screen, style]}
       contentContainerStyle={[styles.screenContent, contentContainerStyle]}
+      keyboardShouldPersistTaps="handled"
       {...rest}
     >
-      {children}
+      <ScreenEnter>{children}</ScreenEnter>
     </ScrollView>
   );
 }
@@ -42,20 +45,19 @@ type AppHeaderProps = {
 
 export function AppHeader({ title, subtitle, badge, children }: AppHeaderProps) {
   return (
-    <LinearGradient
-      colors={[...APP_GRADIENT]}
-      style={styles.header}
-      {...GRADIENT_VERTICAL}
-    >
-      <Text style={styles.headerTitle}>{title}</Text>
-      {badge ? (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{badge}</Text>
-        </View>
-      ) : null}
-      {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
-      {children}
-    </LinearGradient>
+    <HeroEnter>
+      <LinearGradient {...brandGradientProps} style={styles.header}>
+        <Text style={styles.brandMark}>QUILAX</Text>
+        <Text style={styles.headerTitle}>{title}</Text>
+        {badge ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badge}</Text>
+          </View>
+        ) : null}
+        {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
+        {children}
+      </LinearGradient>
+    </HeroEnter>
   );
 }
 
@@ -69,46 +71,30 @@ type AppSectionProps = {
 export function AppSection({ title, accentIndex = 0, children, style }: AppSectionProps) {
   const accent = SECTION_ACCENTS[accentIndex % SECTION_ACCENTS.length];
   return (
-    <View style={[styles.section, style]}>
+    <FadeBlock delay={50 + accentIndex * 40} style={[styles.section, style]}>
       <View style={styles.sectionTitleRow}>
         <View style={[styles.sectionAccent, { backgroundColor: accent }]} />
         <Text style={styles.sectionTitle}>{title}</Text>
       </View>
       {children}
-    </View>
+    </FadeBlock>
   );
 }
 
 type AppCardProps = {
   children: React.ReactNode;
   onPress?: () => void;
-  tint?: 'default' | 'warm' | 'cool';
   style?: ViewStyle;
 };
 
-const CARD_BACKGROUNDS = {
-  default: '#FFFFFF',
-  warm: '#FFF7ED',
-  cool: '#EEF2FF',
-};
-
-export function AppCard({ children, onPress, tint = 'default', style }: AppCardProps) {
-  const content = (
-    <View style={[styles.card, { backgroundColor: CARD_BACKGROUNDS[tint] }, style]}>
-      <LinearGradient
-        colors={[`${Colors.light.gradientStart}18`, `${Colors.light.gradientEnd}08`]}
-        style={styles.cardSheen}
-        {...GRADIENT_VERTICAL}
-      />
-      {children}
-    </View>
-  );
+export function AppCard({ children, onPress, style }: AppCardProps) {
+  const content = <View style={[styles.card, style]}>{children}</View>;
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [pressed && styles.cardPressed]}>
+      <PressScale onPress={onPress} scaleTo={0.98}>
         {content}
-      </Pressable>
+      </PressScale>
     );
   }
 
@@ -117,11 +103,7 @@ export function AppCard({ children, onPress, tint = 'default', style }: AppCardP
 
 export function AppPlaceholder({ text }: { text: string }) {
   return (
-    <LinearGradient
-      colors={['#EEF2FF', '#F8FAFC']}
-      style={styles.placeholder}
-      {...GRADIENT_VERTICAL}
-    >
+    <LinearGradient colors={[...APP_GRADIENT_SOFT]} style={styles.placeholder} {...GRADIENT_DIAGONAL}>
       <Text style={styles.placeholderText}>{text}</Text>
     </LinearGradient>
   );
@@ -141,11 +123,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     alignItems: 'center',
   },
+  brandMark: {
+    ...titleTypeface,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 3.4,
+    color: 'rgba(255,255,255,0.92)',
+    marginBottom: Spacing.two,
+  },
   headerTitle: {
-    fontSize: 36,
+    ...titleTypeface,
+    fontSize: 32,
     fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: 0.5,
+    letterSpacing: -0.2,
   },
   headerSubtitle: {
     marginTop: Spacing.two,
@@ -153,6 +144,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.92)',
     textAlign: 'center',
     lineHeight: 22,
+    maxWidth: 420,
   },
   badge: {
     marginTop: Spacing.two,
@@ -184,6 +176,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   sectionTitle: {
+    ...titleTypeface,
     fontSize: 20,
     fontWeight: '800',
     color: Colors.light.text,
@@ -192,17 +185,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: Spacing.four,
     marginBottom: Spacing.three,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.12)',
-    overflow: 'hidden',
-    shadowColor: Colors.light.gradientStart,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  cardSheen: {
-    ...StyleSheet.absoluteFillObject,
+    borderColor: 'rgba(28,25,23,0.06)',
+    // @ts-expect-error web-only
+    boxShadow: '0 4px 24px rgba(28, 25, 23, 0.08)',
   },
   cardPressed: {
     opacity: 0.92,
@@ -214,12 +201,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 100,
-    borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.1)',
   },
   placeholderText: {
     color: Colors.light.textSecondary,
     fontSize: 15,
     fontWeight: '500',
+    textAlign: 'center',
   },
 });

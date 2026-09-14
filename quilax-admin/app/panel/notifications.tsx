@@ -322,11 +322,17 @@ export default function NotificationsScreen() {
 
         {activeTab === 'admin' && (
           <>
+            <Text style={styles.emptyText}>
+              Los mensajes a admin workers están en la pantalla Mensajes (inbox interno).
+            </Text>
             <Pressable
               style={styles.sendAdminButton}
-              onPress={() => setShowAdminMessageModal(true)}
+              onPress={() => {
+                // kept for principal convenience: open compose still works as broadcast
+                setShowAdminMessageModal(true);
+              }}
             >
-              <Text style={styles.sendAdminButtonText}>Enviar Mensaje a Administración</Text>
+              <Text style={styles.sendAdminButtonText}>Enviar broadcast rápido a workers</Text>
             </Pressable>
 
             {adminMessages.map((msg) => (

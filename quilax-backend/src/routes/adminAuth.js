@@ -143,36 +143,52 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ success: false, error: "Credenciales incorrectas" });
     }
 
-    // Verificar si tiene 2FA habilitado
-    if (user.twoFactorEnabled) {
-      return res.json({ 
-        success: true, 
+    // 2FA ya confirmado → solo pedir código (sin QR)
+    if (user.twoFactorEnabled && user.twoFactorSecret) {
+      return res.json({
+        success: true,
         requiresTwoFactor: true,
         userId: user.id,
-        email: user.email
+        email: user.email,
       });
     }
 
-    // Si no tiene 2FA, generar secreto y habilitarlo
-    const secret = speakeasy.generateSecret({
-      name: `Quilax Admin (${email})`,
-      issuer: "Quilax"
-    });
+    // Setup pendiente o primera vez: guardar secreto pero NO marcar enabled
+    // hasta que verify-2fa confirme (así no te quedas sin QR).
+    let secretBase32 = user.twoFactorSecret;
+    let otpauthUrl = null;
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        twoFactorSecret: secret.base32,
-        twoFactorEnabled: true
-      }
-    });
+    if (!secretBase32) {
+      const secret = speakeasy.generateSecret({
+        name: `Quilax Admin (${email})`,
+        issuer: "Quilax",
+      });
+      secretBase32 = secret.base32;
+      otpauthUrl = secret.otpauth_url;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          twoFactorSecret: secretBase32,
+          twoFactorEnabled: false,
+        },
+      });
+    } else {
+      otpauthUrl = speakeasy.otpauthURL({
+        secret: secretBase32,
+        label: `Quilax Admin (${email})`,
+        issuer: "Quilax",
+        encoding: "base32",
+      });
+    }
 
-    return res.json({ 
-      success: true, 
+    return res.json({
+      success: true,
       requiresTwoFactor: true,
       userId: user.id,
       email: user.email,
-      qrCode: secret.otpauth_url
+      qrCode: otpauthUrl,
+      manualSecret: secretBase32,
+      setupRequired: true,
     });
   } catch (error) {
     console.error("Error in admin login:", error);
@@ -209,6 +225,13 @@ router.post("/verify-2fa", async (req, res) => {
     });
 
     if (verified) {
+      // Primera confirmación: activar 2FA de forma definitiva
+      if (!user.twoFactorEnabled) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { twoFactorEnabled: true },
+        });
+      }
       const authToken = generateToken(user);
       return res.json({ success: true, verified: true, token: authToken });
     } else {

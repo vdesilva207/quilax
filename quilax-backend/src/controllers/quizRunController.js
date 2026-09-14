@@ -58,7 +58,7 @@ export async function answerQuestion(req, res) {
 
     // 🚫 si no está permitido (fase incorrecta etc)
     if (!result?.allowed) {
-      return res.json(result);
+      return res.status(400).json(result);
     }
 
     // 3️⃣ respuesta normal

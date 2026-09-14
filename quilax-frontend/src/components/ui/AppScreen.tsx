@@ -20,21 +20,33 @@ import CustomIcon from '@/components/CustomIcon';
 import { goToParent } from '@/lib/navigation';
 import { FadeBlock, HeroEnter, PressScale, ScreenEnter } from '@/components/motion';
 import { useChromeInsets } from '@/hooks/useChromeInsets';
+import { BrandGradientBar } from '@/components/ui/BrandGradientBar';
 
 type AppScreenProps = ScrollViewProps & {
   children: React.ReactNode;
+  /** Hide the top 4px brand stripe (e.g. screens with a full gradient hero). */
+  hideGradientBar?: boolean;
 };
 
-export function AppScreen({ children, style, contentContainerStyle, ...rest }: AppScreenProps) {
+export function AppScreen({
+  children,
+  style,
+  contentContainerStyle,
+  hideGradientBar = true,
+  ...rest
+}: AppScreenProps) {
   return (
-    <ScrollView
-      style={[styles.screen, style]}
-      contentContainerStyle={[styles.screenContent, contentContainerStyle]}
-      keyboardShouldPersistTaps="handled"
-      {...rest}
-    >
-      <ScreenEnter style={styles.phoneColumn}>{children}</ScreenEnter>
-    </ScrollView>
+    <View style={styles.screenRoot}>
+      {hideGradientBar ? null : <BrandGradientBar />}
+      <ScrollView
+        style={[styles.screen, style]}
+        contentContainerStyle={[styles.screenContent, contentContainerStyle]}
+        keyboardShouldPersistTaps="handled"
+        {...rest}
+      >
+        <ScreenEnter style={styles.phoneColumn}>{children}</ScreenEnter>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -169,6 +181,10 @@ export function AppPlaceholder({
 }
 
 const styles = StyleSheet.create({
+  screenRoot: {
+    flex: 1,
+    backgroundColor: SCREEN_BACKGROUND,
+  },
   screen: {
     flex: 1,
     backgroundColor: SCREEN_BACKGROUND,
@@ -200,7 +216,7 @@ const styles = StyleSheet.create({
     ...sora(800),
     fontSize: 28,
     color: '#FFFFFF',
-    letterSpacing: 0.6,
+    letterSpacing: 2.2,
   },
   headerTitle: {
     ...sora(800),
@@ -215,6 +231,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   headerSubtitle: {
+    ...sora(500),
     marginTop: Spacing.one,
     fontSize: 14,
     color: 'rgba(255,255,255,0.92)',
@@ -254,17 +271,17 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
   },
   card: {
-    borderRadius: 12,
+    borderRadius: 16,
     padding: Spacing.four,
     marginBottom: Spacing.two,
     borderWidth: 1,
-    borderColor: Colors.light.backgroundSelected,
-    backgroundColor: Colors.light.background,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
+    borderColor: 'rgba(28,25,23,0.06)',
+    backgroundColor: Colors.light.backgroundElement,
+    shadowColor: '#1C1917',
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   cardPressedWrap: {
     marginBottom: 0,

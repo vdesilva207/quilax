@@ -116,7 +116,7 @@ type QuizRunViewProps = {
 
 export default function QuizRunView({ runId }: QuizRunViewProps) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth() as any;
   const { setHideTabBar } = useQuizPlayUi();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -263,6 +263,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
       },
       onPrizeDistributed: () => {
         setResultsReady(true);
+        refreshProfile?.({ full: false }).catch(() => {});
       },
     });
 
@@ -292,7 +293,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
       clearTimeout(adjust);
       if (fallbackTimer) clearInterval(fallbackTimer);
     };
-  }, [numericRunId, refresh]);
+  }, [numericRunId, refresh, refreshProfile]);
 
   const phase = state?.phase || playState?.phase || 'PRE_START';
   const currentIndex = state?.currentIndex ?? playState?.currentQuestionIndex ?? 0;
@@ -386,6 +387,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
 
   useEffect(() => {
     if (phase !== 'FINISHED') return;
+    refreshProfile?.({ full: false }).catch(() => {});
     let cancelled = false;
     (async () => {
       const dismissed = await secureStorage.getItem(dismissKey);
@@ -397,7 +399,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [phase, dismissKey, router, setHideTabBar]);
+  }, [phase, dismissKey, router, setHideTabBar, refreshProfile]);
 
   useEffect(() => {
     if (phase !== 'QUESTION_READ' || !question?.id) return;
@@ -559,6 +561,15 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
         },
         { timeoutMs: 8000 }
       );
+      if (result?.allowed === false) {
+        setError(
+          result?.reason
+            ? String(result.reason)
+            : t('quizPlay.answerError')
+        );
+        setSelectedAnswer(null);
+        return;
+      }
       setSubmitted(true);
       setLastResult({ isCorrect: result?.isCorrect, score: result?.score });
     } catch (err: any) {
@@ -695,6 +706,16 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
                   })}
                 </Text>
               ) : null}
+              <Pressable
+                style={[styles.exitBtn, { marginTop: Spacing.three }]}
+                onPress={() => {
+                  setHideTabBar(false);
+                  router.replace('/(app)');
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={styles.exitBtnText}>{t('quizPlay.leaveCountdown')}</Text>
+              </Pressable>
             </Animated.View>
           ) : null}
 
@@ -943,7 +964,9 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
                             <Text style={styles.prizePts}>{t('quizPlay.scoreLine', { score: entry.score ?? 0 })}</Text>
                           </View>
                           <Text style={prize > 0 ? styles.prizeCredits : styles.prizeCreditsMuted}>
-                            {prize > 0 ? `+${prize}` : '—'}
+                            {prize > 0
+                              ? t('quizPlay.creditsPrize', { n: prize })
+                              : t('quizPlay.noCreditsPrize')}
                           </Text>
                         </Animated.View>
                       );

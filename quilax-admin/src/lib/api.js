@@ -37,6 +37,10 @@ const PUBLIC_AUTH_PATHS = [
   '/auth/forgot-password',
   '/auth/reset-password',
   '/auth/verify-email',
+  '/admin-auth/check-admin',
+  '/admin-auth/verify-secret',
+  '/admin-auth/login',
+  '/admin-auth/verify-2fa',
 ];
 
 function isPublicAuthEndpoint(endpoint) {

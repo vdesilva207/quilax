@@ -4,12 +4,18 @@ import { Colors, Spacing } from '@/constants/theme';
 import { AppScreen, AppHeader, AppCard } from '@/components/ui/AppScreen';
 import adminService from '@/services/adminService';
 
+type WorkerStats = {
+  pendingWithdrawals?: number;
+  openTickets?: number;
+  activeUsersToday?: number;
+};
+
 export default function WorkerDashboardScreen() {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<WorkerStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    adminService.getDashboardStats().then((result) => {
+    adminService.getWorkerDashboardStats().then((result) => {
       if (result.success) setStats(result.data);
       setLoading(false);
     });
@@ -17,13 +23,14 @@ export default function WorkerDashboardScreen() {
 
   return (
     <AppScreen>
-      <AppHeader title="Worker Dashboard" subtitle="Vista limitada para empleados" badge="WORKER" />
+      <AppHeader title="Dashboard" subtitle="Resumen del panel" />
       {loading ? (
         <ActivityIndicator style={{ marginTop: Spacing.four }} />
       ) : (
         <View style={styles.grid}>
-          <AppCard><Text style={styles.cardTitle}>Quizzes pendientes</Text><Text style={styles.cardValue}>{stats?.pendingQuizzes ?? '—'}</Text></AppCard>
-          <AppCard><Text style={styles.cardTitle}>Usuarios</Text><Text style={styles.cardValue}>{stats?.totalUsers ?? '—'}</Text></AppCard>
+          <AppCard><Text style={styles.cardTitle}>Retiros procesados hoy</Text><Text style={styles.cardValue}>{stats?.pendingWithdrawals ?? '—'}</Text></AppCard>
+          <AppCard><Text style={styles.cardTitle}>Tickets abiertos</Text><Text style={styles.cardValue}>{stats?.openTickets ?? '—'}</Text></AppCard>
+          <AppCard><Text style={styles.cardTitle}>Usuarios activos hoy</Text><Text style={styles.cardValue}>{stats?.activeUsersToday ?? '—'}</Text></AppCard>
         </View>
       )}
     </AppScreen>

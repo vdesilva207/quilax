@@ -90,14 +90,14 @@ export default function WorkerWithdrawalsScreen() {
       >
         <View style={styles.headerContent}>
           <Text style={styles.title}>Retiros</Text>
-          <Text style={styles.subtitle}>Solo lectura</Text>
+          <Text style={styles.subtitle}>Consulta de retiros</Text>
         </View>
       </LinearGradient>
 
       <View style={styles.content}>
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
-            Solo puedes ver los retiros procesados. No tienes permiso para programar nuevos retiros.
+            Los retiros se procesan automáticamente. Esta pantalla muestra el historial y el estado de cada solicitud.
           </Text>
         </View>
 

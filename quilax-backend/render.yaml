@@ -1,5 +1,17 @@
 # Render Blueprint — servicio web Quilax API
 # Dashboard: New > Blueprint > conecta este repo y usa render.yaml
+#
+# Required secrets in Render Dashboard (Environment):
+#   DATABASE_URL, JWT_SECRET (>=32), ENCRYPTION_KEY (>=32), REDIS_URL
+# Recommended:
+#   EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASSWORD, EMAIL_FROM
+#   SKIP_EMAIL=false
+#   FRONTEND_APP_URL=https://appquilax.com
+#   WALLET_APP_URL=https://gestion.appquilax.com
+# Optional (Fase 2 Stripe): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+#
+# Free/Starter cold-start: GitHub Action `.github/workflows/prod-keepalive.yml`
+# pings /health every 5 min. Prefer paid instance for TestFlight traffic.
 services:
   - type: web
     name: quilax-api
@@ -11,6 +23,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: SKIP_EMAIL
+        value: "false"
+      - key: FRONTEND_APP_URL
+        value: https://appquilax.com
+      - key: WALLET_APP_URL
+        value: https://gestion.appquilax.com
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
@@ -19,5 +37,15 @@ services:
         sync: false
       - key: REDIS_URL
         sync: false
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        value: Quilax <noreply@appquilax.com>
       - key: CORS_ORIGINS
-        value: https://appquilax.com,http://127.0.0.1:8081,http://localhost:8081,http://127.0.0.1:8082,http://localhost:8082
+        value: https://appquilax.com,https://www.appquilax.com,https://gestion.appquilax.com,http://127.0.0.1:8081,http://localhost:8081,http://127.0.0.1:8082,http://localhost:8082

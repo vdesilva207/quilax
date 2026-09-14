@@ -85,7 +85,7 @@ router.get('/my-history', auth, async (req, res) => {
             select: {
               id: true,
               title: true,
-              category: true,
+
               difficulty: true
             }
           },
@@ -177,7 +177,7 @@ router.get('/:transactionId', auth, async (req, res) => {
           select: {
             id: true,
             title: true,
-            category: true,
+
             difficulty: true,
             creator: {
               select: {
@@ -321,7 +321,7 @@ router.get('/my-stats', auth, async (req, res) => {
         where,
         include: {
           quiz: {
-            select: { title: true, category: true }
+            select: { title: true }
           }
         },
         orderBy: { createdAt: 'desc' },
@@ -455,7 +455,7 @@ router.get('/admin/all', auth, roleMiddleware(['ADMIN']), async (req, res) => {
             select: {
               id: true,
               title: true,
-              category: true
+
             }
           }
         },
@@ -606,7 +606,7 @@ router.get('/admin/stats', auth, roleMiddleware(['ADMIN']), async (req, res) => 
         select: {
           id: true,
           title: true,
-          category: true,
+
           difficulty: true
         }
       })
@@ -743,7 +743,7 @@ router.get('/export/csv', auth, async (req, res) => {
         quiz: {
           select: {
             title: true,
-            category: true
+
           }
         }
       },
@@ -795,7 +795,7 @@ router.get('/export/json', auth, async (req, res) => {
         quiz: {
           select: {
             title: true,
-            category: true
+
           }
         }
       },

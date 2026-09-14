@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "identifier": "com.quilax.admin",
   "build": {
-    "beforeDevCommand": "npx expo start --web",
-    "devUrl": "http://localhost:8081",
+    "beforeDevCommand": "npx expo start --web --port 8083",
+    "devUrl": "http://localhost:8083",
     "beforeBuildCommand": "npm run build:web",
     "frontendDist": "../dist"
   },

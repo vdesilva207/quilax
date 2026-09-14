@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.light.backgroundSelected,
+    borderColor: 'rgba(28,25,23,0.12)',
     backgroundColor: Colors.light.backgroundElement,
   },
   disabled: {
@@ -139,9 +139,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: Spacing.four,
     borderWidth: 1,
-    borderColor: Colors.light.backgroundSelected,
+    borderColor: 'rgba(28,25,23,0.08)',
     backgroundColor: Colors.light.backgroundElement,
     marginBottom: Spacing.two,
+    shadowColor: '#1C1917',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
   },
   dotsRow: {
     flexDirection: 'row',

@@ -108,41 +108,47 @@ router.get('/statistics', auth, roleMiddleware(['ADMIN']), async (req, res) => {
 });
 
 // Simular distribución de premios de quizzes (solo admin)
+// Percentages are shares of the TOTAL pot — same model as live payout.
 router.post('/simulate-quiz', auth, roleMiddleware(['ADMIN']), async (req, res) => {
   try {
     const { participantCount, prizePool } = req.body;
-    
+
     const config = await getPrizeConfig();
-    const simulatedPrizePool = prizePool || participantCount || 100;
-    
+    const qd = config.quizDistribution;
+    const simulatedPrizePool = Number(prizePool || participantCount || 100);
+
     const distribution = {
       totalPrizePool: simulatedPrizePool,
-      adminJackpot: Math.floor(simulatedPrizePool * (config.quizDistribution.adminJackpotPercentage / 100)),
-      creatorPrize: Math.floor(simulatedPrizePool * (config.quizDistribution.creatorPercentage / 100)),
+      adminJackpot: Math.floor(simulatedPrizePool * (qd.adminJackpotPercentage / 100)),
+      adminProfit: Math.floor(simulatedPrizePool * (qd.adminProfitPercentage / 100)),
+      creatorPrize: Math.floor(simulatedPrizePool * (qd.creatorPercentage / 100)),
       winners: [],
-      totalDistributed: 0
+      totalDistributed: 0,
     };
 
-    const availableForWinners = simulatedPrizePool - distribution.adminJackpot - distribution.creatorPrize;
-    
-    for (const rule of config.quizDistribution.positionRules) {
-      const prizeAmount = Math.floor(availableForWinners * (rule.percentage / 100));
-      
-      distribution.winners.push({
-        position: rule.position,
-        percentage: rule.percentage,
-        creditsWon: prizeAmount
-      });
-      
-      distribution.totalDistributed += prizeAmount;
+    for (const rule of qd.positionRules || []) {
+      const count = rule.toPosition - rule.fromPosition + 1;
+      const slice = Math.floor(simulatedPrizePool * (Number(rule.percentage) / 100));
+      const per = Math.floor(slice / count);
+      for (let pos = rule.fromPosition; pos <= rule.toPosition; pos++) {
+        distribution.winners.push({
+          fromPosition: rule.fromPosition,
+          toPosition: rule.toPosition,
+          position: pos,
+          percentage: Number(rule.percentage) / count,
+          creditsWon: per,
+        });
+        distribution.totalDistributed += per;
+      }
     }
-    
-    distribution.totalDistributed += distribution.adminJackpot + distribution.creatorPrize;
-    distribution.leftover = simulatedPrizePool - distribution.totalDistributed;
-    
+
+    distribution.totalDistributed +=
+      distribution.adminJackpot + distribution.adminProfit + distribution.creatorPrize;
+    distribution.leftover = Math.max(0, simulatedPrizePool - distribution.totalDistributed);
+
     res.json({
       success: true,
-      simulation: distribution
+      simulation: distribution,
     });
   } catch (error) {
     console.error('Error simulating quiz prize distribution:', error);
@@ -151,40 +157,41 @@ router.post('/simulate-quiz', auth, roleMiddleware(['ADMIN']), async (req, res) 
 });
 
 // Simular distribución de jackpot de temporada (solo admin)
+// Position rules are % of the total season jackpot pool.
 router.post('/simulate-season', auth, roleMiddleware(['ADMIN']), async (req, res) => {
   try {
     const { jackpotPool } = req.body;
-    
+
     const config = await getPrizeConfig();
-    const simulatedJackpot = jackpotPool || 1000;
-    
+    const simulatedJackpot = Number(jackpotPool || 1000);
+
     const distribution = {
       totalJackpot: simulatedJackpot,
-      adminJackpot: Math.floor(simulatedJackpot * (config.seasonJackpotDistribution.adminJackpotPercentage / 100)),
       winners: [],
-      totalDistributed: 0
+      totalDistributed: 0,
     };
 
-    const availableForWinners = simulatedJackpot - distribution.adminJackpot;
-    
-    for (const rule of config.seasonJackpotDistribution.positionRules) {
-      const prizeAmount = Math.floor(availableForWinners * (rule.percentage / 100));
-      
-      distribution.winners.push({
-        position: rule.position,
-        percentage: rule.percentage,
-        creditsWon: prizeAmount
-      });
-      
-      distribution.totalDistributed += prizeAmount;
+    for (const rule of config.seasonJackpotDistribution.positionRules || []) {
+      const count = rule.toPosition - rule.fromPosition + 1;
+      const slice = Math.floor(simulatedJackpot * (Number(rule.percentage) / 100));
+      const per = Math.floor(slice / count);
+      for (let pos = rule.fromPosition; pos <= rule.toPosition; pos++) {
+        distribution.winners.push({
+          fromPosition: rule.fromPosition,
+          toPosition: rule.toPosition,
+          position: pos,
+          percentage: Number(rule.percentage) / count,
+          creditsWon: per,
+        });
+        distribution.totalDistributed += per;
+      }
     }
-    
-    distribution.totalDistributed += distribution.adminJackpot;
-    distribution.leftover = simulatedJackpot - distribution.totalDistributed;
-    
+
+    distribution.leftover = Math.max(0, simulatedJackpot - distribution.totalDistributed);
+
     res.json({
       success: true,
-      simulation: distribution
+      simulation: distribution,
     });
   } catch (error) {
     console.error('Error simulating season jackpot distribution:', error);

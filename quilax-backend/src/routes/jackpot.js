@@ -5,6 +5,12 @@ import { auth, roleMiddleware } from "../middleware/auth.js";
 const router = express.Router();
 
 /**
+ * Jackpot UI historically used QUIZ_JACKPOT / SEASON_JACKPOT / ADMIN_JACKPOT.
+ * Schema only has PLATFORM_FEE for platform/jackpot-style deposits.
+ */
+const JACKPOT_TYPES = ["PLATFORM_FEE"];
+
+/**
  * Obtener historial del jackpot (ADMIN)
  */
 router.get(
@@ -13,39 +19,38 @@ router.get(
   roleMiddleware(["ADMIN"]),
   async (req, res) => {
     try {
-      // Obtener todas las transacciones que afectan al jackpot
       const jackpotTransactions = await prisma.transaction.findMany({
         where: {
-          type: {
-            in: ["QUIZ_JACKPOT", "SEASON_JACKPOT", "ADMIN_JACKPOT"]
-          }
+          type: { in: JACKPOT_TYPES },
         },
         orderBy: {
-          createdAt: "desc"
+          createdAt: "desc",
         },
-        take: 100
+        take: 100,
+        include: {
+          quiz: { select: { id: true, title: true } },
+        },
       });
 
-      // Calcular el total del jackpot actual
-      const totalJackpot = jackpotTransactions.reduce((sum, tx) => {
-        return tx.type.includes("JACKPOT") ? sum + tx.amount : sum;
-      }, 0);
+      const totalJackpot = jackpotTransactions.reduce(
+        (sum, tx) => sum + (tx.amount || 0),
+        0
+      );
 
-      // Formatear el historial
-      const history = jackpotTransactions.map(tx => ({
+      const history = jackpotTransactions.map((tx) => ({
         id: tx.id,
         amount: tx.amount,
-        source: tx.type.replace("_JACKPOT", ""),
-        description: tx.description || "Ingreso al jackpot",
+        source: "PLATFORM",
+        description: tx.description || "Ingreso al jackpot (platform fee)",
         createdAt: tx.createdAt,
         quizId: tx.quizId,
-        quizTitle: tx.quizId ? `Quiz #${tx.quizId}` : undefined
+        quizTitle: tx.quiz?.title || (tx.quizId ? `Quiz #${tx.quizId}` : undefined),
       }));
 
       res.json({
         success: true,
         history,
-        totalJackpot
+        totalJackpot,
       });
     } catch (error) {
       console.error("Error fetching jackpot history:", error);
@@ -63,20 +68,14 @@ router.get(
   roleMiddleware(["ADMIN"]),
   async (req, res) => {
     try {
-      // Calcular el total del jackpot
-      const jackpotTransactions = await prisma.transaction.findMany({
-        where: {
-          type: {
-            in: ["QUIZ_JACKPOT", "SEASON_JACKPOT", "ADMIN_JACKPOT"]
-          }
-        }
+      const agg = await prisma.transaction.aggregate({
+        where: { type: { in: JACKPOT_TYPES } },
+        _sum: { amount: true },
       });
-
-      const totalJackpot = jackpotTransactions.reduce((sum, tx) => sum + tx.amount, 0);
 
       res.json({
         success: true,
-        balance: totalJackpot
+        balance: agg._sum.amount || 0,
       });
     } catch (error) {
       console.error("Error fetching jackpot balance:", error);

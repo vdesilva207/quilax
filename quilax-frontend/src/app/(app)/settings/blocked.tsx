@@ -9,6 +9,7 @@ export default function BlockedUsersScreen() {
   const { t } = useTranslation();
   const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [unblockingId, setUnblockingId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -17,14 +18,22 @@ export default function BlockedUsersScreen() {
 
   const load = async () => {
     setLoading(true);
-    const result = await userService.getBlockedUsers();
-    if (result.success) {
-      const list = result.data?.blockedUsers || [];
-      setBlockedUsers(Array.isArray(list) ? list : []);
-    } else {
+    setLoadError('');
+    try {
+      const result = await userService.getBlockedUsers();
+      if (result.success) {
+        const list = result.data?.blockedUsers || [];
+        setBlockedUsers(Array.isArray(list) ? list : []);
+      } else {
+        setBlockedUsers([]);
+        setLoadError(result.error || t('common.requestError'));
+      }
+    } catch (e: any) {
       setBlockedUsers([]);
+      setLoadError(e?.message || t('common.requestError'));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleUnblock = (person: any) => {
@@ -58,6 +67,8 @@ export default function BlockedUsersScreen() {
       <AppSection title={t('settings.blocked.sectionTitle')} accentIndex={3}>
         {loading ? (
           <ActivityIndicator color={Colors.light.primary} />
+        ) : loadError ? (
+          <AppPlaceholder text={loadError} />
         ) : blockedUsers.length === 0 ? (
           <AppPlaceholder text={t('settings.blocked.noneBlocked')} />
         ) : (

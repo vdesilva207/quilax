@@ -8,7 +8,6 @@ export default {
     userInterfaceStyle: 'automatic',
     web: {
       bundler: 'metro',
-      output: 'static',
     },
     plugins: ['expo-router', 'expo-secure-store'],
     experiments: {

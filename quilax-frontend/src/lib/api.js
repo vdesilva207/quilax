@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import i18n from '@/i18n';
 import { resolveDevHost, rewriteLocalhostUrl } from '@/lib/devHost';
 
@@ -47,7 +48,10 @@ class ApiClient {
   }
 
   getHeaders() {
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Client-Platform': Platform.OS === 'web' ? 'web' : Platform.OS,
+    };
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`;
     }
@@ -97,6 +101,20 @@ class ApiClient {
         const err = new Error(i18n.t('common.requestTimeout'));
         err.code = 'TIMEOUT';
         err.status = 408;
+        throw err;
+      }
+      // Safari/WebKit: "Load failed" / "Failed to fetch" — never leak to product UI as-is.
+      const raw = String(error?.message || '');
+      if (
+        !error?.status &&
+        (/load failed/i.test(raw) ||
+          /failed to fetch/i.test(raw) ||
+          /networkerror/i.test(raw) ||
+          error?.name === 'TypeError')
+      ) {
+        const err = new Error(i18n.t('common.networkError'));
+        err.code = 'NETWORK';
+        err.status = 0;
         throw err;
       }
       throw error;

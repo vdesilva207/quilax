@@ -78,7 +78,7 @@ export default function WorkerUsersScreen() {
       >
         <View style={styles.headerContent}>
           <Text style={styles.title}>Usuarios</Text>
-          <Text style={styles.subtitle}>Gestión limitada</Text>
+          <Text style={styles.subtitle}>Gestión de usuarios</Text>
         </View>
       </LinearGradient>
 

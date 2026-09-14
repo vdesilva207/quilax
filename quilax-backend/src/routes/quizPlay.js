@@ -5,32 +5,14 @@ import { auth } from "../middleware/auth.js";
 import { requireMoneyEligibility } from "../middleware/moneyEligibility.js";
 import { getIO } from "../socket.js";
 import { aggregateMaxCredits, calculateMaxCredits } from "../utils/quizCredits.js";
+import { ensureActiveQuizRun, submitAnswer } from "../services/quizEngine.js";
+import {
+  getEarlyJoinBonus,
+  buildEarlyJoinPreview,
+} from "../constants/earlyJoinBonus.js";
 
 const router = express.Router();
 const ENTRY_COST = 1;
-
-const EARLY_JOIN_BONUS_RANGES = [
-  { from: 1, to: 1, bonus: 600 },
-  { from: 2, to: 5, bonus: 520 },
-  { from: 6, to: 10, bonus: 450 },
-  { from: 11, to: 20, bonus: 360 },
-  { from: 21, to: 30, bonus: 285 },
-  { from: 31, to: 40, bonus: 225 },
-  { from: 41, to: 50, bonus: 175 },
-  { from: 51, to: 60, bonus: 140 },
-  { from: 61, to: 70, bonus: 115 },
-  { from: 71, to: 80, bonus: 95 },
-  { from: 81, to: 89, bonus: 80 },
-  { from: 90, to: 100, bonus: 70 },
-];
-
-function getEarlyJoinBonus(joinPosition) {
-  const range = EARLY_JOIN_BONUS_RANGES.find(
-    ({ from, to }) => joinPosition >= from && joinPosition <= to
-  );
-
-  return range ? range.bonus : 0;
-}
 
 // --------------------
 // 📝 Inscribirse en un quiz (antes del run)
@@ -53,51 +35,73 @@ router.post("/enroll/:quizId", auth, requireMoneyEligibility("QUIZ_ENTRY"), asyn
       where: { quizId_userId: { quizId, userId } },
     });
 
+    let enrollment = existing;
+    let balance;
+    let alreadyEnrolled = false;
+
     if (existing) {
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { balance: true },
       });
-      return res.json({
-        success: true,
-        enrollment: existing,
-        balance: user?.balance ?? 0,
-        alreadyEnrolled: true,
+      balance = user?.balance ?? 0;
+      alreadyEnrolled = true;
+    } else {
+      const result = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.findUnique({ where: { id: userId } });
+        if (!user) throw new Error("USER_NOT_FOUND");
+        if (user.balance < ENTRY_COST) throw new Error("INSUFFICIENT_BALANCE");
+
+        const created = await tx.quizEnrollment.create({
+          data: { quizId, userId },
+        });
+
+        const updatedUser = await tx.user.update({
+          where: { id: userId },
+          data: { balance: { decrement: ENTRY_COST } },
+          select: { balance: true },
+        });
+
+        await tx.transaction.create({
+          data: {
+            userId,
+            quizId,
+            type: "QUIZ_ENTRY",
+            amount: ENTRY_COST,
+            currency: "CREDIT",
+          },
+        });
+
+        return { enrollment: created, balance: updatedUser.balance };
       });
+      enrollment = result.enrollment;
+      balance = result.balance;
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({ where: { id: userId } });
-      if (!user) throw new Error("USER_NOT_FOUND");
-      if (user.balance < ENTRY_COST) throw new Error("INSUFFICIENT_BALANCE");
+    // Enroll only — do NOT open lobby. Lobby opens T−1min via scheduler.
+    const run = await prisma.quizRun.findFirst({
+      where: { quizId, phase: { not: "FINISHED" } },
+      orderBy: { createdAt: "desc" },
+    });
+    const lobbyOpen = run?.phase === "PRE_START";
 
-      const enrollment = await tx.quizEnrollment.create({
-        data: { quizId, userId },
-      });
-
-      const updatedUser = await tx.user.update({
-        where: { id: userId },
-        data: { balance: { decrement: ENTRY_COST } },
-        select: { balance: true },
-      });
-
-      await tx.transaction.create({
-        data: {
-          userId,
-          quizId,
-          type: "QUIZ_ENTRY",
-          amount: ENTRY_COST,
-          currency: "CREDIT",
-        },
-      });
-
-      return { enrollment, balance: updatedUser.balance };
+    const nextSchedule = await prisma.quizSchedule.findFirst({
+      where: {
+        quizId,
+        scheduledAt: { gte: new Date(Date.now() - 30_000) },
+      },
+      orderBy: { scheduledAt: "asc" },
     });
 
     return res.json({
       success: true,
-      enrollment: result.enrollment,
-      balance: result.balance,
+      enrollment,
+      balance,
+      alreadyEnrolled,
+      lobbyOpen,
+      runId: lobbyOpen ? run.id : null,
+      phase: run?.phase || null,
+      startsAt: nextSchedule?.scheduledAt || null,
     });
   } catch (err) {
     if (err.message === "INSUFFICIENT_BALANCE") {
@@ -126,22 +130,7 @@ router.post("/ensure-run/:quizId", auth, async (req, res) => {
       return res.status(404).json({ error: "Quiz no encontrado" });
     }
 
-    let run = await prisma.quizRun.findFirst({
-      where: {
-        quizId,
-        phase: { not: "FINISHED" },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (!run) {
-      run = await prisma.quizRun.create({
-        data: {
-          quizId,
-          phase: "PRE_START",
-        },
-      });
-    }
+    const run = await ensureActiveQuizRun(quizId, req.user.id);
 
     return res.json({
       run: {
@@ -158,6 +147,12 @@ router.post("/ensure-run/:quizId", auth, async (req, res) => {
       },
     });
   } catch (err) {
+    if (err?.code === "LOBBY_NOT_OPEN" || err?.message === "LOBBY_NOT_OPEN") {
+      return res.status(409).json({
+        error: "El countdown aún no está abierto",
+        code: "LOBBY_NOT_OPEN",
+      });
+    }
     console.error("Error ensure-run:", err);
     return res.status(500).json({ error: "Error al asegurar run" });
   }
@@ -218,7 +213,14 @@ router.post("/:quizRunId/join", auth, requireMoneyEligibility("QUIZ_ENTRY"), asy
 
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
-    if (user.balance < ENTRY_COST) {
+    const enrollment = await prisma.quizEnrollment.findUnique({
+      where: {
+        quizId_userId: { quizId: run.quizId, userId: user.id },
+      },
+    });
+    const alreadyPaid = !!enrollment;
+
+    if (!alreadyPaid && user.balance < ENTRY_COST) {
       return res.status(400).json({
         error: "Saldo insuficiente",
       });
@@ -266,9 +268,8 @@ router.post("/:quizRunId/join", auth, requireMoneyEligibility("QUIZ_ENTRY"), asy
             userId: user.id,
           },
         },
-        update: {
-          score: earlyJoinBonus,
-        },
+        // Never overwrite accrued question points — only seed on create
+        update: {},
         create: {
           quizRunId,
           userId: user.id,
@@ -276,27 +277,35 @@ router.post("/:quizRunId/join", auth, requireMoneyEligibility("QUIZ_ENTRY"), asy
         },
       });
 
-      await tx.user.update({
-        where: { id: user.id },
-        data: {
-          balance: { decrement: ENTRY_COST },
-        },
-      });
+      // Enroll already charged ENTRY_COST — do not debit again.
+      // Still credit the prize pool once when the participant joins.
+      if (!alreadyPaid) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            balance: { decrement: ENTRY_COST },
+          },
+        });
+
+        await tx.transaction.create({
+          data: {
+            userId: user.id,
+            quizId: run.quizId,
+            amount: ENTRY_COST,
+            currency: "CREDIT",
+            type: "QUIZ_ENTRY",
+          },
+        });
+
+        await tx.quizEnrollment.create({
+          data: { quizId: run.quizId, userId: user.id },
+        });
+      }
 
       const updatedRun = await tx.quizRun.update({
         where: { id: quizRunId },
         data: {
           totalPrizeCredits: { increment: ENTRY_COST },
-        },
-      });
-
-      await tx.transaction.create({
-        data: {
-          userId: user.id,
-          quizId: run.quizId,
-          amount: ENTRY_COST,
-          currency: "CREDIT",
-          type: "QUIZ_ENTRY",
         },
       });
 
@@ -319,11 +328,25 @@ router.post("/:quizRunId/join", auth, requireMoneyEligibility("QUIZ_ENTRY"), asy
     }
 
     await redis.sadd(`quizRun:${quizRunId}:participants`, String(user.id));
-    await redis.zadd(
-      `quizRun:${quizRunId}:scores`,
-      joinResult.earlyJoinBonus,
-      String(user.id)
-    );
+    // Seed Redis ranking with early-join bonus (NX: do not clobber if already answering)
+    try {
+      await redis.zadd(
+        `quizRun:${quizRunId}:scores`,
+        "NX",
+        joinResult.earlyJoinBonus,
+        String(user.id)
+      );
+    } catch {
+      // ioredis NX signature variants — fallback absolute set only if missing
+      const existing = await redis.zscore(`quizRun:${quizRunId}:scores`, String(user.id));
+      if (existing == null) {
+        await redis.zadd(
+          `quizRun:${quizRunId}:scores`,
+          joinResult.earlyJoinBonus,
+          String(user.id)
+        );
+      }
+    }
 
     const rulesWithCredits = await calculateMaxCredits(
       run.quiz.id,
@@ -342,6 +365,7 @@ router.post("/:quizRunId/join", auth, requireMoneyEligibility("QUIZ_ENTRY"), asy
       joined: true,
       joinPosition: joinResult.joinPosition,
       earlyJoinBonus: joinResult.earlyJoinBonus,
+      earlyJoinPreview: buildEarlyJoinPreview(joinResult.joinPosition + 1),
       totalPrizeCredits: joinResult.totalPrizeCredits,
       totalDistributedPreview,
     });
@@ -374,15 +398,29 @@ router.get("/:quizRunId/state", auth, async (req, res) => {
 
   if (!run) return res.status(404).json({ error: "Quiz no encontrado" });
 
+  let question = null;
+  if (
+    run.phase &&
+    String(run.phase).includes("QUESTION") &&
+    run.quiz.questions[run.currentIndex]
+  ) {
+    question = run.quiz.questions[run.currentIndex];
+    try {
+      const rows = await prisma.$queryRawUnsafe(
+        `SELECT "imageUrl" FROM "QuizQuestion" WHERE id = $1`,
+        question.id
+      );
+      if (rows?.[0]) question = { ...question, imageUrl: rows[0].imageUrl || null };
+    } catch {
+      /* ignore stale client */
+    }
+  }
+
   res.json({
     phase: run.phase,
     phaseEndsAt: run.phaseEndsAt,
     currentQuestionIndex: run.currentIndex,
-    question:
-      run.phase.includes("QUESTION") &&
-      run.quiz.questions[run.currentIndex]
-        ? run.quiz.questions[run.currentIndex]
-        : null,
+    question,
   });
 });
 
@@ -425,101 +463,39 @@ router.get("/:quizRunId/prize", async (req, res) => {
 router.post("/:quizRunId/answer", auth, async (req, res) => {
   try {
     const quizRunId = Number(req.params.quizRunId);
-    const { answer } = req.body;
+    const { answer, questionId, responseTimeMs } = req.body || {};
     const userId = req.user.id;
-    const now = new Date();
 
-    const run = await prisma.quizRun.findUnique({
-      where: { id: quizRunId },
-      include: {
-  quiz: {
-    include: {
-      questions: {
-        include: {
-          answers: true,
-        },
-      },
-    },
-  },
-},
-    });
-
-    if (!run || run.phase !== "QUESTION_ANSWER") {
-      return res.status(400).json({ error: "No se puede responder ahora" });
+    if (!quizRunId || !questionId || answer == null) {
+      return res.status(400).json({ error: "Datos de respuesta incompletos" });
     }
 
-    const question = run.quiz.questions[run.currentIndex];
-
-    const correctAnswer = question.answers.find(a => a.isCorrect);
-
-   const isCorrect =
-   answer.trim().toLowerCase() ===
-   correctAnswer.text.trim().toLowerCase();
-
-    const responseTimeMs = calculateServerResponseTime({
-      phaseStartedAt: run.phaseStartedAt,
-      now,
-    });
-
-    detectFastResponse({
-      responseTimeMs,
-      userId,
-      quizRunId,
-    });
-
-    const score = calculateSecureScore({
-      responseTimeMs,
-      isCorrect,
-    });
-
-    // IP y User-Agent
     const ip =
       req.headers["x-forwarded-for"] ||
       req.socket?.remoteAddress ||
       null;
 
-    const userAgent = req.headers["user-agent"] || null;
+    const result = await submitAnswer({
+      quizRunId,
+      questionId: Number(questionId),
+      userId,
+      answer: String(answer),
+      responseTimeMs: Number(responseTimeMs) || 0,
+      ipAddress: typeof ip === "string" ? ip.split(",")[0].trim() : ip,
+    });
 
-    const result = await prisma.$transaction(async (tx) => {
-      const answerRow = await tx.quizRunAnswer.create({
-        data: {
-          quizRunId,
-          questionId: question.id,
-          userId,
-          answer,
-          isCorrect,
-          score,
-          responseTimeMs,
-          ipAddress: ip,
-          userAgent,
-        },
+    if (!result?.allowed) {
+      return res.status(400).json({
+        error: result?.reason || "No se puede responder ahora",
+        code: result?.reason,
       });
+    }
 
-      if (score > 0) {
-        await tx.quizScore.update({
-          where: {
-            quizRunId_userId: {
-              quizRunId,
-              userId,
-            },
-          },
-          data: {
-            score: { increment: score },
-          },
-        });
-      }
-
-      return answerRow;
-    });
-
-    await seasonService.addSeasonPoints(userId, score);
-
-    res.json({
+    return res.json({
       allowed: true,
-      isCorrect,
-      score,
+      isCorrect: result.isCorrect,
+      score: result.score,
     });
-
   } catch (err) {
     console.error("Error answer:", err);
     res.status(500).json({ error: "Error interno" });
@@ -529,37 +505,168 @@ router.post("/:quizRunId/answer", auth, async (req, res) => {
 // --------------------
 // 🏆 Ranking
 // --------------------
-router.get("/:quizRunId/ranking", async (req, res) => {
-  const quizRunId = Number(req.params.quizRunId);
+router.get("/:quizRunId/ranking", auth, async (req, res) => {
+  try {
+    const quizRunId = Number(req.params.quizRunId);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 5));
+    const userId = req.user.id;
 
-  const top = await prisma.quizScore.findMany({
-    where: { quizRunId },
-    orderBy: { score: "desc" },
-    take: 5,
-    include: {
-      user: { select: { id: true, username: true } },
-    },
-  });
+    const top = await prisma.quizScore.findMany({
+      where: { quizRunId },
+      orderBy: [{ score: "desc" }, { userId: "asc" }],
+      take: limit,
+      include: {
+        user: { select: { id: true, username: true } },
+      },
+    });
 
-  res.json({ top });
+    // lastGain = score of each player's most recent answer in this run
+    const userIds = [...new Set(top.map((r) => r.userId).concat(userId))];
+    const recentAnswers = await prisma.quizRunAnswer.findMany({
+      where: { quizRunId, userId: { in: userIds } },
+      orderBy: { createdAt: "desc" },
+      take: Math.max(50, userIds.length * 3),
+      select: { userId: true, score: true },
+    });
+    const lastGainByUser = new Map();
+    for (const a of recentAnswers) {
+      if (!lastGainByUser.has(a.userId)) {
+        lastGainByUser.set(a.userId, Number(a.score) || 0);
+      }
+    }
+
+    const mapRow = (row, position) => ({
+      userId: row.userId,
+      score: row.score,
+      lastGain: lastGainByUser.get(row.userId) ?? 0,
+      position,
+      user: row.user,
+    });
+
+    const rankedTop = top.map((row, i) => mapRow(row, i + 1));
+
+    let me = null;
+    const myScore = await prisma.quizScore.findUnique({
+      where: {
+        quizRunId_userId: { quizRunId, userId },
+      },
+      include: {
+        user: { select: { id: true, username: true } },
+      },
+    });
+
+    if (myScore) {
+      const better = await prisma.quizScore.count({
+        where: {
+          quizRunId,
+          OR: [
+            { score: { gt: myScore.score } },
+            { score: myScore.score, userId: { lt: userId } },
+          ],
+        },
+      });
+      me = mapRow(myScore, better + 1);
+    }
+
+    res.json({ top: rankedTop, me, ranking: rankedTop });
+  } catch (err) {
+    console.error("Error ranking:", err);
+    res.status(500).json({ error: "Error interno" });
+  }
 });
 
 // --------------------
 // 🏁 Resultados
 // --------------------
 router.get("/:quizRunId/results", auth, async (req, res) => {
-  const quizRunId = Number(req.params.quizRunId);
+  try {
+    const quizRunId = Number(req.params.quizRunId);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
+    const userId = req.user.id;
 
-  const winners = await prisma.quizWinner.findMany({
-    where: { quizRunId },
-    include: {
-      user: { select: { id: true, username: true } },
-    },
-  });
+    const run = await prisma.quizRun.findUnique({
+      where: { id: quizRunId },
+      select: { phase: true, finishedAt: true },
+    });
 
-  const isWinner = winners.some((w) => w.userId === req.user.id);
+    if (!run) {
+      return res.status(404).json({ error: "Quiz no encontrado" });
+    }
 
-  res.json({ winners, isWinner });
+    const winners = await prisma.quizWinner.findMany({
+      where: { quizRunId },
+      include: {
+        user: { select: { id: true, username: true } },
+      },
+    });
+
+    const ranking = await prisma.quizScore.findMany({
+      where: { quizRunId },
+      orderBy: [{ score: "desc" }, { userId: "asc" }],
+      take: limit,
+      include: {
+        user: { select: { id: true, username: true } },
+      },
+    });
+
+    const creditsByUser = new Map(
+      winners.map((w) => [w.userId, Number(w.creditsWon) || 0])
+    );
+
+    const rankingWithPrizes = ranking.map((row, i) => ({
+      userId: row.userId,
+      score: row.score,
+      position: i + 1,
+      user: row.user,
+      creditsWon: creditsByUser.get(row.userId) ?? 0,
+    }));
+
+    const myWinner = winners.find((w) => w.userId === userId);
+    const myScore = await prisma.quizScore.findUnique({
+      where: {
+        quizRunId_userId: { quizRunId, userId },
+      },
+      include: {
+        user: { select: { id: true, username: true } },
+      },
+    });
+
+    let me = null;
+    if (myScore) {
+      const better = await prisma.quizScore.count({
+        where: {
+          quizRunId,
+          OR: [
+            { score: { gt: myScore.score } },
+            { score: myScore.score, userId: { lt: userId } },
+          ],
+        },
+      });
+      me = {
+        userId,
+        score: myScore.score,
+        position: better + 1,
+        user: myScore.user,
+        creditsWon: creditsByUser.get(userId) ?? myWinner?.creditsWon ?? 0,
+      };
+    }
+
+    const prizesReady =
+      run.phase === "FINISHED" &&
+      (winners.length > 0 || Boolean(run.finishedAt));
+
+    res.json({
+      winners,
+      isWinner: Boolean(myWinner),
+      ranking: rankingWithPrizes,
+      me,
+      myPrize: myWinner?.creditsWon ?? 0,
+      prizesReady,
+    });
+  } catch (err) {
+    console.error("Error results:", err);
+    res.status(500).json({ error: "Error interno" });
+  }
 });
 
 // --------------------
@@ -586,7 +693,7 @@ router.get("/:quizRunId/participants", async (req, res) => {
       participantsCount,
       nextPosition,
       earlyJoinBonus,
-      maxParticipants: 100, // Valor por defecto, podría venir de la configuración del quiz
+      maxParticipants: null, // sin límite de producto; escala por infra
     });
   } catch (err) {
     console.error("Error fetching participants:", err);

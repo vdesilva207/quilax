@@ -118,7 +118,8 @@
       "convertFailed": "Das Bild konnte nicht konvertiert werden",
       "prepareFailed": "Das Bild konnte nicht zum Hochladen vorbereitet werden"
     },
-    "requestTimeout": "Zeitüberschreitung. Prüfe deine Verbindung."
+    "requestTimeout": "Zeitüberschreitung. Prüfe deine Verbindung.",
+    "networkError": "Verbindung fehlgeschlagen. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
   },
   "tabs": {
     "home": "Start",
@@ -175,7 +176,8 @@
       "webOnlyNote": "Denk daran: Credits kaufen und Geld abheben geht nur auf der Verwaltungs-Website.",
       "mustBe18": "Sie müssen mindestens 18 Jahre alt sein, um sich registrieren zu können",
       "dobInvalid": "Ungültiges Geburtsdatum",
-      "networkError": "Der Server konnte nicht erreicht werden. Stellen Sie sicher, dass das Telefon mit demselben WLAN wie Ihr Mac verbunden ist und die API ausgeführt wird."
+      "networkError": "Der Server konnte nicht erreicht werden. Stellen Sie sicher, dass das Telefon mit demselben WLAN wie Ihr Mac verbunden ist und die API ausgeführt wird.",
+      "alreadyExists": "Diese E-Mail hat bereits ein Konto. Nutze „Ich habe schon ein Konto“ und melde dich an."
     },
     "forgotPasswordScreen": {
       "description": "Geben Sie Ihre E-Mail-Adresse ein, um Anweisungen zum Zurücksetzen Ihres Passworts zu erhalten.",
@@ -288,7 +290,11 @@
       "autoPendingBody": "Wenn Sie im Browser fertig sind, warten Sie ein paar Sekunden oder tippen Sie erneut auf Automatisch bestätigen.",
       "autoPolling": "Warten auf Stripe Identity…",
       "manualReviewNote": "Der manuelle Weg liest den Ausweis nicht automatisch: kein OCR und keine Prüfung, ob der gewählte Typ passt. 18+ kommt aus dem Geburtsdatum bei der Registrierung; ein Prüfer schaut auf Schärfe und Stimmigkeit. Für automatische Prüfung (Dokument + Selfie) Stripe Identity oben nutzen.",
-      "stripeOnlyHint": "Die Prüfung macht Stripe Identity: Dokumentfoto + Selfie (Lebenderkennung). Kein manueller Upload und keine Admin-Foto-Prüfung."
+      "stripeOnlyHint": "Die Prüfung macht Stripe Identity: Dokumentfoto + Selfie (Lebenderkennung). Kein manueller Upload und keine Admin-Foto-Prüfung.",
+      "autoNeedLogin": "Sitzung abgelaufen. Melde dich erneut an und versuche es noch einmal.",
+      "autoTimeout": "Stripe hat zu lange gebraucht. Erneut versuchen oder manuellen Upload nutzen.",
+      "skipFailed": "Verifizierung konnte nicht übersprungen werden.",
+      "skipForNow": "Vorerst überspringen (nur Tests)"
     },
     "faceScanScreen": {
       "title": "Gesichtsscan",
@@ -366,7 +372,8 @@
     "noRanking": "Noch keine Ergebnisse. Seien Sie der Erste.",
     "viewFullRanking": "Vollständiges Ranking anzeigen →",
     "loadError": "Quizze konnten nicht geladen werden",
-    "loadErrorHint": "Überprüfen Sie Ihre Verbindung und tippen Sie auf „Wiederholen“. Sie können zum Aktualisieren auch nach unten ziehen."
+    "loadErrorHint": "Überprüfen Sie Ihre Verbindung und tippen Sie auf „Wiederholen“. Sie können zum Aktualisieren auch nach unten ziehen.",
+    "liveNow": "Jetzt live"
   },
   "seasonDetail": {
     "title": "Jahreszeiten",
@@ -632,7 +639,7 @@
       "twoFactorSection": "Zwei-Faktor-Authentifizierung",
       "twoFactorOn": "2FA aktiviert",
       "twoFactorOff": "2FA deaktiviert",
-      "twoFactorHelp": "Wenn 2FA aktiviert ist, benötigen Sie es für Ein- und Auszahlungen in Gestión.",
+      "twoFactorHelp": "Wenn 2FA aktiviert ist, benötigen Sie es für Ein- und Auszahlungen in Verwaltung.",
       "twoFactorStart": "2FA einrichten",
       "twoFactorCodeLabel": "6-stelliger Code",
       "twoFactorConfirm": "Bestätigen und aktivieren",
@@ -862,7 +869,8 @@
       "title": "Bestätigen",
       "subtitle": "1 Gutschrift wird jetzt abgezogen",
       "quizFallback": "Quiz #{{id}}"
-    }
+    },
+    "enterLiveButton": "Zur Partie"
   },
   "quizPlay": {
     "loadingEntry": "Teilnahme am Quiz…",
@@ -919,13 +927,16 @@
     "exitConfirmBody": "Wenn Sie jetzt gehen, können Sie diesen Preisbildschirm nicht erneut öffnen.",
     "exitConfirmOk": "Ausgang",
     "reconnecting": "Verbindung wird wiederhergestellt…",
-    "reconnectingHint": "Das Spiel bleibt offen. Erneuter Versuch im Hintergrund."
+    "reconnectingHint": "Das Spiel bleibt offen. Erneuter Versuch im Hintergrund.",
+    "creditsPrize": "+{{n}} Credits",
+    "leaveCountdown": "In der App bleiben",
+    "noCreditsPrize": "0 Credits"
   },
   "enroll": {
     "kicker": "Einschreibung",
     "title": "An diesem Quiz teilnehmen?",
     "defaultQuizTitle": "Quiz",
-    "creditSingular": "1 Kredit",
+    "creditSingular": "1 Credit",
     "creditPlural": "{{n}} Credits",
     "debitCaption": "Von Ihrem Guthaben abgezogen",
     "poolLabel": "Preispool",
@@ -1120,7 +1131,9 @@
     "recoverEmpty": "Keine Credits zum Zurückholen",
     "recoverReasonCancelled": "Quiz abgesagt",
     "recoverReasonNeverRan": "Nicht gespielt (Ausfall oder Verzögerung)",
-    "recoverError": "Credit konnte nicht zurückgeholt werden"
+    "recoverError": "Credit konnte nicht zurückgeholt werden",
+    "noPlayedHistory": "Noch keine Quizzes gespielt.",
+    "scorePoints": "{{n}} Pkt."
   },
   "messages": {
     "title": "Nachrichten",
@@ -1197,7 +1210,7 @@
         "body": "Jedes Live-Quiz durchläuft Phasen: Vorbereitung, Lesen der Frage, Zeit zum Beantworten, automatische Bewertung sowie Teil- und Endwertung. Alles ist synchronisiert: Niemand sieht die Antwort vor allen anderen."
       },
       "oneCreditEntry": {
-        "title": "1 Kredit = Eintritt",
+        "title": "1 Credit = Eintritt",
         "body": "Der Beitritt kostet 1 Credit. Dieses Guthaben wird nicht zurückerstattet, sondern fließt vollständig in den Preispool des Quiz. Je mehr Leute mitmachen, desto größer ist der Pot für die Gewinner."
       },
       "earlyJoinBonus": {
@@ -1231,17 +1244,20 @@
     }
   },
   "wallet": {
-    "title": "Verwaltung",
-    "subtitle": "Kaufen Sie Guthaben und heben Sie es auf der Verwaltung-Website ab.",
-    "balanceLabel": "Saldo in App",
+    "title": "Dein Geld,",
+    "subtitle": "Gleiche Session, gleiches Konto. Öffne die Verwaltung im Web, um Credits zu kaufen und Preise auszuzahlen.",
+    "balanceLabel": "Guthaben in der App",
     "creditsUnit": "Credits",
-    "description": "Wir öffnen Verwaltung, sobald Sie angemeldet sind. Dort können Sie Ihr Guthaben einsehen, Guthaben hinzufügen oder abheben und bei Bedarf Ihre Bank verknüpfen.",
-    "openWeb": "Open Verwaltung im Internet",
-    "appOnlyHint": "Wallet kann nur über diese App geöffnet werden (nicht über einen zufälligen Link).",
-    "openErrorTitle": "Konnte nicht geöffnet werden",
-    "openErrorBody": "Versuchen Sie es erneut. Sie müssen bei Quilax angemeldet sein.",
-    "openErrorHint": "Wenn es weiterhin fehlschlägt, melden Sie sich ab und wieder an oder überprüfen Sie, ob die API erreichbar ist.",
-    "emptyBalanceHint": "Guthaben ist 0. Öffnen Sie Verwaltung, um Guthaben hinzuzufügen und an kostenpflichtigen Quizzen teilzunehmen."
+    "description": "Wir öffnen die Verwaltung bereits angemeldet. Dort verwaltest du Guthaben, Einzahlungen, Auszahlungen und dein Bankkonto.",
+    "openWeb": "Verwaltung öffnen",
+    "appOnlyHint": "Aus Sicherheitsgründen öffnet sich die Verwaltung nur aus dieser App.",
+    "openErrorTitle": "Öffnen fehlgeschlagen",
+    "openErrorBody": "In ein paar Sekunden erneut versuchen. Wenn es weiter scheitert, melde dich ab und wieder an.",
+    "openErrorHint": "",
+    "emptyBalanceHint": "Guthaben ist 0. Öffne die Verwaltung, um Credits zu laden und an bezahlten Quizzes teilzunehmen.",
+    "badge": "Credits · Auszahlungen · Bank",
+    "openSameTab": "In diesem Tab öffnen",
+    "titleAccent": "unter Kontrolle."
   },
   "notif": {
     "title": "Benachrichtigungen zulassen?",

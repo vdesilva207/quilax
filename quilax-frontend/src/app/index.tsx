@@ -20,6 +20,16 @@ export default function Index() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Failsafe: never stay on the boot spinner forever (broken storage / hung auth).
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!bootHref) {
+        setBootHref(isAuthenticated ? '/(app)' : '/(auth)/welcome');
+      }
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [bootHref, isAuthenticated]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {

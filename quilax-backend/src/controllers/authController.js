@@ -105,8 +105,18 @@ export const register = async (req, res) => {
       const birthDate = new Date(dateOfBirth);
       if (!Number.isNaN(birthDate.getTime())) {
         userData.dateOfBirth = birthDate;
-        const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-        userData.isOver18 = age >= 18;
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age -= 1;
+        if (age < 18) {
+          logRegisterFailure(email, ipAddress, userAgent, "Menor de 18");
+          return res.status(403).json({
+            error: "Debes ser mayor de 18 años para registrarte",
+            code: "UNDERAGE",
+          });
+        }
+        userData.isOver18 = true;
       }
     }
     if (idDocumentNumber) {

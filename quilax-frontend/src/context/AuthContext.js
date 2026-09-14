@@ -59,6 +59,17 @@ export function AuthProvider({ children }) {
     loadAuth();
   }, []);
 
+  // Never leave the whole app on loading=true (e.g. hung AsyncStorage on web).
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading((prev) => {
+        if (prev) console.warn('[auth] boot timeout — clearing loading spinner');
+        return false;
+      });
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Keep apiClient Authorization in sync (HMR / remounts can clear the singleton token).
   useEffect(() => {
     if (token) apiClient.setToken(token);

@@ -118,7 +118,8 @@
       "convertFailed": "Couldn't convert the image",
       "prepareFailed": "Couldn't prepare the image for upload"
     },
-    "requestTimeout": "Request timed out. Check your connection."
+    "requestTimeout": "Request timed out. Check your connection.",
+    "networkError": "Couldn’t connect. Check your connection and try again."
   },
   "tabs": {
     "home": "Home",
@@ -371,7 +372,8 @@
     "noRanking": "No scores yet. Be the first.",
     "viewFullRanking": "View full ranking →",
     "loadError": "Couldn't load quizzes",
-    "loadErrorHint": "Check your connection and tap retry. You can also pull down to refresh."
+    "loadErrorHint": "Check your connection and tap retry. You can also pull down to refresh.",
+    "liveNow": "Live now"
   },
   "seasonDetail": {
     "title": "Seasons",
@@ -637,7 +639,7 @@
       "twoFactorSection": "Two-factor authentication",
       "twoFactorOn": "2FA enabled",
       "twoFactorOff": "2FA disabled",
-      "twoFactorHelp": "With 2FA on, you will need it for deposits and withdrawals in Gestión.",
+      "twoFactorHelp": "With 2FA on, you will need it for deposits and withdrawals in Wallet.",
       "twoFactorStart": "Set up 2FA",
       "twoFactorCodeLabel": "6-digit code",
       "twoFactorConfirm": "Confirm and enable",
@@ -814,6 +816,7 @@
     "startDateTbd": "Start date not scheduled yet",
     "entryInfo": "Entry: 1 credit",
     "joinButton": "I’m in",
+    "enterLiveButton": "Enter live quiz",
     "notAvailableYet": "This quiz isn't available to join yet.",
     "cannotJoinRightNow": "You can't join this quiz right now.",
     "prizesSection": "Prizes",
@@ -886,7 +889,8 @@
     "startBurstDone": "Go!",
     "startBurstHint": "Starting",
     "almostThere": "Almost there",
-    "keepAppOpen": "Entry is closed. Keep the app open.",
+    "keepAppOpen": "The quiz starts soon. You can leave and keep browsing — we'll pull you in automatically 30s before.",
+    "leaveCountdown": "Back to the app",
     "lobbyCountdown": "Starts in {{time}}",
     "readCarefully": "Read carefully",
     "correct": "Correct",
@@ -906,6 +910,8 @@
     "matchEnded": "That's how the match ended",
     "scoreLine": "{{score}} pts",
     "scoreLineWithPrize": "{{score}} pts  ·  +{{prize}} credits",
+    "creditsPrize": "+{{n}} credits",
+    "noCreditsPrize": "0 credits",
     "resultsExpiry": "Available for ~1 hour after the quiz ends",
     "noRankingYet": "No ranking yet",
     "backToCreate": "Back to Create",
@@ -1035,6 +1041,8 @@
     "historyPrivateNote": "Your history is private. Only you can see it here.",
     "historyPrivateLabel": "Private history",
     "playedQuizzesSection": "Quizzes played",
+    "noPlayedHistory": "No quizzes played yet.",
+    "scorePoints": "{{n}} pts",
     "prizesWonSection": "Prizes won",
     "creditsWon": "+{{n}} credits",
     "createdQuizzesSection": "Quizzes created",
@@ -1236,16 +1244,19 @@
     }
   },
   "wallet": {
-    "title": "Wallet",
-    "subtitle": "Buy credits and withdraw on the Wallet website.",
+    "badge": "Credits · withdrawals · bank",
+    "title": "Your money,",
+    "titleAccent": "under control.",
+    "subtitle": "Same session, same account. Open Wallet on the web to buy credits and cash out prizes.",
     "balanceLabel": "Balance in app",
     "creditsUnit": "credits",
-    "description": "We'll open Wallet already signed in. There you can see your balance, add or withdraw credits, and link your bank if needed.",
-    "openWeb": "Open Wallet on the web",
-    "appOnlyHint": "Wallet can only be opened from this app (not from a random link).",
+    "description": "We'll open Wallet already signed in. Manage balance, deposits, withdrawals, and your bank account there.",
+    "openWeb": "Open Wallet",
+    "openSameTab": "Open in this tab",
+    "appOnlyHint": "For security, Wallet only opens from this app.",
     "openErrorTitle": "Couldn't open",
-    "openErrorBody": "Try again. You need to be signed in to Quilax.",
-    "openErrorHint": "If it keeps failing, sign out and back in, or check that the API is reachable.",
+    "openErrorBody": "Try again in a few seconds. If it keeps failing, sign out and sign back in.",
+    "openErrorHint": "",
     "emptyBalanceHint": "Balance is 0. Open Wallet to add credits and join paid quizzes."
   },
   "notif": {

@@ -7,15 +7,34 @@ import { requireMoneyEligibility } from "../middleware/moneyEligibility.js";
 import { requireAllowedGeo } from "../middleware/geo.js";
 import {
   createPaymentIntent,
+  quoteDepositCredits,
   getUserPaymentHistory,
   getAvailablePackages,
   updateBankAccount,
   updateUserAgeVerification
 } from "../services/paymentService.js";
 import { decrypt, encryptIBAN, encryptAccountName } from "../services/encryption.js";
+import {
+  PAYMENT_REGIONS,
+  isKnownPaymentCountry,
+  currencyForCountry,
+} from "../constants/paymentRegions.js";
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+/** Publishable key for wallet Stripe.js (safe to expose). */
+router.get("/config", (_req, res) => {
+  const publishableKey =
+    process.env.STRIPE_PUBLISHABLE_KEY ||
+    process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+    "";
+  res.json({
+    success: true,
+    publishableKey: publishableKey || null,
+    configured: Boolean(publishableKey),
+  });
+});
 
 // Wallet web (Connect return/refresh). Prefer WALLET_APP_URL over marketing FRONTEND_APP_URL.
 const WALLET_BASE =
@@ -25,43 +44,6 @@ const WALLET_BASE =
     ? process.env.FRONTEND_APP_URL
     : null) ||
   "https://gestion.appquilax.com";
-
-const PAYMENT_REGIONS = [
-  {
-    code: "EU",
-    country: "ES",
-    name: "España / UE",
-    currency: "EUR",
-    currencies: ["EUR"],
-    active: true,
-  },
-  {
-    code: "US",
-    country: "US",
-    name: "United States",
-    currency: "USD",
-    currencies: ["USD"],
-    active: true,
-  },
-  {
-    code: "GB",
-    country: "GB",
-    name: "United Kingdom",
-    currency: "GBP",
-    currencies: ["GBP"],
-    active: false,
-    comingSoon: true,
-  },
-  {
-    code: "MX",
-    country: "MX",
-    name: "México",
-    currency: "MXN",
-    currencies: ["MXN"],
-    active: false,
-    comingSoon: true,
-  },
-];
 
 function requireTotpIfEnabled(user, totpCode) {
   if (!user.twoFactorEnabled) return null;
@@ -89,16 +71,152 @@ function requireTotpIfEnabled(user, totpCode) {
   return null;
 }
 
-async function createConnectAccountLink(accountId) {
-  const base = WALLET_BASE.replace(/\/$/, "");
-  const refreshUrl = `${base}/settings/bank?refresh=1`;
-  const returnUrl = `${base}/settings/bank?return=1`;
+function resolveWalletBase(req) {
+  const fallback = String(WALLET_BASE || "").replace(/\/$/, "");
+  const candidates = [req?.headers?.origin, req?.headers?.referer].filter(Boolean);
+  for (const raw of candidates) {
+    try {
+      const u = new URL(String(raw));
+      const host = (u.hostname || "").toLowerCase();
+      const ok =
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host.startsWith("gestion.") ||
+        host.includes("appquilax");
+      if (ok) return `${u.protocol}//${u.host}`.replace(/\/$/, "");
+    } catch {
+      /* next */
+    }
+  }
+  return fallback;
+}
+
+async function createConnectAccountLink(accountId, req) {
+  const base = resolveWalletBase(req);
+  const refreshUrl = `${base}/bank?connect=refresh`;
+  const returnUrl = `${base}/bank?connect=return`;
   return stripe.accountLinks.create({
     account: accountId,
     refresh_url: refreshUrl,
     return_url: returnUrl,
     type: "account_onboarding",
   });
+}
+
+/**
+ * Perfil de plataforma: el usuario NO elige tipo de empresa.
+ * Solo capability transfers (retiradas). Los pagos con tarjeta van por la plataforma.
+ * IMPORTANTE: business_profile.url debe ser https público — Stripe rechaza localhost ("Not a valid URL").
+ */
+function connectBusinessProfile() {
+  const candidates = [
+    process.env.CONNECT_BUSINESS_URL,
+    process.env.MARKETING_URL,
+    "https://appquilax.com",
+  ];
+  let url = "https://appquilax.com";
+  for (const raw of candidates) {
+    if (!raw) continue;
+    try {
+      const u = new URL(String(raw).trim());
+      const host = (u.hostname || "").toLowerCase();
+      if (host === "localhost" || host === "127.0.0.1") continue;
+      if (u.protocol !== "https:") continue;
+      url = `${u.protocol}//${u.host}${u.pathname}`.replace(/\/$/, "") || url;
+      break;
+    } catch {
+      /* next */
+    }
+  }
+  return {
+    mcc: "5734",
+    url,
+    product_description:
+      "Retiro de saldo de usuario en la plataforma Quilax (créditos de quiz/juego).",
+  };
+}
+
+async function createExpressPayoutAccount({ country, email, userId }) {
+  return stripe.accounts.create({
+    type: "express",
+    country,
+    email: email || undefined,
+    business_type: "individual",
+    business_profile: connectBusinessProfile(),
+    capabilities: {
+      transfers: { requested: true },
+    },
+    metadata: { userId: String(userId) },
+  });
+}
+
+/** Rellena datos de plataforma en cuentas Express aún no enviadas (omite pantallas de empresa). */
+async function prefillExpressPayoutAccount(accountId, { email } = {}) {
+  const profile = connectBusinessProfile();
+  try {
+    await stripe.accounts.update(accountId, {
+      business_type: "individual",
+      business_profile: profile,
+      ...(email ? { email } : {}),
+      capabilities: {
+        transfers: { requested: true },
+      },
+    });
+    return;
+  } catch (err) {
+    console.warn("Connect prefill (full) failed:", err?.message || err);
+  }
+  try {
+    await stripe.accounts.update(accountId, {
+      business_profile: profile,
+      ...(email ? { email } : {}),
+    });
+  } catch (err) {
+    console.warn("Connect prefill (profile) failed:", err?.message || err);
+  }
+}
+
+/** Si la cuenta quedó a medias con flujo de empresa, recrear (solo test / no submitted). */
+async function ensureExpressPayoutAccount(user) {
+  const country = (user.country || "ES").toString().slice(0, 2).toUpperCase();
+  let accountId = user.stripeConnectAccountId;
+
+  if (accountId) {
+    try {
+      const account = await stripe.accounts.retrieve(accountId);
+      if (account.details_submitted) {
+        return accountId;
+      }
+      await prefillExpressPayoutAccount(accountId, { email: user.email });
+      const refreshed = await stripe.accounts.retrieve(accountId);
+      const profile = refreshed.business_profile || {};
+      const prefilledOk =
+        refreshed.business_type === "individual" &&
+        (!!profile.product_description || !!profile.url);
+      // Cuenta a medias / flujo de empresa → nueva Express solo-transfers.
+      if (!prefilledOk || refreshed.business_type === "company") {
+        accountId = null;
+      }
+    } catch (err) {
+      console.warn("Connect retrieve/prefill failed, recreating:", err?.message || err);
+      accountId = null;
+    }
+  }
+
+  if (!accountId) {
+    const account = await createExpressPayoutAccount({
+      country,
+      email: user.email,
+      userId: user.id,
+    });
+    accountId = account.id;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { stripeConnectAccountId: accountId },
+    });
+  }
+
+  return accountId;
 }
 
 /** Marca banco verificado en BD cuando Connect ya permite payouts / datos enviados. */
@@ -145,7 +263,7 @@ router.get("/connect/status", auth, async (req, res) => {
         detailsSubmitted: false,
         isBankVerified: !!user?.isBankVerified,
         canWithdraw: false,
-        bankVerificationStatus: user?.isBankVerified ? "VERIFIED" : "PENDING",
+        bankVerificationStatus: user?.isBankVerified ? "VERIFIED" : "NOT_STARTED",
         bankLast4: null,
         country: user?.country || null,
         currency: user?.currency || null,
@@ -176,6 +294,24 @@ router.get("/connect/status", auth, async (req, res) => {
     const connected = chargesEnabled && payoutsEnabled;
 
     await syncBankVerifiedFromConnect(req.user.id, { payoutsEnabled, detailsSubmitted });
+    const isBankVerified =
+      connected ||
+      !!user.isBankVerified ||
+      (payoutsEnabled && detailsSubmitted) ||
+      (detailsSubmitted && payoutsEnabled);
+
+    // Re-leer flag persistido tras sync
+    let persistedBank = !!user.isBankVerified;
+    try {
+      const fresh = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { isBankVerified: true },
+      });
+      persistedBank = !!fresh?.isBankVerified;
+    } catch {
+      /* keep */
+    }
+    const bankOk = persistedBank || isBankVerified;
 
     let bankLast4 = null;
     try {
@@ -194,10 +330,10 @@ router.get("/connect/status", auth, async (req, res) => {
       chargesEnabled,
       payoutsEnabled,
       detailsSubmitted,
-      isBankVerified: !!user.isBankVerified || connected,
-      canWithdraw: payoutsEnabled && (user.isBankVerified || detailsSubmitted),
+      isBankVerified: bankOk,
+      canWithdraw: payoutsEnabled && bankOk,
       bankVerificationStatus:
-        connected || user.isBankVerified ? "VERIFIED" : detailsSubmitted ? "PENDING" : "NOT_STARTED",
+        connected || bankOk ? "VERIFIED" : detailsSubmitted ? "PENDING" : "NOT_STARTED",
       bankLast4,
       country: user.country || account.country || null,
       currency: user.currency || null,
@@ -219,53 +355,73 @@ router.post("/connect/onboard", auth, requireAllowedGeo(), requireMoneyEligibili
 
     if (country && !user.country) {
       const code = String(country).trim().toUpperCase().slice(0, 2);
+      if (!isKnownPaymentCountry(code)) {
+        return res.status(400).json({ error: "País no soportado" });
+      }
+      const cur = currencyForCountry(code);
       user = await prisma.user.update({
         where: { id: userId },
-        data: { country: code, nationality: code },
-      });
-    }
-
-    let accountId = user.stripeConnectAccountId;
-    if (!accountId) {
-      const account = await stripe.accounts.create({
-        type: "express",
-        country: (user.country || "ES").slice(0, 2),
-        email: user.email,
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
+        data: {
+          country: code,
+          nationality: code,
+          ...(cur ? { currency: cur } : {}),
         },
-        business_type: "individual",
-        metadata: { userId: String(userId) },
-      });
-      accountId = account.id;
-      await prisma.user.update({
-        where: { id: userId },
-        data: { stripeConnectAccountId: accountId },
       });
     }
 
-    const link = await createConnectAccountLink(accountId);
-    res.json({ url: link.url, accountId });
+    const connectCountry = (user.country || country || "ES").toString().slice(0, 2).toUpperCase();
+    if (!isKnownPaymentCountry(connectCountry)) {
+      return res.status(400).json({ error: "País no soportado", country: connectCountry });
+    }
+
+    let accountId = await ensureExpressPayoutAccount(user);
+
+    const link = await createConnectAccountLink(accountId, req);
+    res.json({ url: link.url, accountId, returnBase: resolveWalletBase(req) });
   } catch (error) {
     console.error("Error onboarding Connect:", error);
     res.status(400).json({ error: error.message || "Error al iniciar onboarding" });
   }
 });
 
-router.post("/connect/refresh", auth, async (req, res) => {
+router.post("/connect/refresh", auth, requireAllowedGeo(), requireMoneyEligibility("BANK_UPDATE"), async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: { stripeConnectAccountId: true },
+      select: {
+        id: true,
+        stripeConnectAccountId: true,
+        country: true,
+        email: true,
+      },
     });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
-    if (!user?.stripeConnectAccountId) {
-      return res.status(400).json({ error: "No hay cuenta Connect. Usa /connect/onboard primero." });
+    if (!user.country && req.body?.country) {
+      const code = String(req.body.country).trim().toUpperCase().slice(0, 2);
+      if (!isKnownPaymentCountry(code)) {
+        return res.status(400).json({ error: "País no soportado", country: code });
+      }
+      const cur = currencyForCountry(code);
+      user = await prisma.user.update({
+        where: { id: req.user.id },
+        data: {
+          country: code,
+          nationality: code,
+          ...(cur ? { currency: cur } : {}),
+        },
+        select: {
+          id: true,
+          stripeConnectAccountId: true,
+          country: true,
+          email: true,
+        },
+      });
     }
 
-    const link = await createConnectAccountLink(user.stripeConnectAccountId);
-    res.json({ url: link.url, accountId: user.stripeConnectAccountId });
+    const accountId = await ensureExpressPayoutAccount(user);
+    const link = await createConnectAccountLink(accountId, req);
+    res.json({ url: link.url, accountId, returnBase: resolveWalletBase(req) });
   } catch (error) {
     console.error("Error refreshing Connect link:", error);
     res.status(400).json({ error: error.message || "Error al refrescar enlace Connect" });
@@ -307,6 +463,21 @@ router.get("/packages", auth, async (req, res) => {
   }
 });
 
+// Cotización depósito (cualquier cantidad >= 1)
+router.get("/deposit-quote", auth, async (req, res) => {
+  try {
+    const credits = parseInt(req.query.credits, 10);
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { currency: true },
+    });
+    const quote = quoteDepositCredits(credits, user?.currency || "EUR");
+    res.json(quote);
+  } catch (error) {
+    res.status(400).json({ error: error.message || "Cotización no disponible" });
+  }
+});
+
 // Crear payment intent para comprar créditos
 router.post(
   "/create-intent",
@@ -327,22 +498,7 @@ router.post(
       return res.status(400).json({ error: "Cantidad de créditos inválida" });
     }
 
-    // Bloquear si ya hay un pago PENDING
-    const existingPending = await prisma.payment.findFirst({
-      where: {
-        userId,
-        status: "PENDING",
-      },
-    });
-
-    if (existingPending) {
-      return res.status(400).json({
-        error: "Ya tienes un pago pendiente",
-        paymentId: existingPending.id,
-      });
-    }
-
-    const paymentIntent = await createPaymentIntent(userId, parseInt(credits));
+    const paymentIntent = await createPaymentIntent(userId, parseInt(credits, 10));
     
     res.json({
       success: true,
@@ -549,15 +705,14 @@ router.put("/country", auth, async (req, res) => {
     const code = String(country).trim().toUpperCase().slice(0, 2);
     if (code.length !== 2) return res.status(400).json({ error: "Código de país inválido" });
 
+    if (!isKnownPaymentCountry(code)) {
+      return res.status(400).json({ error: "País no soportado" });
+    }
+
     const data = { country: code, nationality: code };
-    // Opcional: mapear moneda por país (mínimo ES→EUR)
     if (syncCurrency) {
-      const currencyByCountry = {
-        ES: "EUR", PT: "EUR", FR: "EUR", DE: "EUR", IT: "EUR",
-        US: "USD", MX: "MXN", AR: "ARS", CO: "COP", CL: "CLP",
-        PE: "PEN", BR: "BRL", GB: "GBP",
-      };
-      if (currencyByCountry[code]) data.currency = currencyByCountry[code];
+      const cur = currencyForCountry(code);
+      if (cur) data.currency = cur;
     }
 
     const updated = await prisma.user.update({

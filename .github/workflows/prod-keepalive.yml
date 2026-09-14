@@ -1,0 +1,39 @@
+# Keep Render free/starter web service warm + alert if prod is down.
+# Pings every 5 minutes. Does not require Render credentials.
+name: prod-keepalive
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping API health
+        run: |
+          set -euo pipefail
+          BASE="${PROD_API_URL:-https://api.appquilax.com}"
+          echo "GET $BASE/health"
+          code=$(curl -sS -m 45 -o /tmp/health.json -w "%{http_code}" "$BASE/health" || echo 000)
+          echo "http=$code body=$(cat /tmp/health.json 2>/dev/null || true)"
+          test "$code" = "200"
+
+          echo "GET $BASE/health/db"
+          code=$(curl -sS -m 45 -o /tmp/db.json -w "%{http_code}" "$BASE/health/db" || echo 000)
+          echo "http=$code body=$(cat /tmp/db.json 2>/dev/null || true)"
+          test "$code" = "200"
+
+          # ready includes Redis when deployed; tolerate 404 until deploy lands
+          echo "GET $BASE/health/ready"
+          code=$(curl -sS -m 45 -o /tmp/ready.json -w "%{http_code}" "$BASE/health/ready" || echo 000)
+          echo "http=$code body=$(cat /tmp/ready.json 2>/dev/null || true)"
+          if [ "$code" = "404" ]; then
+            echo "health/ready not deployed yet — OK"
+          else
+            test "$code" = "200"
+          fi
+        env:
+          PROD_API_URL: https://api.appquilax.com

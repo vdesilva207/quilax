@@ -1,342 +1,494 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Image,
+  Alert,
+  ActivityIndicator,
+  TextInput,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors, Spacing } from '@/constants/theme';
 import CustomIcon from '@/components/CustomIcon';
-import { useState } from 'react';
-import { API_BASE_URL } from '@/lib/api';
+import adminService from '@/services/adminService';
+import { AppCard, AppSection } from '@/components/ui/AppScreen';
+
+function formatDateTime(value?: string | Date | null) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('es-ES', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 export default function QuizDetailScreen() {
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [prizeDistribution, setPrizeDistribution] = useState({
-    first: 50,
-    second: 30,
-    third: 15,
-    fourth: 5,
-  });
-  const [scheduledDate, setScheduledDate] = useState('');
-  const [scheduledTime, setScheduledTime] = useState('');
+  const quizId = Number(id);
 
-  const totalPercentage = Object.values(prizeDistribution).reduce((sum, val) => sum + val, 0);
+  const [quiz, setQuiz] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [actionFeedback, setActionFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [creatorMessage, setCreatorMessage] = useState('');
 
-  const handleDistributionChange = (position: keyof typeof prizeDistribution, value: string) => {
-    const numValue = parseInt(value) || 0;
-    setPrizeDistribution(prev => ({
-      ...prev,
-      [position]: numValue,
-    }));
-  };
-
-  const handlePublish = async () => {
-    if (totalPercentage !== 100) {
-      Alert.alert('Error', 'El reparto del premio debe sumar exactamente 100%');
-      return;
-    }
-
-    if (!scheduledDate || !scheduledTime) {
-      Alert.alert('Error', 'Debes programar una fecha y hora para el quiz');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/admin/quizzes/${id}/publish`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prizeDistribution,
-          scheduledDate: `${scheduledDate}T${scheduledTime}`,
-        }),
-      });
-
-      if (response.ok) {
-        Alert.alert('Éxito', 'Quiz publicado exitosamente');
-        router.back();
-      } else {
-        Alert.alert('Error', 'No se pudo publicar el quiz');
-      }
-    } catch (error) {
-      console.error('Error publishing quiz:', error);
-      Alert.alert('Error', 'Error al publicar el quiz');
+  const showFeedback = (type: 'ok' | 'err', text: string) => {
+    setActionFeedback({ type, text });
+    // Alert en web de Expo a menudo no muestra nada; window.alert sí.
+    if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+      window.alert(text);
+    } else {
+      Alert.alert(type === 'ok' ? 'Éxito' : 'Error', text);
     }
   };
+
+  const loadQuiz = useCallback(async () => {
+    if (!quizId) {
+      setError('ID de quiz inválido');
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const result = await adminService.getQuizById(quizId);
+    setLoading(false);
+    if (!result.success || !result.data) {
+      setError(result.error || 'No se pudo cargar el quiz');
+      setQuiz(null);
+      return;
+    }
+    setQuiz(result.data);
+  }, [quizId]);
+
+  useEffect(() => {
+    loadQuiz();
+  }, [loadQuiz]);
+
+  const scheduledAt = useMemo(() => {
+    return quiz?.schedules?.[0]?.scheduledAt || quiz?.requestedDate || null;
+  }, [quiz]);
+
+  const totalReadSec = useMemo(() => {
+    if (!quiz?.questions?.length) return 0;
+    return quiz.questions.reduce((sum: number, q: any) => sum + (Number(q.readTime) || 0), 0);
+  }, [quiz]);
+
+  const totalAnswerSec = useMemo(() => {
+    if (!quiz?.questions?.length) return 0;
+    return quiz.questions.reduce((sum: number, q: any) => sum + (Number(q.answerTime) || 0), 0);
+  }, [quiz]);
+
+  const isPending = quiz?.status === 'PENDING_REVIEW';
+
+  const handleApprove = async () => {
+    if (!quizId) return;
+    setActionLoading(true);
+    setActionFeedback(null);
+    const result = await adminService.approveQuiz(
+      quizId,
+      scheduledAt,
+      creatorMessage.trim() || undefined,
+    );
+    setActionLoading(false);
+    if (result.success) {
+      showFeedback('ok', 'Quiz aprobado');
+      router.replace('/panel/quizzes');
+    } else {
+      showFeedback('err', result.error || 'No se pudo aprobar');
+    }
+  };
+
+  const handleReject = async () => {
+    if (!quizId) return;
+    setActionLoading(true);
+    setActionFeedback(null);
+    const result = await adminService.rejectQuiz(
+      quizId,
+      creatorMessage.trim() || 'Rechazado por admin tras revisión',
+    );
+    setActionLoading(false);
+    if (result.success) {
+      showFeedback('ok', 'Quiz rechazado. La fecha queda libre.');
+      router.replace('/panel/quizzes');
+    } else {
+      showFeedback('err', result.error || 'No se pudo rechazar');
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={Colors.light.primary} />
+        <Text style={styles.loadingText}>Cargando quiz completo…</Text>
+      </View>
+    );
+  }
+
+  if (error || !quiz) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{error || 'Quiz no encontrado'}</Text>
+        <Pressable style={styles.backLink} onPress={() => router.back()}>
+          <Text style={styles.backLinkText}>Volver</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <CustomIcon name="back" size={24} color={Colors.light.text} />
         </Pressable>
-        <Text style={styles.title}>Detalle del Quiz</Text>
+        <View style={styles.headerTextWrap}>
+          <Text style={styles.title}>Revisión del quiz</Text>
+          <Text style={styles.subtitle}>ID {quiz.id} · {quiz.status}</Text>
+        </View>
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Información del Quiz</Text>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>ID del Quiz:</Text>
-            <Text style={styles.infoValue}>{id}</Text>
-          </View>
+      {quiz.coverImage ? (
+        <Image source={{ uri: quiz.coverImage }} style={styles.cover} resizeMode="cover" />
+      ) : (
+        <View style={[styles.cover, styles.coverPlaceholder]}>
+          <Text style={styles.coverPlaceholderText}>Sin foto de portada</Text>
         </View>
+      )}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reparto del Premio</Text>
-          <Text style={styles.sectionDescription}>
-            Configura el porcentaje de premio para cada posición (debe sumar 100%)
+      <AppSection title="Información general" accentIndex={0}>
+        <AppCard>
+          <Text style={styles.quizTitle}>{quiz.title || 'Sin título'}</Text>
+          <Text style={styles.meta}>Categoría: {quiz.category || '—'}</Text>
+          <Text style={styles.meta}>Dificultad: {quiz.difficulty ?? '—'}/10</Text>
+          <Text style={styles.meta}>Entrada: 1 crédito (fijo)</Text>
+          {quiz.reviewedBy === 'AI' || quiz.aiReviewStatus ? (
+            <Text style={styles.meta}>
+              Revisión app: {quiz.aiReviewStatus || '—'}
+              {quiz.reviewedBy ? ` (${quiz.reviewedBy})` : ''}
+              {quiz.aiReviewStatus === 'NEEDS_HUMAN'
+                ? ' — la IA no pudo cerrarlo sola; revisa manualmente'
+                : ''}
+            </Text>
+          ) : null}
+          {quiz.aiReviewReason ? (
+            <Text style={styles.aiReason}>Motivo IA: {quiz.aiReviewReason}</Text>
+          ) : null}
+          {quiz.status === 'FINISHED' ? (
+            <Text style={styles.meta}>
+              Prize pool repartido: {quiz.totalPrizeDistributed ?? 0} créditos
+            </Text>
+          ) : (
+            <Text style={styles.meta}>
+              Inscritos: {quiz.enrollmentCount ?? 0} · Bote estimado:{' '}
+              {(quiz.enrollmentCount ?? 0)} créditos
+            </Text>
+          )}
+          <Text style={styles.meta}>Fecha solicitada: {formatDateTime(quiz.requestedDate)}</Text>
+          <Text style={styles.meta}>Programado: {formatDateTime(scheduledAt)}</Text>
+          <Text style={styles.meta}>
+            Creador: {quiz.creator?.username || quiz.creator?.fullName || '—'} ({quiz.creator?.email || '—'})
           </Text>
+        </AppCard>
+      </AppSection>
 
-          <View style={styles.distributionContainer}>
-            <View style={styles.distributionRow}>
-              <Text style={styles.positionLabel}>1º Lugar:</Text>
-              <TextInput
-                style={styles.percentageInput}
-                value={prizeDistribution.first.toString()}
-                onChangeText={(value) => handleDistributionChange('first', value)}
-                keyboardType="numeric"
-                placeholder="%"
-              />
-              <Text style={styles.percentageSymbol}>%</Text>
-            </View>
+      <AppSection title="Del creador" accentIndex={1}>
+        <AppCard>
+          <Text style={styles.blockLabel}>Descripción</Text>
+          <Text style={styles.blockBody}>{quiz.description?.trim() || 'Sin descripción'}</Text>
+          <Text style={[styles.blockLabel, styles.blockSpacer]}>Recomendaciones / tips</Text>
+          <Text style={styles.blockBody}>{quiz.tips?.trim() || 'Sin recomendaciones'}</Text>
+        </AppCard>
+      </AppSection>
 
-            <View style={styles.distributionRow}>
-              <Text style={styles.positionLabel}>2º Lugar:</Text>
-              <TextInput
-                style={styles.percentageInput}
-                value={prizeDistribution.second.toString()}
-                onChangeText={(value) => handleDistributionChange('second', value)}
-                keyboardType="numeric"
-                placeholder="%"
-              />
-              <Text style={styles.percentageSymbol}>%</Text>
-            </View>
+      <AppSection title="Tiempos" accentIndex={2}>
+        <AppCard>
+          <Text style={styles.meta}>Preguntas: {quiz.questions?.length ?? 0}</Text>
+          <Text style={styles.meta}>Tiempo total lectura: {totalReadSec}s</Text>
+          <Text style={styles.meta}>Tiempo total respuesta: {totalAnswerSec}s</Text>
+          <Text style={styles.meta}>Duración estimada: {totalReadSec + totalAnswerSec}s</Text>
+        </AppCard>
+      </AppSection>
 
-            <View style={styles.distributionRow}>
-              <Text style={styles.positionLabel}>3º Lugar:</Text>
-              <TextInput
-                style={styles.percentageInput}
-                value={prizeDistribution.third.toString()}
-                onChangeText={(value) => handleDistributionChange('third', value)}
-                keyboardType="numeric"
-                placeholder="%"
-              />
-              <Text style={styles.percentageSymbol}>%</Text>
-            </View>
+      <AppSection title="Preguntas" accentIndex={3}>
+        {(quiz.questions || []).length === 0 ? (
+          <AppCard>
+            <Text style={styles.blockBody}>Este quiz no tiene preguntas.</Text>
+          </AppCard>
+        ) : (
+          (quiz.questions || []).map((q: any, index: number) => (
+            <AppCard key={q.id || index} style={styles.questionCard}>
+              <Text style={styles.questionIndex}>Pregunta {index + 1}</Text>
+              <Text style={styles.questionText}>{q.text}</Text>
+              <Text style={styles.meta}>
+                Lectura {q.readTime}s · Respuesta {q.answerTime}s · Máx. {q.maxPoints} pts
+              </Text>
+              <View style={styles.answersWrap}>
+                {(q.answers || [])
+                  .filter((a: any) => a.userId == null)
+                  .map((a: any) => (
+                  <View
+                    key={a.id}
+                    style={[styles.answerRow, a.isCorrect && styles.answerCorrect]}
+                  >
+                    <Text style={[styles.answerText, a.isCorrect && styles.answerTextCorrect]}>
+                      {a.isCorrect ? '✓ ' : '• '}
+                      {a.text}
+                    </Text>
+                  </View>
+                ))}
+                {(q.answers || []).filter((a: any) => a.userId == null).length === 0 ? (
+                  <Text style={styles.meta}>Sin opciones registradas</Text>
+                ) : null}
+              </View>
+            </AppCard>
+          ))
+        )}
+      </AppSection>
 
-            <View style={styles.distributionRow}>
-              <Text style={styles.positionLabel}>4º Lugar:</Text>
-              <TextInput
-                style={styles.percentageInput}
-                value={prizeDistribution.fourth.toString()}
-                onChangeText={(value) => handleDistributionChange('fourth', value)}
-                keyboardType="numeric"
-                placeholder="%"
-              />
-              <Text style={styles.percentageSymbol}>%</Text>
-            </View>
-          </View>
-
-          <View style={[
-            styles.totalContainer,
-            totalPercentage === 100 ? styles.totalValid : styles.totalInvalid
-          ]}>
-            <Text style={styles.totalLabel}>Total:</Text>
-            <Text style={styles.totalValue}>{totalPercentage}%</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Programar Fecha y Hora</Text>
-          <Text style={styles.sectionDescription}>
-            Selecciona cuándo se realizará el quiz (solo un quiz por minuto)
-          </Text>
-
-          <View style={styles.scheduleContainer}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Fecha (YYYY-MM-DD):</Text>
-              <TextInput
-                style={styles.dateInput}
-                value={scheduledDate}
-                onChangeText={setScheduledDate}
-                placeholder="2024-01-15"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Hora (HH:MM):</Text>
-              <TextInput
-                style={styles.dateInput}
-                value={scheduledTime}
-                onChangeText={setScheduledTime}
-                placeholder="20:00"
-              />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.actions}>
-          <Pressable
+      {actionFeedback ? (
+        <AppCard>
+          <Text
             style={[
-              styles.publishButton,
-              (totalPercentage !== 100 || !scheduledDate || !scheduledTime) && styles.buttonDisabled
+              styles.feedbackText,
+              actionFeedback.type === 'ok' ? styles.feedbackOk : styles.feedbackErr,
             ]}
-            onPress={handlePublish}
-            disabled={totalPercentage !== 100 || !scheduledDate || !scheduledTime}
           >
-            <Text style={styles.publishButtonText}>Publicar Quiz</Text>
-          </Pressable>
-        </View>
-      </View>
+            {actionFeedback.text}
+          </Text>
+        </AppCard>
+      ) : null}
+
+      {isPending ? (
+        <AppSection title="Decisión" accentIndex={0}>
+          <AppCard>
+            <Text style={styles.blockLabel}>Mensaje al creador (opcional)</Text>
+            <TextInput
+              style={styles.messageInput}
+              multiline
+              numberOfLines={4}
+              placeholder="Ej.: Bien el temario. Cambia la pregunta 3 porque es ambigua…"
+              placeholderTextColor={Colors.light.textSecondary}
+              value={creatorMessage}
+              onChangeText={setCreatorMessage}
+              editable={!actionLoading}
+            />
+            <Text style={styles.meta}>
+              Si lo rellenas, el creador lo recibe junto con la notificación de aprobado/rechazado.
+            </Text>
+          </AppCard>
+          <View style={styles.actions}>
+            <Pressable
+              style={[styles.approveButton, actionLoading && styles.buttonDisabled]}
+              onPress={handleApprove}
+              disabled={actionLoading}
+            >
+              <Text style={styles.actionText}>Aprobar</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.rejectButton, actionLoading && styles.buttonDisabled]}
+              onPress={handleReject}
+              disabled={actionLoading}
+            >
+              <Text style={styles.actionText}>Rechazar</Text>
+            </Pressable>
+          </View>
+        </AppSection>
+      ) : quiz.status === 'REJECTED' ? (
+        <AppSection title="Denegado — mensaje al creador" accentIndex={3}>
+          <AppCard>
+            {quiz.aiReviewReason ? (
+              <Text style={styles.aiReason}>La app denegó este quiz: {quiz.aiReviewReason}</Text>
+            ) : (
+              <Text style={styles.blockBody}>Este quiz está denegado.</Text>
+            )}
+            <Text style={styles.blockLabel}>Mensaje adicional al creador</Text>
+            <TextInput
+              style={styles.messageInput}
+              multiline
+              numberOfLines={4}
+              placeholder="Explica al creador qué debe corregir…"
+              placeholderTextColor={Colors.light.textSecondary}
+              value={creatorMessage}
+              onChangeText={setCreatorMessage}
+              editable={!actionLoading}
+            />
+            <Pressable
+              style={[styles.rejectButton, actionLoading && styles.buttonDisabled, { marginTop: 12 }]}
+              disabled={actionLoading || !creatorMessage.trim()}
+              onPress={async () => {
+                if (!quizId || !creatorMessage.trim()) return;
+                setActionLoading(true);
+                try {
+                  const result = await adminService.notifyQuizCreator(
+                    quizId,
+                    creatorMessage.trim(),
+                  );
+                  if (result.success) {
+                    showFeedback('ok', 'Mensaje enviado al creador');
+                    setCreatorMessage('');
+                  } else {
+                    showFeedback('err', result.error || 'No se pudo enviar');
+                  }
+                } finally {
+                  setActionLoading(false);
+                }
+              }}
+            >
+              <Text style={styles.actionText}>Enviar mensaje</Text>
+            </Pressable>
+          </AppCard>
+        </AppSection>
+      ) : (
+        <AppCard>
+          <Text style={styles.blockBody}>
+            Este quiz ya está en estado {quiz.status}. Solo se pueden aprobar/rechazar los pendientes de revisión.
+          </Text>
+        </AppCard>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: Colors.light.background },
+  content: { paddingBottom: Spacing.six },
+  centered: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.four,
     backgroundColor: Colors.light.background,
+    gap: Spacing.three,
   },
+  loadingText: { color: Colors.light.textSecondary },
+  errorText: { color: Colors.light.error, fontWeight: '700', textAlign: 'center' },
+  backLink: { padding: Spacing.three },
+  backLinkText: { color: Colors.light.primary, fontWeight: '700' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing.four,
-    backgroundColor: Colors.light.backgroundElement,
     gap: Spacing.three,
+    backgroundColor: Colors.light.backgroundElement,
   },
-  backButton: {
-    padding: Spacing.two,
+  backButton: { padding: Spacing.two },
+  headerTextWrap: { flex: 1 },
+  title: { fontSize: 20, fontWeight: '800', color: Colors.light.text },
+  subtitle: { fontSize: 13, color: Colors.light.textSecondary, marginTop: 2 },
+  cover: {
+    width: '100%',
+    height: 200,
+    backgroundColor: Colors.light.backgroundSelected,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.light.text,
-  },
-  content: {
-    padding: Spacing.four,
-  },
-  section: {
-    marginBottom: Spacing.four,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+  coverPlaceholder: { justifyContent: 'center', alignItems: 'center' },
+  coverPlaceholderText: { color: Colors.light.textSecondary },
+  quizTitle: {
+    fontSize: 22,
+    fontWeight: '800',
     color: Colors.light.text,
     marginBottom: Spacing.two,
   },
-  sectionDescription: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
-    marginBottom: Spacing.three,
-    lineHeight: 20,
-  },
-  infoCard: {
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 8,
-  },
-  infoLabel: {
+  meta: {
     fontSize: 14,
     color: Colors.light.textSecondary,
     marginBottom: Spacing.one,
   },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.light.text,
-  },
-  distributionContainer: {
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 8,
-    marginBottom: Spacing.three,
-  },
-  distributionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.three,
-  },
-  positionLabel: {
-    flex: 1,
-    fontSize: 16,
-    color: Colors.light.text,
-  },
-  percentageInput: {
-    width: 80,
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-    borderRadius: 8,
-    paddingHorizontal: Spacing.two,
-    fontSize: 16,
-    textAlign: 'center',
-    backgroundColor: '#ffffff',
-  },
-  percentageSymbol: {
-    marginLeft: Spacing.one,
-    fontSize: 16,
-    color: Colors.light.textSecondary,
-  },
-  totalContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: Spacing.four,
-    borderRadius: 8,
-    marginBottom: Spacing.three,
-  },
-  totalValid: {
-    backgroundColor: Colors.light.success,
-  },
-  totalInvalid: {
-    backgroundColor: Colors.light.error,
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  totalValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  scheduleContainer: {
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 8,
-  },
-  inputGroup: {
-    marginBottom: Spacing.three,
-  },
-  inputLabel: {
+  aiReason: {
     fontSize: 14,
-    color: Colors.light.textSecondary,
+    color: '#B91C1C',
+    fontWeight: '700',
+    marginBottom: Spacing.two,
+    marginTop: Spacing.one,
+  },
+  blockLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.light.text,
+    marginBottom: Spacing.one,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  blockSpacer: { marginTop: Spacing.three },
+  blockBody: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: Colors.light.text,
+  },
+  questionCard: { marginBottom: Spacing.two },
+  questionIndex: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.light.primary,
     marginBottom: Spacing.one,
   },
-  dateInput: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-    borderRadius: 8,
+  questionText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.light.text,
+    marginBottom: Spacing.two,
+  },
+  answersWrap: { marginTop: Spacing.two, gap: Spacing.one },
+  answerRow: {
+    paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
-    fontSize: 16,
-    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    backgroundColor: Colors.light.backgroundSelected,
   },
+  answerCorrect: {
+    backgroundColor: 'rgba(34,197,94,0.18)',
+    borderWidth: 1,
+    borderColor: Colors.light.success,
+  },
+  answerText: { fontSize: 14, color: Colors.light.text },
+  answerTextCorrect: { fontWeight: '700', color: '#166534' },
   actions: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+    paddingHorizontal: Spacing.four,
     marginTop: Spacing.four,
   },
-  publishButton: {
-    backgroundColor: Colors.light.gradientStart,
-    padding: Spacing.four,
-    borderRadius: 12,
+  approveButton: {
+    flex: 1,
+    backgroundColor: Colors.light.success,
+    paddingVertical: Spacing.three,
+    borderRadius: 10,
     alignItems: 'center',
   },
-  publishButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+  rejectButton: {
+    flex: 1,
+    backgroundColor: Colors.light.error,
+    paddingVertical: Spacing.three,
+    borderRadius: 10,
+    alignItems: 'center',
   },
-  buttonDisabled: {
-    opacity: 0.5,
+  actionText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  buttonDisabled: { opacity: 0.5 },
+  messageInput: {
+    minHeight: 96,
+    borderWidth: 1,
+    borderColor: Colors.light.backgroundSelected,
+    borderRadius: 10,
+    padding: Spacing.three,
+    fontSize: 15,
+    color: Colors.light.text,
+    backgroundColor: '#FFFFFF',
+    textAlignVertical: 'top',
+    marginBottom: Spacing.two,
   },
+  feedbackText: {
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  feedbackOk: { color: Colors.light.success },
+  feedbackErr: { color: Colors.light.error },
 });

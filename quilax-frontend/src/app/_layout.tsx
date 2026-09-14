@@ -9,6 +9,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { QuizPlayUiProvider } from '@/context/QuizPlayUiContext';
 import { Colors, Spacing, bodyTypeface, sora } from '@/constants/theme';
 import PushNotificationBootstrap from '@/components/PushNotificationBootstrap';
+import EnrolledQuizGate from '@/components/EnrolledQuizGate';
 import { WebPhoneFrame } from '@/components/ui/WebPhoneFrame';
 import '@/i18n';
 import i18n, { hydrateAppLanguage } from '@/i18n';
@@ -80,12 +81,19 @@ export default function RootLayout() {
     Sora_700Bold,
     Sora_800ExtraBold,
   });
+  const [fontWaitDone, setFontWaitDone] = React.useState(false);
 
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
-  }, [fontsLoaded]);
+    // Never blank-screen forever if Google Fonts / expo-font hangs (low RAM / offline).
+    const t = setTimeout(() => setFontWaitDone(true), 2500);
+    return () => clearTimeout(t);
+  }, []);
 
-  if (!fontsLoaded) return null;
+  useEffect(() => {
+    if (fontsLoaded || fontWaitDone) SplashScreen.hideAsync().catch(() => {});
+  }, [fontsLoaded, fontWaitDone]);
+
+  if (!fontsLoaded && !fontWaitDone) return null;
 
   return (
     <RootErrorBoundary>
@@ -93,12 +101,14 @@ export default function RootLayout() {
         <AuthProvider>
           <QuizPlayUiProvider>
             <PushNotificationBootstrap />
+            <EnrolledQuizGate />
             <WebPhoneFrame>
               <Stack
                 screenOptions={{
                   headerShown: false,
                   animation: 'fade',
                   animationDuration: 220,
+                  contentStyle: { backgroundColor: Colors.light.background },
                 }}
               >
                 <Stack.Screen name="index" />

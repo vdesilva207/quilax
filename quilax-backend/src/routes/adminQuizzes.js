@@ -69,27 +69,40 @@ APROBAR QUIZ
 */
 router.post("/:id/approve", async (req, res) => {
   const quizId = Number(req.params.id);
+  const scheduledAtRaw = req.body?.scheduledAt;
 
   try {
-    const validation = await validateRewardDistribution(quizId);
+    const quiz = await prisma.quiz.findUnique({ where: { id: quizId } });
+    if (!quiz) return res.status(404).json({ error: "Quiz no encontrado" });
 
-    if (!validation.isValid) {
-      return res.status(400).json({
-        error: `Debe sumar 100%. Actual: ${validation.totalPercent}%`,
-      });
+    if (!["PENDING_REVIEW", "DRAFT", "APPROVED", "SCHEDULED"].includes(quiz.status)) {
+      return res.status(400).json({ error: `Quiz no se puede publicar (estado: ${quiz.status})` });
     }
 
-    const quiz = await prisma.quiz.update({
-      where: { id: quizId },
-      data: {
-        status: "APPROVED",
-      },
+    const scheduledAt = scheduledAtRaw
+      ? new Date(scheduledAtRaw)
+      : new Date(Date.now() + 5 * 60 * 1000);
+
+    if (Number.isNaN(scheduledAt.getTime())) {
+      return res.status(400).json({ error: "scheduledAt inválido" });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.quizSchedule.deleteMany({ where: { quizId } });
+      await tx.quizSchedule.create({
+        data: { quizId, scheduledAt, status: "RESERVED" },
+      });
+      return tx.quiz.update({
+        where: { id: quizId },
+        data: { status: "PUBLISHED" },
+        include: { schedules: true },
+      });
     });
 
-    res.json({ ok: true, quiz });
+    res.json({ ok: true, quiz: updated, message: "Quiz publicado" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Approval error" });
+    res.status(500).json({ error: err?.message || "Approval error" });
   }
 });
 

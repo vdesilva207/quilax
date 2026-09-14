@@ -4,7 +4,6 @@ import AdminSidebar from '@/components/AdminSidebar';
 import AdminBackBar from '@/components/admin/AdminBackBar';
 import PanelAuthGate from '@/components/PanelAuthGate';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { SCREEN_BACKGROUND } from '@/constants/gradients';
 
 export default function PanelLayout() {
   const { isDesktop } = useBreakpoint();
@@ -15,7 +14,13 @@ export default function PanelLayout() {
         {isDesktop ? <AdminSidebar /> : null}
         <View style={styles.content}>
           <AdminBackBar />
-          <Stack screenOptions={{ headerShown: false }} />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'fade_from_bottom',
+              animationDuration: 260,
+            }}
+          />
         </View>
       </View>
     </PanelAuthGate>
@@ -25,9 +30,10 @@ export default function PanelLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: SCREEN_BACKGROUND,
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
 });

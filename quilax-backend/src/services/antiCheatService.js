@@ -51,17 +51,24 @@ export function calculateServerResponseTime({
 }
 
 /**
- * Calcular score seguro
+ * Puntos por pregunta según tiempo del creador:
+ * - maxPoints (p.ej. 1000) al responder al instante
+ * - 0 al final de answerTime (segundos de ventana de respuesta)
+ * - lineal entre ambos
  */
 export function calculateSecureScore({
   responseTimeMs,
   isCorrect,
+  maxPoints = 1000,
+  answerTimeSec = 10,
 }) {
   if (!isCorrect) return 0;
 
-  const safeTime = Math.max(responseTimeMs || 0, 0);
+  const maxPts = Math.max(1, Number(maxPoints) || 1000);
+  const windowMs = Math.max(1000, (Number(answerTimeSec) || 10) * 1000);
+  const t = Math.min(Math.max(Number(responseTimeMs) || 0, 0), windowMs);
 
-  return Math.max(1000 - safeTime, 0);
+  return Math.max(0, Math.round(maxPts * (1 - t / windowMs)));
 }
 
 /**

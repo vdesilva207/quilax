@@ -1,10 +1,12 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Modal } from 'react-native';
 import { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '@/lib/api';
+import apiClient, { API_BASE_URL } from '@/lib/api';
+import { clearAuthSession } from '@/lib/secureStorage';
+import PasswordInput from '@/components/ui/PasswordInput';
 
 interface Admin {
   id: number;
@@ -136,7 +138,9 @@ export default function WorkerProfileScreen() {
           </View>
 
           <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{admin?.role}</Text>
+            <Text style={styles.roleText}>
+              {admin?.role === 'ADMIN_WORKER' || admin?.role === 'ADMIN' ? 'Admin' : admin?.role}
+            </Text>
           </View>
         </View>
 
@@ -155,7 +159,9 @@ export default function WorkerProfileScreen() {
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Rol:</Text>
-            <Text style={styles.infoValue}>{admin?.role}</Text>
+            <Text style={styles.infoValue}>
+              {admin?.role === 'ADMIN_WORKER' || admin?.role === 'ADMIN' ? 'Admin' : admin?.role}
+            </Text>
           </View>
 
           <View style={styles.infoRow}>
@@ -173,7 +179,11 @@ export default function WorkerProfileScreen() {
 
         <Pressable
           style={[styles.actionButton, styles.logoutButton]}
-          onPress={() => router.replace('/(auth)/login')}
+          onPress={async () => {
+            await clearAuthSession();
+            apiClient.clearToken();
+            router.replace('/auth/login');
+          }}
         >
           <Text style={styles.actionButtonText}>Cerrar Sesión</Text>
         </Pressable>
@@ -187,26 +197,20 @@ export default function WorkerProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Cambiar Contraseña</Text>
-            <TextInput
-              style={styles.input}
+            <PasswordInput
               placeholder="Contraseña actual"
               value={currentPassword}
               onChangeText={setCurrentPassword}
-              secureTextEntry
             />
-            <TextInput
-              style={styles.input}
+            <PasswordInput
               placeholder="Nueva contraseña"
               value={newPassword}
               onChangeText={setNewPassword}
-              secureTextEntry
             />
-            <TextInput
-              style={styles.input}
+            <PasswordInput
               placeholder="Confirmar nueva contraseña"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              secureTextEntry
             />
             <View style={styles.modalButtons}>
               <Pressable

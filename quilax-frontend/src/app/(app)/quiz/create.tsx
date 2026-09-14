@@ -328,6 +328,7 @@ export default function CreateQuizScreen() {
     tips: tips.trim() || undefined,
     questions: questions.map((q) => ({
       text: q.text,
+      imageUrl: q.imageUrl || undefined,
       timeReadMs: (q.questionReadDuration || 5) * 1000,
       timeAnswerMs: (q.questionAnswerDuration || 10) * 1000,
       answers: (q.options || []).map((opt: string, idx: number) => ({

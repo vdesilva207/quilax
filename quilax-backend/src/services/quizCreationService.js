@@ -129,8 +129,7 @@ export async function updateDraft(userId, quizId, data) {
           text: q.text,
           readTime: Math.floor((q.timeReadMs || 5000) / 1000),
           answerTime: Math.floor((q.timeAnswerMs || 10000) / 1000),
-          pointsPerDecisecond: q.pointsPerDecisecond || null
-        }))
+}))
       };
       
       const validation = validateQuizRules(tempQuiz);
@@ -150,11 +149,10 @@ export async function updateDraft(userId, quizId, data) {
           data: {
             quizId: id,
             text: q.text.trim(),
+            imageUrl: q.imageUrl ? String(q.imageUrl).trim() : null,
             maxPoints: 1000,
             readTime: Math.floor((q.timeReadMs || 5000) / 1000),
             answerTime: Math.floor((q.timeAnswerMs || 10000) / 1000),
-            pointsPerDecisecond: q.pointsPerDecisecond || null,
-
             answers: {
               create: q.answers.map((a) => ({
                 text: a.text.trim(),
@@ -164,13 +162,8 @@ export async function updateDraft(userId, quizId, data) {
           },
         });
       }
-      
-      // 🎯 ACTUALIZAR DURACIÓN ESTIMADA EN EL QUIZ
-      const estimatedDuration = calculateQuizDuration(tempQuiz.questions);
-      await tx.quiz.update({
-        where: { id },
-        data: { estimatedDuration }
-      });
+      // estimatedDuration not on Quiz schema — skip persistence.
+
     }
 
     // 🧠 ACTUALIZAR REWARD RULES (economía)

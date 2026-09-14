@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing } from '@/constants/theme';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '@/lib/api';
+import apiClient from '@/lib/api';
 
 interface KYCDocument {
   id: number;
@@ -31,18 +30,8 @@ export default function KYCScreen() {
 
   const fetchDocuments = async () => {
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      const url = statusFilter 
-        ? `${API_BASE_URL}/admin/kyc?status=${statusFilter}`
-        : `${API_BASE_URL}/admin/kyc`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
+      const query = statusFilter ? `?status=${statusFilter}` : '';
+      const data = await apiClient.get(`/admin/kyc${query}`);
 
       if (data.success) {
         setDocuments(data.documents);
@@ -75,15 +64,7 @@ export default function KYCScreen() {
 
   const handleApprove = async (kycId: number) => {
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/admin/kyc/${kycId}/approve`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
+      const data = await apiClient.post(`/admin/kyc/${kycId}/approve`);
 
       if (data.success) {
         Alert.alert('Éxito', 'Documento aprobado');
@@ -92,7 +73,7 @@ export default function KYCScreen() {
         Alert.alert('Error', data.error);
       }
     } catch (error) {
-      Alert.alert('Error', 'Error al aprobar documento');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Error al aprobar documento');
     }
   };
 
@@ -104,17 +85,7 @@ export default function KYCScreen() {
         if (!reason) return;
 
         try {
-          const token = await AsyncStorage.getItem('authToken');
-          const response = await fetch(`${API_BASE_URL}/admin/kyc/${kycId}/reject`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ reason }),
-          });
-
-          const data = await response.json();
+          const data = await apiClient.post(`/admin/kyc/${kycId}/reject`, { reason });
 
           if (data.success) {
             Alert.alert('Éxito', 'Documento rechazado');
@@ -123,7 +94,7 @@ export default function KYCScreen() {
             Alert.alert('Error', data.error);
           }
         } catch (error) {
-          Alert.alert('Error', 'Error al rechazar documento');
+          Alert.alert('Error', error instanceof Error ? error.message : 'Error al rechazar documento');
         }
       }
     );

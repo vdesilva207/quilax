@@ -118,7 +118,8 @@
       "convertFailed": "Impossibile convertire l'immagine",
       "prepareFailed": "Impossibile preparare l'immagine per il caricamento"
     },
-    "requestTimeout": "Richiesta scaduta. Controlla la tua connessione."
+    "requestTimeout": "Richiesta scaduta. Controlla la tua connessione.",
+    "networkError": "Connessione non riuscita. Controlla la connessione e riprova."
   },
   "tabs": {
     "home": "Home",
@@ -175,7 +176,8 @@
       "webOnlyNote": "Ricorda: acquistare crediti e prelevare denaro è possibile solo sul sito Web Wallet.",
       "mustBe18": "Devi avere almeno 18 anni per registrarti",
       "dobInvalid": "Data di nascita non valida",
-      "networkError": "Impossibile raggiungere il server. Assicurati che il telefono sia connesso alla stessa rete Wi‑Fi del Mac e che l'API sia in esecuzione."
+      "networkError": "Impossibile raggiungere il server. Assicurati che il telefono sia connesso alla stessa rete Wi‑Fi del Mac e che l'API sia in esecuzione.",
+      "alreadyExists": "Questa email ha già un account. Usa «Ho già un account» e accedi."
     },
     "forgotPasswordScreen": {
       "description": "Inserisci la tua email per ricevere istruzioni per reimpostare la password.",
@@ -288,7 +290,11 @@
       "autoPendingBody": "Se hai finito nel browser, attendi qualche secondo o tocca di nuovo Verifica automaticamente.",
       "autoPolling": "In attesa di Stripe Identity...",
       "manualReviewNote": "Il percorso manuale non legge automaticamente il documento: niente OCR e nessun controllo che il tipo scelto corrisponda. La maggiore età viene dalla data di nascita in registrazione; un revisore controlla nitidezza. Per la verifica automatica (documento + selfie), usa Stripe Identity sopra.",
-      "stripeOnlyHint": "La verifica è di Stripe Identity: foto del documento + selfie (liveness). Nessun upload manuale né revisione admin delle foto."
+      "stripeOnlyHint": "La verifica è di Stripe Identity: foto del documento + selfie (liveness). Nessun upload manuale né revisione admin delle foto.",
+      "autoNeedLogin": "Sessione scaduta. Accedi di nuovo e riprova.",
+      "autoTimeout": "Stripe ha impiegato troppo. Riprova o usa il caricamento manuale.",
+      "skipFailed": "Impossibile saltare la verifica.",
+      "skipForNow": "Salta per ora (solo test)"
     },
     "faceScanScreen": {
       "title": "Scansione del volto",
@@ -366,7 +372,8 @@
     "noRanking": "Nessun punteggio ancora. Sii il primo.",
     "viewFullRanking": "Visualizza la classifica completa →",
     "loadError": "Impossibile caricare i quiz",
-    "loadErrorHint": "Controlla la connessione e tocca Riprova. Puoi anche tirare verso il basso per aggiornare."
+    "loadErrorHint": "Controlla la connessione e tocca Riprova. Puoi anche tirare verso il basso per aggiornare.",
+    "liveNow": "In corso ora"
   },
   "seasonDetail": {
     "title": "Stagioni",
@@ -632,7 +639,7 @@
       "twoFactorSection": "Autenticazione a due fattori",
       "twoFactorOn": "2FA abilitato",
       "twoFactorOff": "2FA disabilitato",
-      "twoFactorHelp": "Con 2FA attivo, ne avrai bisogno per depositi e prelievi in ​​Gestión.",
+      "twoFactorHelp": "Con 2FA attivo, ne avrai bisogno per depositi e prelievi in ​​Portafoglio.",
       "twoFactorStart": "Imposta la 2FA",
       "twoFactorCodeLabel": "Codice a 6 cifre",
       "twoFactorConfirm": "Conferma e abilita",
@@ -862,7 +869,8 @@
       "title": "Conferma",
       "subtitle": "1 credito verrà detratto ora",
       "quizFallback": "Quiz #{{id}}"
-    }
+    },
+    "enterLiveButton": "Entra nella partita"
   },
   "quizPlay": {
     "loadingEntry": "Entrando nel quiz...",
@@ -919,7 +927,10 @@
     "exitConfirmBody": "Se esci adesso, non potrai riaprire la schermata dei premi.",
     "exitConfirmOk": "Uscita",
     "reconnecting": "Riconnessione…",
-    "reconnectingHint": "Il gioco resta aperto. Nuovo tentativo in background."
+    "reconnectingHint": "Il gioco resta aperto. Nuovo tentativo in background.",
+    "creditsPrize": "+{{n}} crediti",
+    "leaveCountdown": "Resta nell’app",
+    "noCreditsPrize": "0 crediti"
   },
   "enroll": {
     "kicker": "Iscrizione",
@@ -1120,7 +1131,9 @@
     "recoverEmpty": "Nessun credito da recuperare",
     "recoverReasonCancelled": "Quiz annullato",
     "recoverReasonNeverRan": "Non giocato (interruzione o ritardo)",
-    "recoverError": "Impossibile recuperare il credito"
+    "recoverError": "Impossibile recuperare il credito",
+    "noPlayedHistory": "Nessun quiz giocato ancora.",
+    "scorePoints": "{{n}} pts"
   },
   "messages": {
     "title": "Messaggi",
@@ -1231,17 +1244,20 @@
     }
   },
   "wallet": {
-    "title": "Portafoglio",
-    "subtitle": "Acquista crediti e preleva sul sito web di Wallet.",
-    "balanceLabel": "Saldo nell'app",
+    "title": "I tuoi soldi,",
+    "subtitle": "Stessa sessione, stesso account. Apri il Portafoglio sul web per comprare crediti e ritirare i premi.",
+    "balanceLabel": "Saldo nell’app",
     "creditsUnit": "crediti",
-    "description": "Apriremo Wallet già registrato. Lì potrai vedere il tuo saldo, aggiungere o prelevare crediti e collegare la tua banca, se necessario.",
-    "openWeb": "Apri Wallet sul Web",
-    "appOnlyHint": "Il portafoglio può essere aperto solo da questa app (non da un collegamento casuale).",
+    "description": "Apriamo il Portafoglio già autenticato. Lì gestisci saldo, depositi, prelievi e il conto bancario.",
+    "openWeb": "Apri Portafoglio",
+    "appOnlyHint": "Per sicurezza, il Portafoglio si apre solo da questa app.",
     "openErrorTitle": "Impossibile aprire",
-    "openErrorBody": "Riprova. Devi essere registrato su Quilax.",
-    "openErrorHint": "Se il problema persiste, disconnettersi e accedere nuovamente oppure verificare che l'API sia raggiungibile.",
-    "emptyBalanceHint": "Il saldo è 0. Apri Wallet per aggiungere crediti e partecipare ai quiz a pagamento."
+    "openErrorBody": "Riprova tra pochi secondi. Se continua a fallire, esci e accedi di nuovo.",
+    "openErrorHint": "",
+    "emptyBalanceHint": "Saldo a 0. Apri il Portafoglio per aggiungere crediti e unirti ai quiz a pagamento.",
+    "badge": "Crediti · prelievi · banca",
+    "openSameTab": "Apri in questa scheda",
+    "titleAccent": "sotto controllo."
   },
   "notif": {
     "title": "Consentire le notifiche?",
