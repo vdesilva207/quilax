@@ -1,6 +1,14 @@
 # Render Blueprint — servicio web Quilax API
 # Dashboard: New > Blueprint > conecta este repo y usa render.yaml
 #
+# Existing service is Docker (UI shows "Docker Command", not "Start Command"):
+#   Settings → Build & Deploy:
+#   - Root Directory: quilax-backend
+#   - Dockerfile Path: ./Dockerfile
+#   - Docker Build Context Directory: .
+#   - Docker Command: leave EMPTY (uses Dockerfile CMD)
+#   - Pre-Deploy Command: leave EMPTY (migrate runs inside container CMD)
+#
 # Required secrets in Render Dashboard (Environment):
 #   DATABASE_URL, JWT_SECRET (>=32), ENCRYPTION_KEY (>=32), REDIS_URL
 # Recommended:
@@ -10,19 +18,16 @@
 #   WALLET_APP_URL=https://gestion.appquilax.com
 # Optional (Fase 2 Stripe): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 #
-# Free/Starter cold-start: GitHub Action `.github/workflows/prod-keepalive.yml`
-# pings /health every 5 min. Prefer paid instance for TestFlight traffic.
+# Keep-alive: `.github/workflows/prod-keepalive.yml` pings /health.
 services:
   - type: web
     name: quilax-api
-    runtime: node
+    runtime: docker
     rootDir: quilax-backend
-    buildCommand: npm ci && npx prisma generate
-    startCommand: node scripts/render-start.mjs
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /health
     envVars:
-      - key: NODE_VERSION
-        value: "22.16.0"
       - key: NODE_ENV
         value: production
       - key: SKIP_EMAIL
