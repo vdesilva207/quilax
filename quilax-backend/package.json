@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "start:render": "npx prisma migrate deploy && node src/index.js",
+    "start:render": "node scripts/render-start.mjs",
     "start:local-db": "node scripts/start-local-db.mjs",
     "dev:local": "npx prisma generate && node src/index.js",
     "dev:stack": "node scripts/start-dev-stack.mjs",
