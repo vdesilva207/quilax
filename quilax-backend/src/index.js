@@ -59,6 +59,20 @@ import { startPasswordChangeScheduler } from "./workers/passwordChangeScheduler.
 
 dotenv.config();
 
+// Production: ensure prizeConfig columns exist even if migrate deploy is skipped/fails.
+if (process.env.NODE_ENV === "production") {
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "aiModerationEnabled" BOOLEAN NOT NULL DEFAULT false`
+    );
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "prizeConfig" JSONB`
+    );
+  } catch (err) {
+    console.error("ensure SystemSettings columns:", err?.message || err);
+  }
+}
+
 const lightWorkers = process.env.DEV_LIGHT_WORKERS === "true";
 // Answer worker is required for live quiz score persistence even in light mode.
 await import("./workers/answerWorker.js");

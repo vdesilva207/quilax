@@ -18,7 +18,7 @@ services:
     runtime: node
     rootDir: quilax-backend
     buildCommand: npm ci && npx prisma generate
-    startCommand: npm run start:render
+    startCommand: node scripts/render-start.mjs
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION

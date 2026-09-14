@@ -8,8 +8,9 @@
   },
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js",
+    "start": "node scripts/render-start.mjs",
     "start:render": "node scripts/render-start.mjs",
+    "start:api": "node src/index.js",
     "start:local-db": "node scripts/start-local-db.mjs",
     "dev:local": "npx prisma generate && node src/index.js",
     "dev:stack": "node scripts/start-dev-stack.mjs",
