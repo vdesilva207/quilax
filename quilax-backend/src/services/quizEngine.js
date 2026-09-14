@@ -6,6 +6,12 @@ import { logQuizRun } from "../utils/logQuizRun.js";
 import { getIO } from "../socket.js";
 import { distributeQuizCredits } from "../utils/distributeCredits.js";
 import { addSeasonPoints } from "./season.service.js";
+import {
+  markAnswerQueued,
+  markAnswerProcessed,
+  waitForAnswerQueueDrain,
+  flushQuizRunScoresFromRedis,
+} from "./quizScoreSync.js";
 
 import {
   runAntiCheatChecks,
@@ -405,15 +411,21 @@ export async function submitAnswer({
   );
 
   // ⚡ queue async write (NO DB blocking)
-  await answerQueue.add("answer", {
-    quizRunId,
-    questionId,
-    userId,
-    answer,
-    isCorrect,
-    score,
-    responseTimeMs,
-  });
+  await markAnswerQueued(quizRunId);
+  try {
+    await answerQueue.add("answer", {
+      quizRunId,
+      questionId,
+      userId,
+      answer,
+      isCorrect,
+      score,
+      responseTimeMs,
+    });
+  } catch (err) {
+    await markAnswerProcessed(quizRunId);
+    throw err;
+  }
 
   return {
     allowed: true,
@@ -426,6 +438,23 @@ export async function submitAnswer({
  * 🏁 FIN RUN
  */
 async function finishRun(run, prevPhase) {
+  // Drain async answer writes, then force DB scores = Redis live ranking
+  // so prizes/season never use a stale Postgres ranking.
+  try {
+    const drain = await waitForAnswerQueueDrain(run.id, { timeoutMs: 15000 });
+    if (!drain.drained) {
+      console.warn(
+        `finishRun ${run.id}: answer queue still pending=${drain.pending} after ${drain.waitedMs}ms — syncing Redis anyway`
+      );
+    }
+    const flushed = await flushQuizRunScoresFromRedis(run.id);
+    console.log(
+      `finishRun ${run.id}: scores synced from Redis (${flushed.synced} players, drained=${drain.drained})`
+    );
+  } catch (err) {
+    console.error("finishRun score sync failed:", err?.message || err);
+  }
+
   const finished = await prisma.quizRun.update({
     where: { id: run.id },
     data: {
