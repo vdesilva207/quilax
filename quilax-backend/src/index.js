@@ -325,7 +325,36 @@ if (process.env.NODE_ENV === 'production' && process.env.ENABLE_CLUSTERING === '
   if (process.env.NODE_ENV !== "test") {
     // Iniciar el servidor
     server.listen(PORT, "0.0.0.0", () => {
-      console.log(`🚀 Backend + Socket.IO running on ${PORT} (development mode)`);
+      console.log(`🚀 Backend + Socket.IO running on ${PORT}`);
+
+      // After bind only — never delay /health for DB work
+      if (process.env.NODE_ENV === "production") {
+        prisma
+          .$executeRawUnsafe(
+            `ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "aiModerationEnabled" BOOLEAN NOT NULL DEFAULT false`
+          )
+          .then(() =>
+            prisma.$executeRawUnsafe(
+              `ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "prizeConfig" JSONB`
+            )
+          )
+          .then(() => console.log("✅ SystemSettings columns ensured"))
+          .catch((err) =>
+            console.error("ensure SystemSettings columns:", err?.message || err)
+          );
+
+        import("node:child_process")
+          .then(({ spawn }) => {
+            const child = spawn("npx", ["prisma", "migrate", "deploy"], {
+              stdio: "inherit",
+              env: process.env,
+            });
+            child.on("exit", (code) =>
+              console.log(`[bg] prisma migrate deploy exit=${code}`)
+            );
+          })
+          .catch(() => {});
+      }
     });
 
     server.on("close", () => {
