@@ -19,5 +19,5 @@ COPY scripts ./scripts
 ENV NODE_ENV=production
 EXPOSE 3000
 
-# Best-effort migrate + ensure columns, then boot (same as Render Node start)
-CMD ["node", "scripts/render-start.mjs"]
+# Bind immediately (health check). Migrations/columns run after listen in index.js.
+CMD ["node", "src/index.js"]
