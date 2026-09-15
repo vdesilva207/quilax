@@ -4,9 +4,9 @@ import { auth, roleMiddleware } from '../middleware/auth.js';
 import {
   distributePrizes,
   getQuizWinners,
-  getPrizeStatistics,
-  getPendingPrizeDistributions
+  getPendingPrizeDistributions,
 } from '../services/prizeDistributionService.js';
+import { getPrizeStatistics } from '../services/prizeConfigService.js';
 
 const router = express.Router();
 

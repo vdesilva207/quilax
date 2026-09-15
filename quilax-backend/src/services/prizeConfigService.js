@@ -441,7 +441,9 @@ export async function updateSeasonJackpotDistribution(adminUserId, seasonJackpot
   });
 }
 
-export async function getPrizeStatistics() {
+export async function getPrizeStatistics(userId = null) {
+  const winnerWhere = userId ? { userId: Number(userId) } : {};
+
   const [totalQuizzes, totalPrizePool, totalDistributed, totalWinners, recentDistributions] =
     await Promise.all([
       prisma.quizRun.count({ where: { phase: 'FINISHED' } }),
@@ -449,14 +451,18 @@ export async function getPrizeStatistics() {
         where: { phase: 'FINISHED' },
         _sum: { totalPrizeCredits: true },
       }),
-      prisma.quizWinner.aggregate({ _sum: { creditsWon: true } }),
-      prisma.quizWinner.count(),
+      prisma.quizWinner.aggregate({
+        where: winnerWhere,
+        _sum: { creditsWon: true },
+      }),
+      prisma.quizWinner.count({ where: winnerWhere }),
       prisma.quizWinner.findMany({
-        take: 10,
+        where: winnerWhere,
+        take: 50,
         orderBy: { createdAt: 'desc' },
         include: {
-          user: { select: { email: true } },
-          quiz: { select: { title: true } },
+          user: { select: { id: true, email: true, username: true } },
+          quiz: { select: { id: true, title: true } },
         },
       }),
     ]);
@@ -465,17 +471,24 @@ export async function getPrizeStatistics() {
   const poolSum = totalPrizePool._sum.totalPrizeCredits || 0;
   const wonSum = totalDistributed._sum.creditsWon || 0;
 
+  const statistics = {
+    totalQuizzes,
+    totalPrizePool: poolSum,
+    totalDistributed: wonSum,
+    totalWinners,
+    averagePrizePerQuiz: totalQuizzes > 0 ? Math.floor(poolSum / totalQuizzes) : 0,
+    averagePrizePerWinner: totalWinners > 0 ? Math.floor(wonSum / totalWinners) : 0,
+    recentDistributions,
+    // Alias used by /prizes/recent-winners
+    recentWinners: recentDistributions,
+    userId: userId ? Number(userId) : null,
+  };
+
   return {
     config,
-    statistics: {
-      totalQuizzes,
-      totalPrizePool: poolSum,
-      totalDistributed: wonSum,
-      totalWinners,
-      averagePrizePerQuiz: totalQuizzes > 0 ? Math.floor(poolSum / totalQuizzes) : 0,
-      averagePrizePerWinner: totalWinners > 0 ? Math.floor(wonSum / totalWinners) : 0,
-      recentDistributions,
-    },
+    statistics,
+    // Flat fields for routes that treat the return value as the stats object
+    ...statistics,
   };
 }
 
