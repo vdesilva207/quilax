@@ -1,7 +1,15 @@
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
-import React, { Component, useEffect, type ErrorInfo, type ReactNode } from 'react';
-import { View, Text, StyleSheet, Pressable, Text as RNText, TextInput as RNTextInput } from 'react-native';
+import React, { Component, useCallback, useEffect, type ErrorInfo, type ReactNode } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Text as RNText,
+  TextInput as RNTextInput,
+  Alert,
+} from 'react-native';
 import { Stack } from 'expo-router';
 import { useFonts, Sora_500Medium, Sora_600SemiBold, Sora_700Bold, Sora_800ExtraBold } from '@expo-google-fonts/sora';
 import * as SplashScreen from 'expo-splash-screen';
@@ -14,29 +22,50 @@ import { WebPhoneFrame } from '@/components/ui/WebPhoneFrame';
 import '@/i18n';
 import i18n, { hydrateAppLanguage } from '@/i18n';
 
-SplashScreen.preventAutoHideAsync().catch(() => {});
-
-/** Absolute failsafe — never leave TestFlight on the native splash forever. */
-function scheduleSplashHide() {
-  const hide = () => {
-    SplashScreen.hideAsync().catch(() => {});
-  };
-  hide();
-  setTimeout(hide, 400);
-  setTimeout(hide, 1500);
-  setTimeout(hide, 4000);
+/**
+ * Do NOT call preventAutoHideAsync — on iOS release that often leaves TestFlight
+ * stuck on the native splash forever if hideAsync races or JS throws early.
+ * Force-hide with retries (hideAsync can no-op / return undefined in release).
+ */
+async function forceHideSplash() {
+  for (let i = 0; i < 25; i++) {
+    try {
+      await SplashScreen.hideAsync();
+    } catch {
+      /* ignore */
+    }
+    await new Promise((r) => setTimeout(r, 80));
+  }
 }
-scheduleSplashHide();
+
+// Surface fatal JS errors after splash is gone (otherwise TestFlight looks "frozen").
+try {
+  const ErrorUtils = (global as any).ErrorUtils;
+  if (ErrorUtils?.setGlobalHandler) {
+    const prev = ErrorUtils.getGlobalHandler?.();
+    ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+      try {
+        Alert.alert(
+          'Quilax error',
+          `${isFatal ? '[fatal] ' : ''}${error?.message || String(error)}`.slice(0, 400),
+        );
+      } catch {
+        /* ignore */
+      }
+      prev?.(error, isFatal);
+    });
+  }
+} catch {
+  /* ignore */
+}
 
 // Heavier default text on native (avoids hairline system Regular).
-// fontWeight omitted on native — see sora() / installSoraFontFix.
 if (!(RNText as any).defaultProps) (RNText as any).defaultProps = {};
 (RNText as any).defaultProps.style = [
   bodyTypeface,
   (RNText as any).defaultProps?.style,
 ].filter(Boolean);
 
-// TextInputs do not inherit Text defaultProps — force Sora on fields too.
 if (!(RNTextInput as any).defaultProps) (RNTextInput as any).defaultProps = {};
 (RNTextInput as any).defaultProps.style = [
   bodyTypeface,
@@ -55,12 +84,13 @@ class RootErrorBoundary extends Component<
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Root crash:', error, info?.componentStack);
+    void forceHideSplash();
   }
 
   render() {
     if (this.state.error) {
       return (
-        <View style={styles.errorBox}>
+        <View style={styles.errorBox} onLayout={() => { void forceHideSplash(); }}>
           <Text style={styles.errorTitle}>{i18n.t('common.loadErrorTitle')}</Text>
           <Text style={styles.errorText}>{this.state.error.message}</Text>
           <Pressable
@@ -87,55 +117,56 @@ function LanguageBootstrap({ children }: { children: ReactNode }) {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  useFonts({
     Sora_500Medium,
     Sora_600SemiBold,
     Sora_700Bold,
     Sora_800ExtraBold,
   });
-  const [fontWaitDone, setFontWaitDone] = React.useState(false);
 
   useEffect(() => {
-    // Never blank-screen forever if Google Fonts / expo-font hangs (low RAM / offline).
-    const t = setTimeout(() => setFontWaitDone(true), 2500);
-    return () => clearTimeout(t);
+    void forceHideSplash();
   }, []);
 
-  useEffect(() => {
-    if (fontsLoaded || fontWaitDone) SplashScreen.hideAsync().catch(() => {});
-  }, [fontsLoaded, fontWaitDone]);
-
-  if (!fontsLoaded && !fontWaitDone) return null;
+  const onLayout = useCallback(() => {
+    void forceHideSplash();
+  }, []);
 
   return (
-    <RootErrorBoundary>
-      <LanguageBootstrap>
-        <AuthProvider>
-          <QuizPlayUiProvider>
-            <PushNotificationBootstrap />
-            <EnrolledQuizGate />
-            <WebPhoneFrame>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  animation: 'fade',
-                  animationDuration: 220,
-                  contentStyle: { backgroundColor: Colors.light.background },
-                }}
-              >
-                <Stack.Screen name="index" />
-                <Stack.Screen name="(app)" options={{ headerShown: false }} />
-                <Stack.Screen name="(auth)" />
-              </Stack>
-            </WebPhoneFrame>
-          </QuizPlayUiProvider>
-        </AuthProvider>
-      </LanguageBootstrap>
-    </RootErrorBoundary>
+    <View style={styles.root} onLayout={onLayout}>
+      <RootErrorBoundary>
+        <LanguageBootstrap>
+          <AuthProvider>
+            <QuizPlayUiProvider>
+              <PushNotificationBootstrap />
+              <EnrolledQuizGate />
+              <WebPhoneFrame>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    animation: 'fade',
+                    animationDuration: 220,
+                    contentStyle: { backgroundColor: Colors.light.background },
+                  }}
+                >
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(auth)" />
+                </Stack>
+              </WebPhoneFrame>
+            </QuizPlayUiProvider>
+          </AuthProvider>
+        </LanguageBootstrap>
+      </RootErrorBoundary>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Colors.light.background,
+  },
   errorBox: {
     flex: 1,
     justifyContent: 'center',

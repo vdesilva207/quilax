@@ -3,7 +3,7 @@
  * Tokens match quilax-website/css/styles.css (warm white, Sora, blue→purple→red).
  */
 
-import '@/global.css';
+import '@/globalCss';
 
 import { Platform, type TextStyle } from 'react-native';
 import { Typography } from '@/constants/typography';

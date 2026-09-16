@@ -17,3 +17,7 @@ e2e/
 __tests__/
 *.map
 .local-services/
+src-tauri/
+*.ipa
+*.apk
+.yarn/

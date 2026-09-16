@@ -36,3 +36,4 @@ src-tauri/target/
 ../homebrew/
 ../.expo/
 ../quilax-env.sh
+.local-services/
