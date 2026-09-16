@@ -16,6 +16,18 @@ import i18n, { hydrateAppLanguage } from '@/i18n';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+/** Absolute failsafe — never leave TestFlight on the native splash forever. */
+function scheduleSplashHide() {
+  const hide = () => {
+    SplashScreen.hideAsync().catch(() => {});
+  };
+  hide();
+  setTimeout(hide, 400);
+  setTimeout(hide, 1500);
+  setTimeout(hide, 4000);
+}
+scheduleSplashHide();
+
 // Heavier default text on native (avoids hairline system Regular).
 // fontWeight omitted on native — see sora() / installSoraFontFix.
 if (!(RNText as any).defaultProps) (RNText as any).defaultProps = {};
