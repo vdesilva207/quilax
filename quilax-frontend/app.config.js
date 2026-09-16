@@ -42,7 +42,7 @@ export default {
     splash: {
       image: './assets/images/splash-icon.png',
       resizeMode: 'contain',
-      backgroundColor: '#007AFF',
+      backgroundColor: '#FFFCF8',
     },
     web: {
       bundler: 'metro',
@@ -80,7 +80,7 @@ export default {
       [
         'expo-splash-screen',
         {
-          backgroundColor: '#007AFF',
+          backgroundColor: '#FFFCF8',
           image: './assets/images/splash-icon.png',
         },
       ],
