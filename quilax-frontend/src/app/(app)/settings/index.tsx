@@ -10,7 +10,6 @@ export default function SettingsScreen() {
 
   const SETTINGS_LINKS = [
     { title: t('settings.personalInfo'), href: '/settings/account' },
-    { title: t('settings.bankAccount'), href: '/settings/bank' },
     {
       title: t('settings.currency'),
       href: '/settings/currency',

@@ -5,7 +5,6 @@ export default function SettingsLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="account" />
-      <Stack.Screen name="bank" />
       <Stack.Screen name="currency" />
       <Stack.Screen name="privacy" />
       <Stack.Screen name="security" />

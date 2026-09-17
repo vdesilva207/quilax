@@ -8,17 +8,14 @@ import { AppScreen, AppHeader, AppSection, AppCard } from '@/components/ui/AppSc
 import { GradientButton, InfoBar } from '@/components/ui/ScreenChrome';
 
 const REQUIRED_PLAYED = 10;
-/** Primeros 1000 usuarios: hasta 5 quizzes sin exigir partidas (alineado con backend). */
-const EARLY_ADOPTER_LIMIT = 1000;
-const EARLY_ADOPTER_FREE_QUIZZES = 5;
 
 type CreateGateProps = {
   children: React.ReactNode;
 };
 
 /**
- * Blocks quiz creation until the user has played REQUIRED_PLAYED quizzes.
- * Admin and early-adopter free quota bypass the gate.
+ * Blocks quiz creation until the user has finished REQUIRED_PLAYED quizzes.
+ * Admins bypass. No early-adopter free creates in the UI.
  */
 export default function CreateGate({ children }: CreateGateProps) {
   const { t } = useTranslation();
@@ -33,23 +30,17 @@ export default function CreateGate({ children }: CreateGateProps) {
         const res = await apiClient.get('/profile/me').catch(() => null);
         const profile = res?.profile || res?.data?.profile || res?.user || res?.data || res;
         const role = profile?.role;
-        const userId = Number(profile?.id) || 0;
-        const created = Number(profile?.statistics?.quizzesCreated ?? profile?._count?.createdQuizzes ?? 0);
+        // Prefer finished runs (matches backend); fall back to participated count.
         const count = Number(
-          profile?.statistics?.quizzesParticipated ??
-            profile?.statistics?.quizzesCompleted ??
+          profile?.statistics?.quizzesCompleted ??
+            profile?.statistics?.quizzesParticipated ??
             profile?.quizzesPlayed ??
             0,
         );
 
         const isAdmin = role === 'ADMIN' || role === 'ADMIN_WORKER';
-        const earlyFree =
-          userId > 0 &&
-          userId <= EARLY_ADOPTER_LIMIT &&
-          created < EARLY_ADOPTER_FREE_QUIZZES;
-
         setPlayed(Number.isFinite(count) ? count : 0);
-        setUnlocked(isAdmin || earlyFree || count >= REQUIRED_PLAYED);
+        setUnlocked(isAdmin || count >= REQUIRED_PLAYED);
       } catch {
         setPlayed(0);
         setUnlocked(false);

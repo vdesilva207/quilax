@@ -232,13 +232,10 @@ export default function ProfileScreen() {
 
   return (
     <AppScreen>
-      {/* Banner + avatar (Twitter-like) */}
+      {/* Banner + avatar (Twitter-like). Title omitted — avatar overlaps it. */}
       <LinearGradient {...brandGradientProps} style={styles.banner}>
         <View style={styles.bannerTop}>
-          <View>
-            <Text style={styles.brand}>QUILAX</Text>
-            <Text style={styles.bannerScreen}>{t('profile.title')}</Text>
-          </View>
+          <Text style={styles.brand}>QUILAX</Text>
         </View>
       </LinearGradient>
 
@@ -634,9 +631,11 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   banner: {
-    height: 120,
-    paddingTop: Platform.OS === 'web' ? 24 : 48,
+    height: 132,
+    paddingTop: Platform.OS === 'web' ? 24 : 52,
     paddingHorizontal: Spacing.four,
+    justifyContent: 'flex-end',
+    paddingBottom: 44,
   },
   bannerTop: {
     flexDirection: 'row',
@@ -649,19 +648,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.6,
   },
-  bannerScreen: {
-    ...titleTypeface,
-    marginTop: 4,
-    fontSize: 16,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.95)',
-  },
   avatarRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
-    marginTop: -36,
+    marginTop: -28,
   },
   avatarWrap: { position: 'relative' },
   avatar: {

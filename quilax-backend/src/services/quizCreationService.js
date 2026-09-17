@@ -6,9 +6,7 @@ import { validateQuizRules, calculateQuizDuration } from "../utils/quizValidatio
 
 const MAX_TITLE = 100;
 const MAX_DESC = 500;
-const MIN_QUIZZES_TO_CREATE = 10; // Configurable: mínimo de quizzes jugados para poder crear
-const EARLY_ADOPTER_LIMIT = 1000; // Primeras 1000 personas
-const EARLY_ADOPTER_FREE_QUIZZES = 5; // Pueden crear 5 quizzes sin restricción
+const MIN_QUIZZES_TO_CREATE = 10;
 
 /*
 ====================================
@@ -17,43 +15,28 @@ VALIDAR SI USUARIO PUEDE CREAR QUIZZES
 */
 async function validateUserCanCreateQuizzes(userId) {
   const uid = Number(userId);
-  
-  // Verificar si es early adopter (entre los primeros 1000 usuarios por ID)
-  const isEarlyAdopter = uid <= EARLY_ADOPTER_LIMIT;
-  
-  // Si es early adopter, verificar cuántos quizzes ha creado
-  if (isEarlyAdopter) {
-    const createdQuizzes = await prisma.quiz.count({
-      where: {
-        creatorId: uid
-      }
-    });
-    
-    // Puede crear hasta 5 quizzes sin restricción
-    if (createdQuizzes < EARLY_ADOPTER_FREE_QUIZZES) {
-      return true; // Early adopter con quizzes gratuitos disponibles
-    }
-    
-    // Después de 5 quizzes, debe cumplir la norma normal
-    // Continuamos con la validación normal abajo
+
+  const user = await prisma.user.findUnique({
+    where: { id: uid },
+    select: { role: true },
+  });
+  if (user?.role === "ADMIN" || user?.role === "ADMIN_WORKER") {
+    return true;
   }
-  
-  // Validación normal para todos (incluidos early adopters después de su límite)
+
   const completedQuizzes = await prisma.quizParticipant.count({
     where: {
       userId: uid,
       quizRun: {
-        phase: "FINISHED"
-      }
-    }
+        phase: "FINISHED",
+      },
+    },
   });
 
   if (completedQuizzes < MIN_QUIZZES_TO_CREATE) {
-    const extraMessage = isEarlyAdopter 
-      ? ` Como early adopter, ya usaste tus ${EARLY_ADOPTER_FREE_QUIZZES} quizzes gratuitos.`
-      : '';
-    
-    throw new Error(`Debes jugar al menos ${MIN_QUIZZES_TO_CREATE} quizzes antes de poder crear los tuyos. Has completado ${completedQuizzes}.${extraMessage}`);
+    throw new Error(
+      `Debes jugar al menos ${MIN_QUIZZES_TO_CREATE} quizzes antes de poder crear los tuyos. Has completado ${completedQuizzes}.`,
+    );
   }
 
   return true;

@@ -36,16 +36,27 @@ export function AppScreen({
   hideGradientBar = true,
   ...rest
 }: AppScreenProps) {
+  const kids = React.Children.toArray(children);
+  const pinned = kids.length > 0 ? kids[0] : null;
+  const body = kids.slice(1);
+
   return (
     <View style={styles.screenRoot}>
       {hideGradientBar ? null : <BrandGradientBar />}
+      {pinned ? (
+        <View style={styles.pinnedHeader}>
+          <View style={styles.phoneColumn}>{pinned}</View>
+        </View>
+      ) : null}
       <ScrollView
         style={[styles.screen, style]}
         contentContainerStyle={[styles.screenContent, contentContainerStyle]}
         keyboardShouldPersistTaps="handled"
+        bounces={false}
+        overScrollMode="never"
         {...rest}
       >
-        <ScreenEnter style={styles.phoneColumn}>{children}</ScreenEnter>
+        <ScreenEnter style={styles.phoneColumn}>{body}</ScreenEnter>
       </ScrollView>
     </View>
   );
@@ -185,6 +196,11 @@ const styles = StyleSheet.create({
   screenRoot: {
     flex: 1,
     backgroundColor: SCREEN_BACKGROUND,
+  },
+  pinnedHeader: {
+    width: '100%',
+    alignItems: 'center',
+    zIndex: 2,
   },
   screen: {
     flex: 1,
