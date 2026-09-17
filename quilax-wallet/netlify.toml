@@ -2,6 +2,7 @@
   publish = "dist"
   command = "npx expo export -p web"
   # Force prod API so Netlify never bakes localhost into the wallet bundle.
+  # Redeploy trigger: 2026-09-17 TestFlight feedback (ensure latest Gestión UI).
   environment = { NODE_ENV = "production", APP_ENV = "production", EXPO_PUBLIC_API_URL = "https://api.appquilax.com" }
 
 [[redirects]]
