@@ -948,10 +948,13 @@
   },
   "createGate": {
     "title": "Create",
-    "subtitle": "Unlock the editor by playing",
+    "subtitle": "Earn create slots by playing",
     "progressSection": "Progress",
-    "info": "You need to play {{count}} quizzes before you can create one. Submitting a quiz for review resets the counter to 0.",
-    "remaining": "{{count}} matches to go",
+    "info": "For every {{count}} quizzes you play, you can create 1. It is not a permanent unlock.",
+    "playedLabel": "played",
+    "createdLabel": "created",
+    "slots": "Slots: {{used}} / {{allowed}}",
+    "remaining": "{{count}} matches left for the next slot",
     "searchQuizzes": "Search quizzes"
   },
   "difficulty": {

@@ -948,10 +948,13 @@
   },
   "createGate": {
     "title": "Crear",
-    "subtitle": "Desbloquea el editor jugando",
+    "subtitle": "Desbloquea cupos jugando",
     "progressSection": "Progreso",
-    "info": "Necesitas jugar {{count}} quizzes antes de crear uno. Al enviar un quiz a revisión, el contador vuelve a 0.",
-    "remaining": "Te faltan {{count}} partidas",
+    "info": "Por cada {{count}} quizzes que juegas puedes crear 1. No es un desbloqueo permanente.",
+    "playedLabel": "jugados",
+    "createdLabel": "creados",
+    "slots": "Cupos: {{used}} / {{allowed}}",
+    "remaining": "Te faltan {{count}} partidas para el siguiente cupo",
     "searchQuizzes": "Buscar quizzes"
   },
   "difficulty": {

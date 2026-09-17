@@ -7,21 +7,22 @@ import apiClient from '@/lib/api';
 import { AppScreen, AppHeader, AppSection, AppCard } from '@/components/ui/AppScreen';
 import { GradientButton, InfoBar } from '@/components/ui/ScreenChrome';
 
-const REQUIRED_PLAYED = 10;
+/** Every N finished plays unlocks 1 create slot. */
+const PLAYS_PER_CREATE = 10;
 
 type CreateGateProps = {
   children: React.ReactNode;
 };
 
 /**
- * Blocks quiz creation until the user has finished REQUIRED_PLAYED quizzes.
- * Admins bypass. No early-adopter free creates in the UI.
+ * Ratio gate: floor(played / 10) create slots. Admins bypass.
  */
 export default function CreateGate({ children }: CreateGateProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [played, setPlayed] = useState(0);
+  const [created, setCreated] = useState(0);
   const [unlocked, setUnlocked] = useState(false);
 
   useEffect(() => {
@@ -30,19 +31,27 @@ export default function CreateGate({ children }: CreateGateProps) {
         const res = await apiClient.get('/profile/me').catch(() => null);
         const profile = res?.profile || res?.data?.profile || res?.user || res?.data || res;
         const role = profile?.role;
-        // Prefer finished runs (matches backend); fall back to participated count.
-        const count = Number(
+        const playedCount = Number(
           profile?.statistics?.quizzesCompleted ??
             profile?.statistics?.quizzesParticipated ??
             profile?.quizzesPlayed ??
             0,
         );
+        const createdCount = Number(
+          profile?.statistics?.quizzesCreated ?? profile?._count?.createdQuizzes ?? 0,
+        );
 
         const isAdmin = role === 'ADMIN' || role === 'ADMIN_WORKER';
-        setPlayed(Number.isFinite(count) ? count : 0);
-        setUnlocked(isAdmin || count >= REQUIRED_PLAYED);
+        const playedSafe = Number.isFinite(playedCount) ? playedCount : 0;
+        const createdSafe = Number.isFinite(createdCount) ? createdCount : 0;
+        const slots = Math.floor(playedSafe / PLAYS_PER_CREATE);
+
+        setPlayed(playedSafe);
+        setCreated(createdSafe);
+        setUnlocked(isAdmin || createdSafe < slots);
       } catch {
         setPlayed(0);
+        setCreated(0);
         setUnlocked(false);
       } finally {
         setLoading(false);
@@ -62,19 +71,25 @@ export default function CreateGate({ children }: CreateGateProps) {
     return <>{children}</>;
   }
 
-  const remaining = Math.max(REQUIRED_PLAYED - played, 0);
-  const pct = Math.min((played / REQUIRED_PLAYED) * 100, 100);
+  const slots = Math.floor(played / PLAYS_PER_CREATE);
+  const needForNext = (created + 1) * PLAYS_PER_CREATE - played;
+  const remaining = Math.max(needForNext, 0);
+  const progressInCycle = played % PLAYS_PER_CREATE;
+  const pct = Math.min((progressInCycle / PLAYS_PER_CREATE) * 100, 100);
 
   return (
     <AppScreen>
       <AppHeader title={t('createGate.title')} subtitle={t('createGate.subtitle')} />
       <AppSection title={t('createGate.progressSection')} accentIndex={2}>
         <InfoBar>
-          <Text style={styles.info}>{t('createGate.info', { count: REQUIRED_PLAYED })}</Text>
+          <Text style={styles.info}>{t('createGate.info', { count: PLAYS_PER_CREATE })}</Text>
         </InfoBar>
         <AppCard>
           <Text style={styles.count}>
-            {played}/{REQUIRED_PLAYED}
+            {played} {t('createGate.playedLabel')} · {created} {t('createGate.createdLabel')}
+          </Text>
+          <Text style={styles.slots}>
+            {t('createGate.slots', { used: created, allowed: slots })}
           </Text>
           <View style={styles.barBg}>
             <View style={[styles.barFill, { width: `${pct}%` }]} />
@@ -98,7 +113,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   info: { color: Colors.light.textSecondary, fontSize: 14, lineHeight: 20 },
-  count: { fontSize: 32, fontWeight: '800', color: Colors.light.text, marginBottom: Spacing.two },
+  count: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.light.text,
+    marginBottom: Spacing.one,
+  },
+  slots: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.light.textSecondary,
+    marginBottom: Spacing.two,
+  },
   barBg: {
     height: 8,
     backgroundColor: Colors.light.backgroundSelected,

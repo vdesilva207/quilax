@@ -6,7 +6,8 @@ import { validateQuizRules, calculateQuizDuration } from "../utils/quizValidatio
 
 const MAX_TITLE = 100;
 const MAX_DESC = 500;
-const MIN_QUIZZES_TO_CREATE = 10;
+/** Every N finished plays unlocks 1 create slot (ratio, not a one-time unlock). */
+const PLAYS_PER_CREATE_SLOT = 10;
 
 /*
 ====================================
@@ -24,18 +25,26 @@ async function validateUserCanCreateQuizzes(userId) {
     return true;
   }
 
-  const completedQuizzes = await prisma.quizParticipant.count({
-    where: {
-      userId: uid,
-      quizRun: {
-        phase: "FINISHED",
+  const [completedQuizzes, createdQuizzes] = await Promise.all([
+    prisma.quizParticipant.count({
+      where: {
+        userId: uid,
+        quizRun: { phase: "FINISHED" },
       },
-    },
-  });
+    }),
+    prisma.quiz.count({
+      where: { creatorId: uid },
+    }),
+  ]);
 
-  if (completedQuizzes < MIN_QUIZZES_TO_CREATE) {
+  const allowedSlots = Math.floor(completedQuizzes / PLAYS_PER_CREATE_SLOT);
+  if (createdQuizzes >= allowedSlots) {
+    const needForNext =
+      (createdQuizzes + 1) * PLAYS_PER_CREATE_SLOT - completedQuizzes;
     throw new Error(
-      `Debes jugar al menos ${MIN_QUIZZES_TO_CREATE} quizzes antes de poder crear los tuyos. Has completado ${completedQuizzes}.`,
+      `Por cada ${PLAYS_PER_CREATE_SLOT} quizzes que juegas puedes crear 1. ` +
+        `Has jugado ${completedQuizzes} y creado ${createdQuizzes}. ` +
+        `Te faltan ${Math.max(needForNext, 0)} partidas para el siguiente cupo.`,
     );
   }
 
