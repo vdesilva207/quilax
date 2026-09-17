@@ -15,7 +15,10 @@
     "eas:preview": "npx eas-cli@latest build --profile preview --platform all",
     "eas:ios:preview": "npx eas-cli@latest build --profile preview --platform ios",
     "eas:ios:testflight": "npx eas-cli@latest build --profile testflight --platform ios",
-    "eas:ios:submit": "npx eas-cli@latest submit --platform ios --profile testflight --latest"
+    "eas:ios:submit": "npx eas-cli@latest submit --platform ios --profile testflight --latest",
+    "eas:android:preview": "npx eas-cli@latest build --profile preview --platform android",
+    "eas:android:play": "npx eas-cli@latest build --profile play --platform android",
+    "eas:android:submit": "npx eas-cli@latest submit --platform android --profile play --latest"
   },
   "dependencies": {
     "@expo-google-fonts/sora": "^0.4.2",
