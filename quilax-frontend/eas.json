@@ -43,8 +43,26 @@
         "EXPO_PUBLIC_SOCKET_URL": "https://api.appquilax.com"
       }
     },
+    "play": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_DEV_SKIP_ONBOARDING": "false",
+        "EXPO_PUBLIC_SKIP_EMAIL_VERIFICATION": "false",
+        "EXPO_PUBLIC_API_URL": "https://api.appquilax.com",
+        "EXPO_PUBLIC_WALLET_URL": "https://gestion.appquilax.com",
+        "EXPO_PUBLIC_SOCKET_URL": "https://api.appquilax.com"
+      }
+    },
     "production": {
       "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
       "env": {
         "APP_ENV": "production",
         "EXPO_PUBLIC_DEV_SKIP_ONBOARDING": "false",
@@ -61,9 +79,19 @@
         "ascAppId": "6812836055"
       }
     },
+    "play": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
     "production": {
       "ios": {
         "ascAppId": "6812836055"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     }
   }
