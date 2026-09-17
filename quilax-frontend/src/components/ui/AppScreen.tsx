@@ -5,6 +5,7 @@ import {
   ScrollView,
   Pressable,
   StyleSheet,
+  Platform,
   type ScrollViewProps,
   type ViewStyle,
 } from 'react-native';
@@ -195,7 +196,8 @@ const styles = StyleSheet.create({
   },
   phoneColumn: {
     width: '100%',
-    maxWidth: MaxContentWidth,
+    // Desktop web only — on real phones a 480 cap made heroes/modals look inset & off-center.
+    maxWidth: Platform.OS === 'web' ? MaxContentWidth : undefined,
   },
   header: {
     paddingBottom: Spacing.four,

@@ -38,11 +38,11 @@ const createRateLimiter = (options = {}) => {
 
 // Rate limiters específicos por endpoint
 const rateLimiters = {
-  // Auth endpoints - más restrictivo
+  // Auth endpoints — allow retries during onboarding (was 5 and caused false timeouts)
   auth: createRateLimiter({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 5, // 5 intentos por 15 minutos
-    message: 'Demasiados intentos de autenticación. Por favor, espera 15 minutos.',
+    max: 40,
+    message: 'Demasiados intentos de autenticación. Por favor, espera unos minutos.',
   }),
 
   // Login - muy restrictivo

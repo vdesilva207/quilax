@@ -18,6 +18,7 @@ import { AppScreen, AppHeader, AppSection } from '@/components/ui/AppScreen';
 import { GradientButton, FieldLabel } from '@/components/ui/ScreenChrome';
 import CustomIcon from '@/components/CustomIcon';
 import apiClient from '@/lib/api';
+import { assetToDataUrl } from '@/lib/mediaUpload';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -40,18 +41,16 @@ export default function EditProfileScreen() {
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.55,
+      quality: 0.4,
       base64: true,
     });
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
-    const mime = asset.mimeType || 'image/jpeg';
-    const dataUrl = asset.base64
-      ? `data:${mime};base64,${asset.base64}`
-      : asset.uri;
 
     setUploadingPhoto(true);
     try {
+      // Cap ~1.5MB decoded; backend allows 6mb JSON for data URLs.
+      const dataUrl = await assetToDataUrl(asset, { maxBytes: 1_500_000 });
       const data = await apiClient.put('/profile/profile-photo', { profilePhoto: dataUrl });
       const nextPhoto = data.user?.profilePhoto || dataUrl;
       setPhotoUri(nextPhoto);

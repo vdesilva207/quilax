@@ -1059,6 +1059,7 @@
     "publishError": "No se pudo publicar",
     "deleteConfirmTitle": "Eliminar",
     "deletePostConfirm": "¿Borrar esta publicación?",
+    "postOptions": "Opciones de la publicación",
     "deletePostError": "No se pudo eliminar",
     "privacySaveError": "No se pudo guardar la privacidad",
     "editProfileTitle": "Editar perfil",

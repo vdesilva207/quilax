@@ -713,6 +713,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   hero: {
+    width: '100%',
+    alignSelf: 'stretch',
     paddingBottom: Spacing.five,
     paddingHorizontal: Spacing.four,
     overflow: 'hidden',

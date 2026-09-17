@@ -71,8 +71,9 @@ export const register = async (req, res) => {
 
     if (existingUser) {
       logRegisterFailure(email, ipAddress, userAgent, "Usuario ya existe");
-      return res.status(400).json({
+      return res.status(409).json({
         error: "Usuario ya existe",
+        code: "EMAIL_EXISTS",
       });
     }
 

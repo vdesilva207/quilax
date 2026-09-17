@@ -132,7 +132,9 @@ app.use(
 );
 
 
-app.use(express.json({ limit: "100kb" }));
+// Profile photos / post images travel as data URLs (base64). 100kb was too small
+// and silently broke avatar upload on TestFlight.
+app.use(express.json({ limit: "6mb" }));
 
 app.use(platformMiddleware);
 

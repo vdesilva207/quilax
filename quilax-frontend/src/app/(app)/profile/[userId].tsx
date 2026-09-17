@@ -38,6 +38,8 @@ export default function PublicProfileScreen() {
 
   const [loading, setLoading] = useState(true);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [handle, setHandle] = useState<string | null>(null);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [isPrivate, setIsPrivate] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState<number | null>(null);
@@ -74,6 +76,8 @@ export default function PublicProfileScreen() {
       if (publicRes?.profile) {
         const p = publicRes.profile;
         setDisplayName(p.username || p.fullName || t('profile.userFallback', { id: numericId }));
+        setHandle(p.username ? `@${p.username}` : null);
+        setAvatarUri(p.profilePhoto || null);
         setIsPrivate(false);
         setFollowersCount(p.statistics?.followers ?? null);
         setFollowingCount(p.statistics?.following ?? null);
@@ -210,9 +214,23 @@ export default function PublicProfileScreen() {
             posts.map((post) => (
               <AppCard key={post.id}>
                 <View style={styles.postHead}>
-                  <Text style={styles.postDate}>
-                    {new Date(post.createdAt).toLocaleString(getDateLocale())}
-                  </Text>
+                  <View style={styles.postAuthor}>
+                    {avatarUri ? (
+                      <Image source={{ uri: avatarUri }} style={styles.postAvatar} />
+                    ) : (
+                      <View style={[styles.postAvatar, styles.postAvatarPlaceholder]}>
+                        <CustomIcon name="user" size={16} color={Colors.light.primary} />
+                      </View>
+                    )}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.postAuthorName} numberOfLines={1}>
+                        {handle || displayName}
+                      </Text>
+                      <Text style={styles.postDate}>
+                        {new Date(post.createdAt).toLocaleString(getDateLocale())}
+                      </Text>
+                    </View>
+                  </View>
                   {!isSelf ? (
                     <Pressable onPress={() => setReportPostId(post.id)} hitSlop={8}>
                       <Text style={styles.reportBtn}>{t('report.cta')}</Text>
@@ -337,11 +355,36 @@ const styles = StyleSheet.create({
   postHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    gap: 8,
   },
-  postDate: { fontSize: 12, color: Colors.light.textSecondary },
-  reportBtn: { fontSize: 12, fontWeight: '700', color: Colors.light.textSecondary },
+  postAuthor: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 0,
+  },
+  postAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.light.backgroundElement,
+  },
+  postAvatarPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.light.backgroundSelected,
+  },
+  postAuthorName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.light.text,
+  },
+  postDate: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 2 },
+  reportBtn: { fontSize: 12, fontWeight: '700', color: Colors.light.textSecondary, marginTop: 4 },
   postText: { fontSize: 15, color: Colors.light.text, lineHeight: 21 },
   postImage: {
     width: '100%',

@@ -33,14 +33,14 @@ export function NotificationPermissionModal({ visible, onAllow, onDeny }: Props)
       animationType="fade"
       onRequestClose={onDeny}
     >
-      <MobileModalFrame onBackdropPress={onDeny}>
+      <MobileModalFrame onBackdropPress={onDeny} justify="center">
         <View
           style={[
             styles.card,
             {
               maxHeight: Math.min(height * 0.78, 520),
-              marginBottom: Platform.OS === 'ios' ? 24 : Spacing.four,
-              marginHorizontal: Spacing.three,
+              marginHorizontal: Spacing.four,
+              alignSelf: 'center',
             },
           ]}
         >

@@ -4,6 +4,8 @@ import {
   Text,
   StyleSheet,
   type ViewStyle,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing } from '@/constants/theme';
@@ -32,11 +34,18 @@ export function AuthFlowLayout({
   contentStyle,
 }: AuthFlowLayoutProps) {
   return (
-    <AppScreen contentContainerStyle={styles.screenContent}>
-      <AppHeader title={title} subtitle={subtitle} badge={badge} showBack={showBack} />
-      <View style={[styles.body, contentStyle]}>{children}</View>
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
-    </AppScreen>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+    >
+      <AppScreen contentContainerStyle={styles.screenContent}>
+        <AppHeader title={title} subtitle={subtitle} badge={badge} showBack={showBack} />
+        <View style={[styles.body, contentStyle]}>{children}</View>
+        {/* Keep CTA inside the scroll so DOB + Continue stay above the keyboard */}
+        {footer ? <View style={styles.footer}>{footer}</View> : null}
+      </AppScreen>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -105,8 +114,9 @@ export function AuthProgressDots({
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   screenContent: {
-    paddingBottom: Spacing.six,
+    paddingBottom: Spacing.six + 24,
     backgroundColor: SCREEN_BACKGROUND,
   },
   body: {
@@ -117,6 +127,7 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
+    paddingBottom: Spacing.four,
     gap: Spacing.two,
   },
   primaryBtn: {

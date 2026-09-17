@@ -205,7 +205,7 @@ export function AuthProvider({ children }) {
           dateOfBirth,
           country: country || nationality,
         },
-        { timeoutMs: 20000 }
+        { timeoutMs: 45000 }
       );
       await persistSession(data.token, {
         ...data.user,
@@ -214,19 +214,26 @@ export function AuthProvider({ children }) {
       return { success: true, user: data.user, delivered: data.delivered, verificationCode: data.verificationCode };
     } catch (error) {
       console.error('Register error:', error);
+      const i18n = (await import('@/i18n')).default;
       const msg = String(error?.message || '');
+      const code = error?.code || error?.payload?.code;
+      if (code === 'EMAIL_EXISTS' || /ya existe|already exists|already registered/i.test(msg)) {
+        return { success: false, error: i18n.t('auth.registerScreen.alreadyExists'), code: 'EMAIL_EXISTS' };
+      }
+      if (/timeout|aborted|agotado/i.test(msg) || error?.name === 'AbortError') {
+        return { success: false, error: i18n.t('common.requestTimeout') };
+      }
       const network =
         /network request failed/i.test(msg) ||
         /failed to fetch/i.test(msg) ||
         error?.name === 'TypeError';
       if (network) {
-        const i18n = (await import('@/i18n')).default;
         return {
           success: false,
           error: i18n.t('auth.registerScreen.networkError'),
         };
       }
-      return { success: false, error: error.message };
+      return { success: false, error: error.message, code };
     }
   };
 

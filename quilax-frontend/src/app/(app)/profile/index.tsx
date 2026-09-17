@@ -10,6 +10,7 @@ import {
   Switch,
   TextInput,
   Platform,
+  ActionSheetIOS,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -150,6 +151,30 @@ export default function ProfileScreen() {
             Alert.alert(t('common.error'), e?.message || t('profile.deletePostError'));
           }
         },
+      },
+    ]);
+  };
+
+  const openPostMenu = (postId: number) => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [t('common.cancel'), t('common.delete')],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 0,
+        },
+        (idx) => {
+          if (idx === 1) deletePost(postId);
+        },
+      );
+      return;
+    }
+    Alert.alert(t('profile.postOptions'), undefined, [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: () => deletePost(postId),
       },
     ]);
   };
@@ -469,11 +494,30 @@ export default function ProfileScreen() {
               .map((post) => (
                 <View key={post.id} style={styles.postCard}>
                   <View style={styles.postHead}>
-                    <Text style={styles.postDate}>
-                      {new Date(post.createdAt).toLocaleString(getDateLocale())}
-                    </Text>
-                    <Pressable onPress={() => deletePost(post.id)} hitSlop={8}>
-                      <Text style={styles.deletePost}>{t('common.delete')}</Text>
+                    <View style={styles.postAuthor}>
+                      {user?.profilePhoto ? (
+                        <Image source={{ uri: user.profilePhoto }} style={styles.postAvatar} />
+                      ) : (
+                        <View style={[styles.postAvatar, styles.postAvatarPlaceholder]}>
+                          <CustomIcon name="user" size={16} color={Colors.light.primary} />
+                        </View>
+                      )}
+                      <View style={styles.postAuthorText}>
+                        <Text style={styles.postAuthorName} numberOfLines={1}>
+                          {user?.username ? `@${user.username}` : displayName}
+                        </Text>
+                        <Text style={styles.postDate}>
+                          {new Date(post.createdAt).toLocaleString(getDateLocale())}
+                        </Text>
+                      </View>
+                    </View>
+                    <Pressable
+                      onPress={() => openPostMenu(post.id)}
+                      hitSlop={10}
+                      accessibilityLabel={t('profile.postOptions')}
+                      style={styles.postMenuBtn}
+                    >
+                      <Text style={styles.postMenuDots}>⋯</Text>
                     </Pressable>
                   </View>
                   {post.text ? <Text style={styles.postText}>{post.text}</Text> : null}
@@ -859,11 +903,49 @@ const styles = StyleSheet.create({
   },
   postHead: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 8,
+    gap: Spacing.two,
   },
-  postDate: { fontSize: 12, color: Colors.light.textSecondary },
-  deletePost: { fontSize: 12, color: Colors.light.error, fontWeight: '600' },
+  postAuthor: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 0,
+  },
+  postAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.light.backgroundElement,
+  },
+  postAvatarPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.light.backgroundSelected,
+  },
+  postAuthorText: { flex: 1, minWidth: 0 },
+  postAuthorName: {
+    ...titleTypeface,
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.light.text,
+  },
+  postDate: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 2 },
+  postMenuBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginTop: -2,
+  },
+  postMenuDots: {
+    fontSize: 22,
+    lineHeight: 24,
+    color: Colors.light.textSecondary,
+    fontWeight: '700',
+  },
   postText: { fontSize: 15, lineHeight: 22, color: Colors.light.text },
   postImage: {
     width: '100%',

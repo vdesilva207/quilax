@@ -31,14 +31,15 @@ export function MobileModalFrame({
   backdropStyle,
 }: Props) {
   const { width } = useWindowDimensions();
-  const phoneWidth = Math.min(width, MaxContentWidth);
+  // On native use full screen width so overlays aren't stuck in a 480px column.
+  const phoneWidth = Platform.OS === 'web' ? Math.min(width, MaxContentWidth) : width;
 
   return (
     <View style={[styles.viewport, backdropStyle]} pointerEvents="box-none">
       <View
         style={[
           styles.phoneColumn,
-          { width: phoneWidth, maxWidth: MaxContentWidth, justifyContent: justify },
+          { width: phoneWidth, maxWidth: Platform.OS === 'web' ? MaxContentWidth : undefined, justifyContent: justify },
           style,
         ]}
       >

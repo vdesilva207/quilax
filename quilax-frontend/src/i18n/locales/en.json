@@ -1059,6 +1059,7 @@
     "publishError": "Couldn't publish",
     "deleteConfirmTitle": "Delete",
     "deletePostConfirm": "Delete this post?",
+    "postOptions": "Post options",
     "deletePostError": "Couldn't delete",
     "privacySaveError": "Couldn't save privacy setting",
     "editProfileTitle": "Edit profile",
