@@ -1,3 +1,3 @@
-// Patch Sora fontWeight remapping before any screen imports Text.
-import './src/lib/installSoraFontFix';
+import 'react-native-gesture-handler';
+import './src/bootHideSplash';
 import 'expo-router/entry';

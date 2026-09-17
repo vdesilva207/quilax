@@ -1,5 +1,4 @@
 import 'react-native-gesture-handler';
-import 'react-native-reanimated';
 import React, { Component, useCallback, useEffect, type ErrorInfo, type ReactNode } from 'react';
 import {
   View,
@@ -22,28 +21,24 @@ import { WebPhoneFrame } from '@/components/ui/WebPhoneFrame';
 import '@/i18n';
 import i18n, { hydrateAppLanguage } from '@/i18n';
 
-/**
- * Do NOT call preventAutoHideAsync — on iOS release that often leaves TestFlight
- * stuck on the native splash forever if hideAsync races or JS throws early.
- * Force-hide with retries (hideAsync can no-op / return undefined in release).
- */
+/** Retry hide — iOS release sometimes no-ops the first calls. */
 async function forceHideSplash() {
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i < 20; i++) {
     try {
       await SplashScreen.hideAsync();
     } catch {
       /* ignore */
     }
-    await new Promise((r) => setTimeout(r, 80));
+    await new Promise((r) => setTimeout(r, 50));
   }
 }
 
-// Surface fatal JS errors after splash is gone (otherwise TestFlight looks "frozen").
 try {
   const ErrorUtils = (global as any).ErrorUtils;
   if (ErrorUtils?.setGlobalHandler) {
     const prev = ErrorUtils.getGlobalHandler?.();
     ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+      void forceHideSplash();
       try {
         Alert.alert(
           'Quilax error',
@@ -59,7 +54,7 @@ try {
   /* ignore */
 }
 
-// Heavier default text on native (avoids hairline system Regular).
+// Default typeface via defaultProps (safe). Do NOT replace RN.Text exports.
 if (!(RNText as any).defaultProps) (RNText as any).defaultProps = {};
 (RNText as any).defaultProps.style = [
   bodyTypeface,
@@ -95,10 +90,7 @@ class RootErrorBoundary extends Component<
           <Text style={styles.errorText}>{this.state.error.message}</Text>
           <Pressable
             style={styles.retry}
-            onPress={() => {
-              this.setState({ error: null });
-              if (typeof window !== 'undefined') window.location.reload();
-            }}
+            onPress={() => this.setState({ error: null })}
           >
             <Text style={styles.retryText}>{i18n.t('common.reload')}</Text>
           </Pressable>
