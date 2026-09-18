@@ -232,27 +232,29 @@ export default function ProfileScreen() {
 
   return (
     <AppScreen>
-      {/* Banner + avatar (Twitter-like). Title omitted — avatar overlaps it. */}
-      <LinearGradient {...brandGradientProps} style={styles.banner}>
-        <View style={styles.bannerTop}>
-          <Text style={styles.brand}>QUILAX</Text>
-        </View>
-      </LinearGradient>
+      {/* Banner + avatar in one pinned block so the photo isn't clipped by the sticky header. */}
+      <View style={styles.profileChrome}>
+        <LinearGradient {...brandGradientProps} style={styles.banner}>
+          <View style={styles.bannerTop}>
+            <Text style={styles.brand}>QUILAX</Text>
+          </View>
+        </LinearGradient>
 
-      <View style={styles.avatarRow}>
-        <View style={styles.avatarWrap}>
-          {user?.profilePhoto ? (
-            <Image source={{ uri: user.profilePhoto }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <CustomIcon name="user" size={36} color={Colors.light.primary} />
-            </View>
-          )}
-        </View>
-        <View style={styles.headerActions}>
-          <Pressable style={styles.editBtn} onPress={() => router.push('/(app)/profile/edit')}>
-            <Text style={styles.editBtnText}>{t('profile.edit')}</Text>
-          </Pressable>
+        <View style={styles.avatarRow}>
+          <View style={styles.avatarWrap}>
+            {user?.profilePhoto ? (
+              <Image source={{ uri: user.profilePhoto }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <CustomIcon name="user" size={36} color={Colors.light.primary} />
+              </View>
+            )}
+          </View>
+          <View style={styles.headerActions}>
+            <Pressable style={styles.editBtn} onPress={() => router.push('/(app)/profile/edit')}>
+              <Text style={styles.editBtnText}>{t('profile.edit')}</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -630,12 +632,17 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  profileChrome: {
+    width: '100%',
+    backgroundColor: Colors.light.background,
+    overflow: 'visible',
+    paddingBottom: Spacing.two,
+  },
   banner: {
-    height: 132,
+    height: 128,
     paddingTop: Platform.OS === 'web' ? 24 : 52,
     paddingHorizontal: Spacing.four,
-    justifyContent: 'flex-end',
-    paddingBottom: 44,
+    justifyContent: 'flex-start',
   },
   bannerTop: {
     flexDirection: 'row',
@@ -653,13 +660,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
-    marginTop: -28,
+    marginTop: -42,
+    zIndex: 2,
   },
-  avatarWrap: { position: 'relative' },
+  avatarWrap: {
+    position: 'relative',
+    overflow: 'visible',
+  },
   avatar: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     borderWidth: 3,
     borderColor: Colors.light.background,
     backgroundColor: Colors.light.backgroundElement,
@@ -675,6 +686,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
+    backgroundColor: Colors.light.background,
   },
   editBtnText: { fontWeight: '700', color: Colors.light.text, fontSize: 13 },
   identity: { paddingHorizontal: Spacing.four, paddingTop: Spacing.three },

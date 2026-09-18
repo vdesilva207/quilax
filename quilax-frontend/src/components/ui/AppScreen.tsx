@@ -201,6 +201,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     zIndex: 2,
+    overflow: 'visible',
   },
   screen: {
     flex: 1,

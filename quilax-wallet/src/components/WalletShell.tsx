@@ -20,6 +20,7 @@ import {
   MaxWidth,
 } from '@/constants/theme';
 import { FadeBlock, HeroEnter, PressScale, ScreenEnter } from '@/components/motion';
+import { BrandGradientBar } from '@/components/BrandGradientBar';
 
 type ShellProps = {
   brand?: boolean;
@@ -31,7 +32,7 @@ type ShellProps = {
   contentStyle?: ViewStyle;
 };
 
-/** Mobile-first phone column. Large brand gradient hero; money CTAs stay solid. */
+/** Mobile-first phone column. Brand gradient hero + stripe; primary CTAs use gradient. */
 export function WalletShell({
   brand = true,
   title,
@@ -49,6 +50,7 @@ export function WalletShell({
 
   return (
     <View style={styles.screen}>
+      <BrandGradientBar />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
@@ -81,6 +83,7 @@ export function WalletShell({
               {title ? <Text style={styles.title}>{title}</Text> : null}
               {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
             </LinearGradient>
+            <BrandGradientBar style={styles.heroStripe} />
           </HeroEnter>
 
           <ScreenEnter delay={50} style={[styles.body, contentStyle]}>
@@ -93,7 +96,7 @@ export function WalletShell({
   );
 }
 
-/** Solid primary CTA — no gradient (money actions). */
+/** Brand gradient CTA. */
 export function PrimaryButton({
   label,
   onPress,
@@ -112,15 +115,27 @@ export function PrimaryButton({
       disabled={disabled}
       scaleTo={0.97}
       style={[
-        styles.primaryBtn,
+        styles.primaryBtnWrap,
         locked && styles.primaryBtnLocked,
         inactive && !locked && { opacity: 0.45 },
         locked && { opacity: 1 },
       ]}
     >
-      <Text style={[styles.primaryBtnText, locked && styles.primaryBtnTextLocked]}>
-        {label}
-      </Text>
+      {locked ? (
+        <View style={[styles.primaryBtn, styles.primaryBtnLockedInner]}>
+          <Text style={[styles.primaryBtnText, styles.primaryBtnTextLocked]}>{label}</Text>
+        </View>
+      ) : (
+        <LinearGradient
+          colors={[...APP_GRADIENT]}
+          locations={[...APP_GRADIENT_LOCATIONS]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.primaryBtn}
+        >
+          <Text style={styles.primaryBtnText}>{label}</Text>
+        </LinearGradient>
+      )}
     </PressScale>
   );
 }
