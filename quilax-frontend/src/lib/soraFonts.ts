@@ -23,6 +23,11 @@ export type SoraWeight = 500 | 600 | 700 | 800;
 
 const WEB_FAMILY = 'Sora, system-ui, sans-serif';
 
+function faceForWeight(weight: number | string): string {
+  const key = String(weight);
+  return SORA_BY_WEIGHT[key] || 'Sora_500Medium';
+}
+
 /** Brand typeface for a given weight — safe on Android/iOS/web. */
 export function sora(weight: SoraWeight = 500): TextStyle {
   if (Platform.OS === 'web') {
@@ -31,19 +36,16 @@ export function sora(weight: SoraWeight = 500): TextStyle {
       fontWeight: String(weight) as TextStyle['fontWeight'],
     };
   }
-  const family =
-    weight === 800
-      ? 'Sora_800ExtraBold'
-      : weight === 700
-        ? 'Sora_700Bold'
-        : weight === 600
-          ? 'Sora_600SemiBold'
-          : 'Sora_500Medium';
-  return { fontFamily: family };
+  return {
+    fontFamily: faceForWeight(weight),
+    // Explicitly neutralize — Android ignores custom faces when weight is set.
+    fontWeight: 'normal',
+  };
 }
 
 function looksLikeSora(family?: string | null): boolean {
-  if (!family) return true; // app default is Sora via Text defaultProps
+  if (!family) return true; // defaultProps apply Sora
+  if (family === 'System' || family === 'sans-serif') return true;
   return family.startsWith('Sora') || family.includes('Sora');
 }
 
@@ -63,6 +65,15 @@ export function resolveSoraStyle(style: StyleProp<RNTextStyle>): StyleProp<RNTex
     (flat.fontFamily as string | undefined) ||
     'Sora_500Medium';
 
-  // Keep original styles, then force face + neutralize weight for Android.
-  return [style, { fontFamily: mapped, fontWeight: 'normal' }];
+  // Force face + kill weight/style that trigger Android system-font substitution.
+  return [
+    style,
+    {
+      fontFamily: mapped,
+      fontWeight: 'normal',
+      ...(Platform.OS === 'android'
+        ? { includeFontPadding: false, fontStyle: 'normal' as const }
+        : null),
+    },
+  ];
 }
