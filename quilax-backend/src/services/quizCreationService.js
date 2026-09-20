@@ -14,14 +14,27 @@ const PLAYS_PER_CREATE_SLOT = 10;
 VALIDAR SI USUARIO PUEDE CREAR QUIZZES
 ====================================
 */
+const CREATE_GATE_BYPASS_EMAILS = (
+  process.env.CREATE_GATE_BYPASS_EMAILS || "quilax@appquilax.com"
+)
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
 async function validateUserCanCreateQuizzes(userId) {
   const uid = Number(userId);
 
   const user = await prisma.user.findUnique({
     where: { id: uid },
-    select: { role: true },
+    select: { role: true, email: true },
   });
   if (user?.role === "ADMIN" || user?.role === "ADMIN_WORKER") {
+    return true;
+  }
+  if (
+    user?.email &&
+    CREATE_GATE_BYPASS_EMAILS.includes(String(user.email).toLowerCase())
+  ) {
     return true;
   }
 

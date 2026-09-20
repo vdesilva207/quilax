@@ -2527,33 +2527,88 @@ router.post("/admins", async (req, res) => {
       return res.status(400).json({ error: "Rol inválido" });
     }
 
-    // Hash password
-    const bcrypt = await import('bcrypt');
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (String(password).length < 8 || !/[A-Z]/.test(String(password))) {
+      return res.status(400).json({
+        error: "La contraseña debe tener al menos 8 caracteres y 1 mayúscula",
+      });
+    }
 
-    const admin = await prisma.user.create({
-      data: {
-        email,
-        username,
-        password: hashedPassword,
-        role
-      },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        createdAt: true
-      }
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedUsername = String(username).trim();
+
+    const bcrypt = await import('bcrypt');
+    const hashFn = bcrypt.hash || bcrypt.default?.hash;
+    const hashedPassword = await hashFn(password, 10);
+
+    const existingByEmail = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, role: true, username: true },
     });
+
+    if (
+      existingByEmail &&
+      (existingByEmail.role === 'ADMIN' || existingByEmail.role === 'ADMIN_WORKER')
+    ) {
+      return res.status(400).json({ error: "Ya existe un admin con ese email" });
+    }
+
+    const usernameTaken = await prisma.user.findFirst({
+      where: {
+        username: normalizedUsername,
+        ...(existingByEmail ? { id: { not: existingByEmail.id } } : {}),
+      },
+      select: { id: true },
+    });
+    if (usernameTaken) {
+      return res.status(400).json({ error: "Ese username ya está en uso" });
+    }
+
+    const select = {
+      id: true,
+      username: true,
+      email: true,
+      role: true,
+      createdAt: true,
+    };
+
+    // Si el email ya es un USER normal, lo promocionamos (no fallar en silencio por unique).
+    const admin = existingByEmail
+      ? await prisma.user.update({
+          where: { id: existingByEmail.id },
+          data: {
+            username: normalizedUsername,
+            password: hashedPassword,
+            adminPassword: hashedPassword,
+            role,
+            isBanned: false,
+          },
+          select,
+        })
+      : await prisma.user.create({
+          data: {
+            email: normalizedEmail,
+            username: normalizedUsername,
+            password: hashedPassword,
+            adminPassword: hashedPassword,
+            role,
+            isOver18: true,
+            idVerified: true,
+            emailVerified: true,
+          },
+          select,
+        });
 
     res.json({
       success: true,
-      admin
+      admin,
+      promoted: Boolean(existingByEmail),
     });
   } catch (error) {
     console.error("Error creating admin:", error);
-    res.status(500).json({ error: "Error al crear admin" });
+    if (error?.code === 'P2002') {
+      return res.status(400).json({ error: "Email o username ya existen" });
+    }
+    res.status(500).json({ error: error?.message || "Error al crear admin" });
   }
 });
 

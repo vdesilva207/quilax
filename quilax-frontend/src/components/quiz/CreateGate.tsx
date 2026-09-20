@@ -10,6 +10,9 @@ import { GradientButton, InfoBar } from '@/components/ui/ScreenChrome';
 /** Every N finished plays unlocks 1 create slot. */
 const PLAYS_PER_CREATE = 10;
 
+/** Soft-launch allowlist: skip ratio gate for these emails only. */
+const CREATE_GATE_BYPASS_EMAILS = ['quilax@appquilax.com'];
+
 type CreateGateProps = {
   children: React.ReactNode;
 };
@@ -42,13 +45,15 @@ export default function CreateGate({ children }: CreateGateProps) {
         );
 
         const isAdmin = role === 'ADMIN' || role === 'ADMIN_WORKER';
+        const email = String(profile?.email || '').trim().toLowerCase();
+        const emailBypass = CREATE_GATE_BYPASS_EMAILS.includes(email);
         const playedSafe = Number.isFinite(playedCount) ? playedCount : 0;
         const createdSafe = Number.isFinite(createdCount) ? createdCount : 0;
         const slots = Math.floor(playedSafe / PLAYS_PER_CREATE);
 
         setPlayed(playedSafe);
         setCreated(createdSafe);
-        setUnlocked(isAdmin || createdSafe < slots);
+        setUnlocked(isAdmin || emailBypass || createdSafe < slots);
       } catch {
         setPlayed(0);
         setCreated(0);

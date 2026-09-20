@@ -1,10 +1,9 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, TextInput, Modal, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing } from '@/constants/theme';
-import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '@/lib/api';
+import { getStoredAuthToken } from '@/lib/secureStorage';
 import PasswordInput from '@/components/ui/PasswordInput';
 
 interface Admin {
@@ -15,8 +14,16 @@ interface Admin {
   createdAt: string;
 }
 
+function notify(title: string, message?: string) {
+  const text = message ? `${title}\n${message}` : title;
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.alert(text);
+    return;
+  }
+  Alert.alert(title, message);
+}
+
 export default function AdminsScreen() {
-  const router = useRouter();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -25,6 +32,7 @@ export default function AdminsScreen() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('ADMIN_WORKER');
   const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     fetchAdmins();
@@ -32,7 +40,7 @@ export default function AdminsScreen() {
 
   const fetchAdmins = async () => {
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      const token = await getStoredAuthToken();
       const response = await fetch(`${API_BASE_URL}/admin/admins`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -43,10 +51,12 @@ export default function AdminsScreen() {
 
       if (data.success) {
         setAdmins(data.admins);
+      } else {
+        notify('Error', data.error || 'No se pudieron cargar los admins');
       }
     } catch (error) {
       console.error('Error fetching admins:', error);
-      Alert.alert('Error', 'Error al cargar admins');
+      notify('Error', 'Error al cargar admins');
     } finally {
       setLoading(false);
     }
@@ -63,77 +73,91 @@ export default function AdminsScreen() {
 
   const handleCreateAdmin = async () => {
     if (!email || !username || !password || !role) {
-      Alert.alert('Error', 'Todos los campos son requeridos');
+      setFormError('Todos los campos son requeridos');
       return;
     }
 
+    setFormError('');
     setCreating(true);
 
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      const token = await getStoredAuthToken();
       const response = await fetch(`${API_BASE_URL}/admin/admins`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, username, password, role }),
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          username: username.trim(),
+          password,
+          role,
+        }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
-      if (data.success) {
-        Alert.alert('Éxito', 'Admin creado correctamente');
+      if (response.ok && data.success) {
+        notify('Éxito', data.promoted ? 'Usuario existente promocionado a admin' : 'Admin creado correctamente');
         setShowCreateModal(false);
         setEmail('');
         setUsername('');
         setPassword('');
         setRole('ADMIN_WORKER');
+        setFormError('');
         fetchAdmins();
       } else {
-        Alert.alert('Error', data.error);
+        const msg = data.error || `Error al crear admin (${response.status})`;
+        setFormError(msg);
+        notify('Error', msg);
       }
     } catch (error) {
-      Alert.alert('Error', 'Error al crear admin');
+      const msg = 'Error de red al crear admin';
+      setFormError(msg);
+      notify('Error', msg);
     } finally {
       setCreating(false);
     }
   };
 
   const handleDeleteAdmin = async (adminId: number) => {
-    Alert.alert(
-      'Eliminar Admin',
-      '¿Estás seguro de que quieres eliminar este admin?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await AsyncStorage.getItem('authToken');
-              const response = await fetch(`${API_BASE_URL}/admin/admins/${adminId}`, {
-                method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                },
-              });
+    const confirmed =
+      Platform.OS === 'web' && typeof window !== 'undefined'
+        ? window.confirm('¿Eliminar este admin?')
+        : await new Promise<boolean>((resolve) => {
+            Alert.alert(
+              'Eliminar Admin',
+              '¿Estás seguro de que quieres eliminar este admin?',
+              [
+                { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+                { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) },
+              ]
+            );
+          });
 
-              const data = await response.json();
+    if (!confirmed) return;
 
-              if (data.success) {
-                Alert.alert('Éxito', 'Admin eliminado');
-                fetchAdmins();
-              } else {
-                Alert.alert('Error', data.error);
-              }
-            } catch (error) {
-              Alert.alert('Error', 'Error al eliminar admin');
-            }
-          }
-        }
-      ]
-    );
+    try {
+      const token = await getStoredAuthToken();
+      const response = await fetch(`${API_BASE_URL}/admin/admins/${adminId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok && data.success) {
+        notify('Éxito', 'Admin eliminado');
+        fetchAdmins();
+      } else {
+        notify('Error', data.error || 'No se pudo eliminar');
+      }
+    } catch (error) {
+      notify('Error', 'Error al eliminar admin');
+    }
   };
 
   if (loading) {
@@ -228,6 +252,7 @@ export default function AdminsScreen() {
               onChangeText={setPassword}
               containerStyle={styles.passwordInModal}
             />
+            {formError ? <Text style={styles.formError}>{formError}</Text> : null}
             <View style={styles.roleSelector}>
               <Text style={styles.roleLabel}>Rol:</Text>
               <View style={styles.roleButtons}>
@@ -394,6 +419,11 @@ const styles = StyleSheet.create({
   },
   passwordInModal: {
     marginBottom: 0,
+  },
+  formError: {
+    color: Colors.light.error,
+    fontSize: 14,
+    fontWeight: '600',
   },
   roleSelector: {
     gap: Spacing.two,
