@@ -213,13 +213,35 @@ app.get("/health", (req, res) =>
 
 app.get("/health/email", async (req, res) => {
   try {
-    const { getEmailStatus, verifyEmailConfig } = await import("./services/emailService.js");
+    const { getEmailStatus, verifyEmailConfig, sendSmtpDiagnostic } = await import(
+      "./services/emailService.js"
+    );
     const status = getEmailStatus();
-    let verified = false;
+    let verified;
+    let diagnostic;
     if (req.query.verify === "1" || req.query.verify === "true") {
       verified = await verifyEmailConfig();
     }
-    res.json({ ok: true, email: { ...status, verified: req.query.verify ? verified : undefined } });
+    // ?test=1&to=email  — only if EMAIL_DIAGNOSTIC_KEY matches header x-email-diagnostic-key
+    if (req.query.test === "1" || req.query.test === "true") {
+      const key = process.env.EMAIL_DIAGNOSTIC_KEY || process.env.JWT_SECRET;
+      if (!key || req.get("x-email-diagnostic-key") !== key) {
+        return res.status(403).json({ ok: false, error: "diagnostic_forbidden" });
+      }
+      const to = String(req.query.to || "").trim().toLowerCase();
+      if (!to || !to.includes("@")) {
+        return res.status(400).json({ ok: false, error: "to_required" });
+      }
+      diagnostic = await sendSmtpDiagnostic(to);
+    }
+    res.json({
+      ok: true,
+      email: {
+        ...status,
+        verified: verified !== undefined ? verified : undefined,
+        diagnostic,
+      },
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || "email_status_failed" });
   }

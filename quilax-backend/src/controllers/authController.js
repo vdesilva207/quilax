@@ -152,6 +152,22 @@ export const register = async (req, res) => {
     const skipEmail =
       process.env.SKIP_EMAIL === 'true' || process.env.SKIP_EMAIL === '1';
 
+    // Await SMTP so Render does not kill the send after the HTTP response.
+    let delivered = false;
+    let verificationCodeForClient = undefined;
+    try {
+      const emailResult = await sendVerificationEmail(email, verificationCode);
+      delivered = !!emailResult?.delivered;
+      if (!delivered) {
+        console.error("❌ register email not delivered:", emailResult?.reason || emailResult);
+        // Soft-launch: include code when SMTP fails so onboarding is not blocked
+        verificationCodeForClient = verificationCode;
+      }
+    } catch (err) {
+      console.error("❌ register email error:", err?.message || err);
+      verificationCodeForClient = verificationCode;
+    }
+
     res.json({
       token,
       user: {
@@ -164,16 +180,10 @@ export const register = async (req, res) => {
         emailVerified: false,
         idVerified: !!user.idVerified,
       },
-      // Código en respuesta solo si SMTP está desactivado o no es producción
-      ...(skipEmail || process.env.NODE_ENV !== 'production'
-        ? { verificationCode }
+      delivered,
+      ...(skipEmail || process.env.NODE_ENV !== 'production' || verificationCodeForClient
+        ? { verificationCode: verificationCodeForClient || (skipEmail || process.env.NODE_ENV !== 'production' ? verificationCode : undefined) }
         : {}),
-      delivered: false,
-    });
-
-    // Fire-and-forget: timeouts internos en emailService evitan colgar el event loop
-    sendVerificationEmail(email, verificationCode).catch((err) => {
-      console.error("❌ post-register email:", err?.message || err);
     });
   } catch (error) {
     console.error("❌ register error:", error);

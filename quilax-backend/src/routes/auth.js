@@ -226,15 +226,26 @@ router.post("/forgot-password", rateLimiters.auth, async (req, res) => {
       },
     });
 
-    // Responder ya: no bloquear (ni tumbar) la API con SMTP lento/roto.
-    res.json({
+    // Await SMTP — fire-and-forget after res.json() is often killed / never finishes on Render.
+    const emailResult = await sendPasswordResetEmail(user.email, resetCode);
+    const delivered = !!emailResult?.delivered;
+
+    if (!delivered) {
+      console.error("Reset email not delivered:", emailResult?.reason || emailResult);
+      return res.status(503).json({
+        success: false,
+        delivered: false,
+        error:
+          "No pudimos enviar el email ahora. Revisa spam en unos minutos o contacta soporte.",
+        code: "RESET_EMAIL_NOT_DELIVERED",
+        reason: emailResult?.reason || "send_failed",
+      });
+    }
+
+    return res.json({
       success: true,
       delivered: true,
-      message: "Si el email existe, recibirás un código para resetear tu contraseña",
-    });
-
-    sendPasswordResetEmail(user.email, resetCode).catch((err) => {
-      console.error("Background reset email failed:", err?.message || err);
+      message: "Email de reset enviado. Revisa bandeja de entrada y spam.",
     });
   } catch (error) {
     console.error("Error sending reset email:", error);

@@ -178,7 +178,47 @@ export const verifyEmailConfig = async () => {
   } catch (error) {
     console.error('❌ Error verificando configuración de email:', error?.message || error);
     resetEmailTransport();
-    return false;
+    // One retry with fresh transport
+    try {
+      await withTimeout(getTransporter().verify(), EMAIL_TIMEOUT_MS, 'verifyEmailConfig-retry');
+      console.log('✅ Email verify OK en reintento');
+      return true;
+    } catch (err2) {
+      console.error('❌ Email verify retry failed:', err2?.message || err2);
+      resetEmailTransport();
+      return false;
+    }
+  }
+};
+
+/**
+ * Send a plain diagnostic email (ops). Returns delivery result.
+ */
+export const sendSmtpDiagnostic = async (to) => {
+  if (skipSmtp) return { ok: true, delivered: false, skipped: true };
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    return { ok: false, delivered: false, reason: 'missing_credentials' };
+  }
+  try {
+    const info = await withTimeout(
+      getTransporter().sendMail({
+        from: getFromAddress(),
+        to,
+        subject: `Quilax SMTP OK ${new Date().toISOString()}`,
+        text: 'Diagnostic from production API. If you received this, Render→Brevo works.',
+      }),
+      EMAIL_TIMEOUT_MS,
+      'sendSmtpDiagnostic',
+    );
+    return { ok: true, delivered: true, messageId: info?.messageId };
+  } catch (error) {
+    resetEmailTransport();
+    return {
+      ok: false,
+      delivered: false,
+      reason: error?.code || error?.message || 'send_failed',
+      smtpResponse: error?.response ? String(error.response).slice(0, 200) : undefined,
+    };
   }
 };
 
@@ -189,4 +229,5 @@ export default {
   verifyEmailConfig,
   getEmailStatus,
   resetEmailTransport,
+  sendSmtpDiagnostic,
 };
