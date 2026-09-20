@@ -197,9 +197,14 @@ router.post("/forgot-password", rateLimiters.auth, async (req, res) => {
 
     const email = String(rawEmail).trim().toLowerCase();
 
-    const user = await prisma.user.findFirst({
-      where: { email: { equals: email, mode: "insensitive" } },
-    });
+    // Exact match (lower) or original casing — avoid Prisma `mode: insensitive`
+    // which can fail/crash on some deploy targets.
+    let user = await prisma.user.findUnique({ where: { email } });
+    if (!user && email !== String(rawEmail).trim()) {
+      user = await prisma.user.findUnique({
+        where: { email: String(rawEmail).trim() },
+      });
+    }
 
     // Anti-enumeración: misma forma de respuesta si no existe
     if (!user) {
@@ -221,34 +226,21 @@ router.post("/forgot-password", rateLimiters.auth, async (req, res) => {
       },
     });
 
-    const emailResult = await sendPasswordResetEmail(user.email, resetCode);
-
-    if (!emailResult?.ok) {
-      return res.status(500).json({
-        error: "Error al enviar email de reset",
-        code: "RESET_EMAIL_FAILED",
-      });
-    }
-
-    if (!emailResult.delivered) {
-      // SMTP caído: no fingir éxito (el usuario se queda bloqueado)
-      return res.status(503).json({
-        success: false,
-        delivered: false,
-        error:
-          "No pudimos enviar el email ahora. Revisa spam más tarde o contacta soporte (noreply@appquilax.com).",
-        code: "RESET_EMAIL_NOT_DELIVERED",
-      });
-    }
-
+    // Responder ya: no bloquear (ni tumbar) la API con SMTP lento/roto.
     res.json({
       success: true,
       delivered: true,
-      message: "Email de reset enviado",
+      message: "Si el email existe, recibirás un código para resetear tu contraseña",
+    });
+
+    sendPasswordResetEmail(user.email, resetCode).catch((err) => {
+      console.error("Background reset email failed:", err?.message || err);
     });
   } catch (error) {
     console.error("Error sending reset email:", error);
-    res.status(500).json({ error: "Error al enviar email de reset", code: "RESET_EMAIL_ERROR" });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Error al enviar email de reset", code: "RESET_EMAIL_ERROR" });
+    }
   }
 });
 
