@@ -13,6 +13,7 @@
 #   DATABASE_URL, JWT_SECRET (>=32), ENCRYPTION_KEY (>=32), REDIS_URL
 # Recommended:
 #   EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASSWORD, EMAIL_FROM
+#   BREVO_API_KEY (recommended on Render — HTTPS; SMTP:587 often times out)
 #   SKIP_EMAIL=false
 #   FRONTEND_APP_URL=https://appquilax.com
 #   WALLET_APP_URL=https://gestion.appquilax.com
