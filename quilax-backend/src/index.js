@@ -211,6 +211,20 @@ app.get("/health", (req, res) =>
   })
 );
 
+app.get("/health/email", async (req, res) => {
+  try {
+    const { getEmailStatus, verifyEmailConfig } = await import("./services/emailService.js");
+    const status = getEmailStatus();
+    let verified = false;
+    if (req.query.verify === "1" || req.query.verify === "true") {
+      verified = await verifyEmailConfig();
+    }
+    res.json({ ok: true, email: { ...status, verified: req.query.verify ? verified : undefined } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || "email_status_failed" });
+  }
+});
+
 app.get("/health/db", async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -328,6 +342,14 @@ if (process.env.NODE_ENV === 'production' && process.env.ENABLE_CLUSTERING === '
     // Iniciar el servidor
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Backend + Socket.IO running on ${PORT}`);
+      import("./services/emailService.js")
+        .then(({ getEmailStatus, verifyEmailConfig }) => {
+          console.log("📧 Email status:", JSON.stringify(getEmailStatus()));
+          if (process.env.NODE_ENV === "production") {
+            verifyEmailConfig().catch(() => {});
+          }
+        })
+        .catch((err) => console.error("📧 email status error:", err?.message || err));
 
       // After bind only — never delay /health for DB work
       if (process.env.NODE_ENV === "production") {

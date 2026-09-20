@@ -45,7 +45,7 @@ services:
       - key: REDIS_URL
         sync: false
       - key: EMAIL_HOST
-        sync: false
+        value: smtp-relay.brevo.com
       - key: EMAIL_PORT
         value: "587"
       - key: EMAIL_USER
