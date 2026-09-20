@@ -368,7 +368,10 @@ router.post("/change-personal-password", auth, async (req, res) => {
 
     await prisma.user.update({
       where: { id: adminId },
-      data: { password: hashedPassword }
+      data: {
+        password: hashedPassword,
+        adminPassword: hashedPassword,
+      },
     });
 
     return res.json({ 

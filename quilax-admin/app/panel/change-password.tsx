@@ -1,71 +1,119 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, TextInput } from 'react-native';
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  Alert,
+  Platform,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing } from '@/constants/theme';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '@/lib/api';
+import { getStoredAuthToken, getStoredAuthUser } from '@/lib/secureStorage';
+import PasswordInput from '@/components/ui/PasswordInput';
 import CustomIcon from '@/components/CustomIcon';
 
+function notify(title: string, message?: string) {
+  const text = message ? `${title}\n${message}` : title;
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.alert(text);
+    return;
+  }
+  Alert.alert(title, message);
+}
+
+/** Solo admin principal (rol ADMIN). No workers. */
 export default function ChangePasswordScreen() {
   const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    getStoredAuthUser().then((user) => {
+      setAllowed(user?.role === 'ADMIN');
+    });
+  }, []);
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Todos los campos son requeridos');
+      setFormError('Todos los campos son requeridos');
       return;
     }
-
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas nuevas no coinciden');
+      setFormError('Las contraseñas nuevas no coinciden');
       return;
     }
-
-    // Validar nueva contraseña: al menos 8 caracteres y 1 mayúscula
     if (newPassword.length < 8) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres');
+      setFormError('La contraseña debe tener al menos 8 caracteres');
       return;
     }
     if (!/[A-Z]/.test(newPassword)) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 1 mayúscula');
+      setFormError('La contraseña debe tener al menos 1 mayúscula');
       return;
     }
 
+    setFormError('');
     setLoading(true);
 
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      const token = await getStoredAuthToken();
       const response = await fetch(`${API_BASE_URL}/admin-auth/change-personal-password`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ currentPassword, newPassword }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
-      if (data.success) {
-        Alert.alert('Éxito', 'Contraseña personal cambiada exitosamente');
+      if (response.ok && data.success) {
+        notify('Éxito', 'Contraseña personal cambiada');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
         router.back();
       } else {
-        Alert.alert('Error', data.error);
+        const msg = data.error || `No se pudo cambiar (${response.status})`;
+        setFormError(msg);
+        notify('Error', msg);
       }
-    } catch (error) {
-      console.error('Error changing password:', error);
-      Alert.alert('Error', 'Error al cambiar contraseña personal');
+    } catch {
+      const msg = 'Error de red al cambiar contraseña';
+      setFormError(msg);
+      notify('Error', msg);
     } finally {
       setLoading(false);
     }
   };
+
+  if (allowed === null) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={Colors.light.primary} />
+      </View>
+    );
+  }
+
+  if (!allowed) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.denied}>Solo el admin principal puede cambiar su contraseña aquí.</Text>
+        <Pressable onPress={() => router.back()}>
+          <Text style={styles.backLink}>Volver</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -79,70 +127,45 @@ export default function ChangePasswordScreen() {
           <CustomIcon name="back" size={24} color="#FFFFFF" />
         </Pressable>
         <View style={styles.headerContent}>
-          <Text style={styles.title}>Cambiar Contraseña</Text>
-          <Text style={styles.subtitle}>Contraseña Personal</Text>
+          <Text style={styles.title}>Mi contraseña</Text>
+          <Text style={styles.subtitle}>Admin principal · personal</Text>
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.form}>
-          <Text style={styles.label}>Contraseña Actual</Text>
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="••••••••"
-              secureTextEntry={!showCurrentPassword}
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-            />
-            <Pressable style={styles.showPasswordButton} onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
-              <CustomIcon name={showCurrentPassword ? 'eye-off' : 'eye'} size={20} color={Colors.light.textSecondary} />
-            </Pressable>
-          </View>
+          <Text style={styles.label}>Contraseña actual</Text>
+          <PasswordInput
+            placeholder="••••••••"
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+          />
 
-          <Text style={styles.label}>Nueva Contraseña</Text>
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="••••••••"
-              secureTextEntry={!showNewPassword}
-              value={newPassword}
-              onChangeText={setNewPassword}
-            />
-            <Pressable style={styles.showPasswordButton} onPress={() => setShowNewPassword(!showNewPassword)}>
-              <CustomIcon name={showNewPassword ? 'eye-off' : 'eye'} size={20} color={Colors.light.textSecondary} />
-            </Pressable>
-          </View>
+          <Text style={styles.label}>Nueva contraseña</Text>
+          <PasswordInput
+            placeholder="Mín. 8 caracteres, 1 mayúscula"
+            value={newPassword}
+            onChangeText={setNewPassword}
+          />
 
-          <Text style={styles.label}>Confirmar Nueva Contraseña</Text>
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="••••••••"
-              secureTextEntry={!showConfirmPassword}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-            />
-            <Pressable style={styles.showPasswordButton} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-              <CustomIcon name={showConfirmPassword ? 'eye-off' : 'eye'} size={20} color={Colors.light.textSecondary} />
-            </Pressable>
-          </View>
+          <Text style={styles.label}>Confirmar nueva</Text>
+          <PasswordInput
+            placeholder="••••••••"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
 
-          <View style={styles.requirements}>
-            <Text style={styles.requirementsTitle}>Requisitos:</Text>
-            <Text style={styles.requirementText}>• Mínimo 8 caracteres</Text>
-            <Text style={styles.requirementText}>• Al menos 1 mayúscula</Text>
-          </View>
+          {formError ? <Text style={styles.formError}>{formError}</Text> : null}
 
           <Pressable
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.submit, loading && styles.submitDisabled]}
             onPress={handleChangePassword}
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Cambiar Contraseña</Text>
+              <Text style={styles.submitText}>Guardar contraseña</Text>
             )}
           </Pressable>
         </View>
@@ -152,96 +175,48 @@ export default function ChangePasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: Colors.light.background },
+  centered: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.six,
     backgroundColor: Colors.light.background,
   },
+  denied: {
+    fontSize: 16,
+    color: Colors.light.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.four,
+  },
+  backLink: { color: Colors.light.primary, fontWeight: '700', fontSize: 16 },
   gradientHeader: {
     paddingTop: Spacing.six,
     paddingBottom: Spacing.four,
     paddingHorizontal: Spacing.six,
     alignItems: 'center',
   },
-  backButton: {
-    position: 'absolute',
-    left: Spacing.six,
-    top: Spacing.six,
-    padding: Spacing.two,
-  },
-  headerContent: {
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: Spacing.one,
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  content: {
-    padding: Spacing.six,
-  },
-  form: {
-    gap: Spacing.four,
-  },
+  backButton: { position: 'absolute', left: Spacing.four, top: Spacing.six, zIndex: 1 },
+  headerContent: { alignItems: 'center' },
+  title: { fontSize: 32, fontWeight: 'bold', color: '#FFFFFF', marginBottom: Spacing.one },
+  subtitle: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+  content: { flex: 1 },
+  form: { padding: Spacing.six, gap: Spacing.two },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.light.text,
-    marginBottom: Spacing.one,
-  },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.backgroundElement,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.light.backgroundSelected,
-  },
-  passwordInput: {
-    flex: 1,
-    padding: Spacing.four,
-    fontSize: 16,
-  },
-  showPasswordButton: {
-    padding: Spacing.four,
-    paddingRight: Spacing.three,
-  },
-  requirements: {
-    backgroundColor: Colors.light.backgroundElement,
-    padding: Spacing.four,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.light.backgroundSelected,
-  },
-  requirementsTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: Colors.light.text,
-    marginBottom: Spacing.two,
-  },
-  requirementText: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
+    marginTop: Spacing.two,
     marginBottom: Spacing.one,
   },
-  button: {
+  formError: { color: Colors.light.error, fontWeight: '600', marginTop: Spacing.two },
+  submit: {
+    marginTop: Spacing.four,
     backgroundColor: Colors.light.primary,
     padding: Spacing.four,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: Spacing.two,
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  submitDisabled: { opacity: 0.6 },
+  submitText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
 });

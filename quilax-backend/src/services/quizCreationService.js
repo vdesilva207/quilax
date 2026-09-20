@@ -26,11 +26,8 @@ async function validateUserCanCreateQuizzes(userId) {
 
   const user = await prisma.user.findUnique({
     where: { id: uid },
-    select: { role: true, email: true },
+    select: { email: true },
   });
-  if (user?.role === "ADMIN" || user?.role === "ADMIN_WORKER") {
-    return true;
-  }
   if (
     user?.email &&
     CREATE_GATE_BYPASS_EMAILS.includes(String(user.email).toLowerCase())

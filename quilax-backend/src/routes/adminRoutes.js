@@ -2985,47 +2985,10 @@ PANEL ADMIN EMPLEADO - CAMBIAR CONTRASEÑA
 POST /admin/worker/profile/change-password
 ====================================
 */
-router.post("/worker/profile/change-password", async (req, res) => {
-  try {
-    const adminId = req.user.id;
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: "Contraseñas requeridas" });
-    }
-
-    const admin = await prisma.user.findUnique({
-      where: { id: adminId }
-    });
-
-    if (!admin) {
-      return res.status(404).json({ error: "Admin no encontrado" });
-    }
-
-    // Verificar contraseña actual
-    const bcrypt = await import('bcrypt');
-    const isValid = await bcrypt.compare(currentPassword, admin.password);
-
-    if (!isValid) {
-      return res.status(401).json({ error: "Contraseña actual incorrecta" });
-    }
-
-    // Hash nueva contraseña
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    await prisma.user.update({
-      where: { id: adminId },
-      data: { password: hashedPassword }
-    });
-
-    res.json({
-      success: true,
-      message: "Contraseña cambiada exitosamente"
-    });
-  } catch (error) {
-    console.error("Error changing password:", error);
-    res.status(500).json({ error: "Error al cambiar contraseña" });
-  }
+router.post("/worker/profile/change-password", async (_req, res) => {
+  return res.status(403).json({
+    error: "Los admin workers no pueden cambiar la contraseña desde el panel. Contacta al admin principal.",
+  });
 });
 
 /*

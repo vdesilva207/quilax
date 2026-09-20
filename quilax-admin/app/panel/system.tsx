@@ -9,6 +9,7 @@ const LINKS = [
   { label: 'Temporadas y jackpot', href: '/panel/seasons' },
   { label: 'Reparto de quizzes', href: '/panel/quiz-distribution' },
   { label: 'Gestión de admins', href: '/panel/admins' },
+  { label: 'Mi contraseña', href: '/panel/change-password' },
   { label: 'Notificaciones globales', href: '/panel/notifications' },
 ];
 

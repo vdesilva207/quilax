@@ -4,36 +4,63 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing } from '@/constants/theme';
 import apiClient from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 import { AppScreen, AppHeader, AppSection, AppCard } from '@/components/ui/AppScreen';
 import { GradientButton, InfoBar } from '@/components/ui/ScreenChrome';
 
 /** Every N finished plays unlocks 1 create slot. */
 const PLAYS_PER_CREATE = 10;
 
-/** Soft-launch allowlist: skip ratio gate for these emails only. */
+/** Soft-launch: ONLY this email skips the ratio gate (no role bypass). */
 const CREATE_GATE_BYPASS_EMAILS = ['quilax@appquilax.com'];
 
 type CreateGateProps = {
   children: React.ReactNode;
 };
 
+function isBypassEmail(email?: string | null) {
+  return CREATE_GATE_BYPASS_EMAILS.includes(String(email || '').trim().toLowerCase());
+}
+
 /**
- * Ratio gate: floor(played / 10) create slots. Admins bypass.
+ * Ratio gate: floor(played / 10) create slots.
+ * Bypass exclusively for CREATE_GATE_BYPASS_EMAILS.
  */
 export default function CreateGate({ children }: CreateGateProps) {
   const { t } = useTranslation();
   const router = useRouter();
+  const { user, token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [played, setPlayed] = useState(0);
   const [created, setCreated] = useState(0);
   const [unlocked, setUnlocked] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
+      // Fast path: known allowlisted session — no network needed.
+      if (isBypassEmail(user?.email)) {
+        if (!cancelled) {
+          setUnlocked(true);
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
+        if (token) apiClient.setToken(token);
         const res = await apiClient.get('/profile/me').catch(() => null);
         const profile = res?.profile || res?.data?.profile || res?.user || res?.data || res;
-        const role = profile?.role;
+        const email = profile?.email || user?.email;
+        if (isBypassEmail(email)) {
+          if (!cancelled) {
+            setUnlocked(true);
+            setLoading(false);
+          }
+          return;
+        }
+
         const playedCount = Number(
           profile?.statistics?.quizzesCompleted ??
             profile?.statistics?.quizzesParticipated ??
@@ -43,26 +70,30 @@ export default function CreateGate({ children }: CreateGateProps) {
         const createdCount = Number(
           profile?.statistics?.quizzesCreated ?? profile?._count?.createdQuizzes ?? 0,
         );
-
-        const isAdmin = role === 'ADMIN' || role === 'ADMIN_WORKER';
-        const email = String(profile?.email || '').trim().toLowerCase();
-        const emailBypass = CREATE_GATE_BYPASS_EMAILS.includes(email);
         const playedSafe = Number.isFinite(playedCount) ? playedCount : 0;
         const createdSafe = Number.isFinite(createdCount) ? createdCount : 0;
         const slots = Math.floor(playedSafe / PLAYS_PER_CREATE);
 
-        setPlayed(playedSafe);
-        setCreated(createdSafe);
-        setUnlocked(isAdmin || emailBypass || createdSafe < slots);
+        if (!cancelled) {
+          setPlayed(playedSafe);
+          setCreated(createdSafe);
+          setUnlocked(createdSafe < slots);
+        }
       } catch {
-        setPlayed(0);
-        setCreated(0);
-        setUnlocked(false);
+        if (!cancelled) {
+          setPlayed(0);
+          setCreated(0);
+          setUnlocked(false);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.email, token]);
 
   if (loading) {
     return (

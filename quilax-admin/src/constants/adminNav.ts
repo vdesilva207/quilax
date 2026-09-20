@@ -23,7 +23,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: '/panel/worker-withdrawals', label: 'Retiros', icon: 'money', roles: ['ADMIN_WORKER'] },
   { href: '/panel/worker-audit', label: 'Auditoría', icon: 'audit', roles: ['ADMIN_WORKER'] },
   { href: '/panel/worker-profile', label: 'Mi perfil', icon: 'lock', roles: ['ADMIN_WORKER'] },
-  { href: '/panel/change-password', label: 'Contraseña', icon: 'lock', roles: ['ADMIN'] },
+  { href: '/panel/change-password', label: 'Mi contraseña', icon: 'lock', roles: ['ADMIN'] },
 ] as const;
 
 /** Rutas del panel permitidas a ADMIN_WORKER (además de auth). El resto redirige a worker-dashboard. */

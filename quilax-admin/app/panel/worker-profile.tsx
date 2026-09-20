@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing } from '@/constants/theme';
@@ -6,7 +6,6 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient, { API_BASE_URL } from '@/lib/api';
 import { clearAuthSession } from '@/lib/secureStorage';
-import PasswordInput from '@/components/ui/PasswordInput';
 
 interface Admin {
   id: number;
@@ -20,11 +19,6 @@ export default function WorkerProfileScreen() {
   const router = useRouter();
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [changing, setChanging] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -35,7 +29,7 @@ export default function WorkerProfileScreen() {
       const token = await AsyncStorage.getItem('authToken');
       const response = await fetch(`${API_BASE_URL}/admin/worker/profile`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -57,50 +51,8 @@ export default function WorkerProfileScreen() {
     return date.toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
-  };
-
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Todos los campos son requeridos');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
-      return;
-    }
-
-    setChanging(true);
-
-    try {
-      const token = await AsyncStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/admin/worker/profile/change-password`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        Alert.alert('Éxito', data.message);
-        setShowPasswordModal(false);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      } else {
-        Alert.alert('Error', data.error);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Error al cambiar contraseña');
-    } finally {
-      setChanging(false);
-    }
   };
 
   if (loading) {
@@ -129,7 +81,9 @@ export default function WorkerProfileScreen() {
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{admin?.username.charAt(0).toUpperCase()}</Text>
+              <Text style={styles.avatarText}>
+                {admin?.username?.charAt(0)?.toUpperCase() || '?'}
+              </Text>
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.username}>{admin?.username}</Text>
@@ -138,9 +92,7 @@ export default function WorkerProfileScreen() {
           </View>
 
           <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>
-              {admin?.role === 'ADMIN_WORKER' || admin?.role === 'ADMIN' ? 'Admin' : admin?.role}
-            </Text>
+            <Text style={styles.roleText}>Admin worker</Text>
           </View>
         </View>
 
@@ -158,24 +110,14 @@ export default function WorkerProfileScreen() {
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Rol:</Text>
-            <Text style={styles.infoValue}>
-              {admin?.role === 'ADMIN_WORKER' || admin?.role === 'ADMIN' ? 'Admin' : admin?.role}
-            </Text>
-          </View>
-
-          <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Miembro desde:</Text>
             <Text style={styles.infoValue}>{formatDate(admin?.createdAt || '')}</Text>
           </View>
         </View>
 
-        <Pressable
-          style={styles.actionButton}
-          onPress={() => setShowPasswordModal(true)}
-        >
-          <Text style={styles.actionButtonText}>Cambiar Contraseña</Text>
-        </Pressable>
+        <Text style={styles.hint}>
+          Para cambiar la contraseña, contacta al admin principal.
+        </Text>
 
         <Pressable
           style={[styles.actionButton, styles.logoutButton]}
@@ -188,48 +130,6 @@ export default function WorkerProfileScreen() {
           <Text style={styles.actionButtonText}>Cerrar Sesión</Text>
         </Pressable>
       </View>
-
-      <Modal
-        visible={showPasswordModal}
-        animationType="slide"
-        transparent={true}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Cambiar Contraseña</Text>
-            <PasswordInput
-              placeholder="Contraseña actual"
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-            />
-            <PasswordInput
-              placeholder="Nueva contraseña"
-              value={newPassword}
-              onChangeText={setNewPassword}
-            />
-            <PasswordInput
-              placeholder="Confirmar nueva contraseña"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-            />
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowPasswordModal(false)}
-              >
-                <Text style={styles.modalButtonText}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={handleChangePassword}
-                disabled={changing}
-              >
-                <Text style={styles.modalButtonText}>{changing ? 'Cambiando...' : 'Cambiar'}</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </ScrollView>
   );
 }
@@ -293,45 +193,56 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   username: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: Colors.light.text,
   },
   email: {
     fontSize: 14,
     color: Colors.light.textSecondary,
+    marginTop: Spacing.one,
   },
   roleBadge: {
+    alignSelf: 'flex-start',
     backgroundColor: Colors.light.backgroundSelected,
-    padding: Spacing.two,
-    borderRadius: 8,
-    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: 6,
   },
   roleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.light.primary,
-  },
-  infoSection: {
-    gap: Spacing.three,
-  },
-  sectionTitle: {
-    fontSize: 20,
+    fontSize: 12,
     fontWeight: 'bold',
     color: Colors.light.text,
+  },
+  infoSection: {
+    gap: Spacing.two,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.light.text,
+    marginBottom: Spacing.two,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingVertical: Spacing.two,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.backgroundSelected,
   },
   infoLabel: {
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.light.textSecondary,
   },
   infoValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: Colors.light.text,
+  },
+  hint: {
+    fontSize: 14,
+    color: Colors.light.textSecondary,
+    lineHeight: 20,
   },
   actionButton: {
     backgroundColor: Colors.light.primary,
@@ -344,52 +255,6 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: Colors.light.background,
-    padding: Spacing.six,
-    borderRadius: 12,
-    width: '90%',
-    gap: Spacing.four,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.light.text,
-  },
-  input: {
-    backgroundColor: Colors.light.backgroundSelected,
-    padding: Spacing.four,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.light.backgroundSelected,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  modalButton: {
-    flex: 1,
-    padding: Spacing.four,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: Colors.light.backgroundSelected,
-  },
-  confirmButton: {
-    backgroundColor: Colors.light.primary,
-  },
-  modalButtonText: {
-    color: Colors.light.text,
     fontSize: 16,
     fontWeight: 'bold',
   },
