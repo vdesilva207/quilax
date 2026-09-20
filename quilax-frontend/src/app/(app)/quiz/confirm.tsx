@@ -69,8 +69,13 @@ export default function ConfirmScreen() {
         throw new Error(publishResult.error || t('confirmQuiz.publishError'));
       }
 
-      Alert.alert(t('confirmQuiz.submittedTitle'), t('confirmQuiz.submittedBody'));
-      router.push('/(app)');
+      router.replace({
+        pathname: '/(app)/quiz/submitted',
+        params: {
+          quizId: String(quizId),
+          scheduledAt: scheduledAt || '',
+        },
+      });
     } catch (error: any) {
       const message = error.message || t('confirmQuiz.submitGenericError');
       setSubmitError(message);

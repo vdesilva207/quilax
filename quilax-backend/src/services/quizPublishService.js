@@ -21,10 +21,17 @@ export async function publishQuiz(userId, quizId, scheduledAt) {
     throw new Error("No se puede publicar");
   }
 
-  // ✅ Validar fecha
+  // ✅ Validar fecha: mínimo 14 días desde ahora (regla de creadores)
+  const MIN_LEAD_MS = 14 * 24 * 60 * 60 * 1000;
   const date = new Date(scheduledAt);
-  if (!scheduledAt || isNaN(date.getTime()) || date < new Date()) {
+  const earliest = new Date(Date.now() + MIN_LEAD_MS);
+  if (!scheduledAt || isNaN(date.getTime())) {
     throw new Error("Fecha inválida");
+  }
+  if (date.getTime() < earliest.getTime()) {
+    throw new Error(
+      "Solo puedes fechar el quiz a partir de 14 días desde ahora",
+    );
   }
 
   // 🎯 VALIDAR REGLAS DE QUIZ (TIEMPO Y PREGUNTAS)

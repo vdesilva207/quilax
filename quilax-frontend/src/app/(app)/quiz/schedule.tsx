@@ -4,8 +4,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing } from '@/constants/theme';
 import { AppScreen, AppHeader, AppSection, AppCard } from '@/components/ui/AppScreen';
-import { GradientButton, FieldLabel } from '@/components/ui/ScreenChrome';
-import { getQuizScheduleYears, buildScheduleDate, isFutureSchedule } from '@/utils/quizScheduleYears';
+import { GradientButton, FieldLabel, InfoBar } from '@/components/ui/ScreenChrome';
+import {
+  getQuizScheduleYears,
+  buildScheduleDate,
+  getMinScheduleDate,
+  isValidCreatorSchedule,
+  QUIZ_SCHEDULE_MIN_LEAD_DAYS,
+} from '@/utils/quizScheduleYears';
 
 export default function QuizScheduleScreen() {
   const { t } = useTranslation();
@@ -15,24 +21,28 @@ export default function QuizScheduleScreen() {
   const difficulty = params.difficulty as string;
   const questionsCount = params.questionsCount as string;
   const years = useMemo(() => getQuizScheduleYears(), []);
+  const minAt = useMemo(() => getMinScheduleDate(), []);
   const defaultAt = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
+    const d = getMinScheduleDate();
     d.setHours(20, 0, 0, 0);
+    // If flooring to 20:00 pushed before min, keep minAt
+    if (d.getTime() < minAt.getTime()) {
+      return new Date(minAt);
+    }
     return d;
-  }, []);
+  }, [minAt]);
 
   const [year, setYear] = useState(defaultAt.getFullYear());
   const [month, setMonth] = useState(defaultAt.getMonth() + 1);
   const [day, setDay] = useState(defaultAt.getDate());
-  const [hour, setHour] = useState(20);
-  const [minute, setMinute] = useState(0);
+  const [hour, setHour] = useState(defaultAt.getHours());
+  const [minute, setMinute] = useState(defaultAt.getMinutes());
   const [error, setError] = useState<string | null>(null);
 
   const handleNext = () => {
     const date = buildScheduleDate(year, month, day, hour, minute);
-    if (!isFutureSchedule(date)) {
-      setError(t('schedule.futureDateError'));
+    if (!isValidCreatorSchedule(date)) {
+      setError(t('schedule.minLeadError', { days: QUIZ_SCHEDULE_MIN_LEAD_DAYS }));
       return;
     }
     router.push({
@@ -50,6 +60,11 @@ export default function QuizScheduleScreen() {
     <AppScreen testID="schedule-screen">
       <AppHeader title={t('schedule.title')} showBack subtitle={t('schedule.subtitle')} />
       <AppSection title={t('schedule.sectionTitle')} accentIndex={0}>
+        <InfoBar>
+          <Text style={styles.hint}>
+            {t('schedule.minLeadHint', { days: QUIZ_SCHEDULE_MIN_LEAD_DAYS })}
+          </Text>
+        </InfoBar>
         <AppCard>
           <FieldLabel>{t('schedule.yearLabel')}</FieldLabel>
           <TextInput
@@ -108,4 +123,5 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
   },
   error: { color: Colors.light.error, marginBottom: Spacing.two, fontWeight: '600' },
+  hint: { color: Colors.light.textSecondary, fontSize: 14, lineHeight: 20 },
 });

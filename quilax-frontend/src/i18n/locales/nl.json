@@ -180,21 +180,30 @@
       "alreadyExists": "Dit e-mailadres heeft al een account. Gebruik «Ik heb al een account» en log in."
     },
     "forgotPasswordScreen": {
-      "description": "Voer uw e-mailadres in om instructies te ontvangen om uw wachtwoord opnieuw in te stellen.",
-      "emailRequired": "Voer uw e-mailadres in",
-      "emailSentTitle": "E-mail verzonden",
-      "emailSentBody": "Controleer je inbox",
-      "sendError": "Kan de e-mail niet verzenden"
+      "description": "Enter your email and we'll send a 6-digit code so you can set a new password.",
+      "emailRequired": "Enter your email",
+      "emailSentTitle": "Check your email",
+      "emailSentBody": "If an account exists for that address, we sent a code. It expires in 15 minutes.",
+      "sendError": "Couldn't send the email. Try again or contact support.",
+      "sendCode": "Send code",
+      "enterCode": "I have the code",
+      "resend": "Send again",
+      "checkSpam": "We sent the code to {{email}}. Check inbox and spam."
     },
     "resetPasswordScreen": {
-      "title": "Nieuw wachtwoord",
-      "subtitle": "Gebruik het token uit de e-mail",
-      "fillAllFields": "Vul alle velden in",
-      "successBody": "Wachtwoord bijgewerkt",
-      "genericError": "Kan het wachtwoord niet opnieuw instellen",
-      "tokenLabel": "Token",
-      "newPasswordLabel": "Nieuw wachtwoord",
-      "confirmLabel": "Bevestigen"
+      "title": "New password",
+      "subtitle": "Enter the email code and your new password",
+      "fillAllFields": "Please fill in all fields",
+      "successBody": "Password updated. You can sign in now.",
+      "genericError": "Couldn't reset the password",
+      "tokenLabel": "6-digit code",
+      "newPasswordLabel": "New password",
+      "confirmLabel": "Confirm",
+      "tokenPlaceholder": "123456",
+      "minLength": "Password must be at least 8 characters",
+      "needUppercase": "Password must include at least 1 uppercase letter",
+      "readyHint": "Go back to sign in with your new password.",
+      "readyHintWithEmail": "Sign in with {{email}} and your new password."
     },
     "verifyEmailScreen": {
       "title": "Controleer uw e-mailadres",
@@ -970,8 +979,10 @@
     "dayLabel": "Dag",
     "hourLabel": "Uur",
     "minuteLabel": "Minuut",
-    "futureDateError": "De datum moet in de toekomst liggen",
-    "next": "Volgende"
+    "futureDateError": "The date must be in the future",
+    "next": "Volgende",
+    "minLeadError": "You can only schedule the quiz from {{days}} days from now",
+    "minLeadHint": "Creators can only schedule a quiz starting {{days}} days from this moment."
   },
   "confirmQuiz": {
     "title": "Quiz indienen",
@@ -1330,5 +1341,17 @@
       "HARASSMENT": "Intimidatie",
       "OTHER": "Ander"
     }
+  },
+  "quizSubmitted": {
+    "title": "Submitted for review",
+    "subtitle": "Thanks for creating on Quilax",
+    "sectionTitle": "What happens next",
+    "lead": "Your quiz was sent to the admin panel for review.",
+    "body": "We'll notify you when it's published (or if changes are needed). You don't need to manage the review status in the app.",
+    "scheduledLabel": "Requested date: {{date}}",
+    "promoteTitle": "Your next job: promote it",
+    "promoteBody": "Once it's live, share the quiz and get people to join. More sign-ups make a better quiz and community.",
+    "goHome": "Go home",
+    "viewQuiz": "View my quiz"
   }
 }

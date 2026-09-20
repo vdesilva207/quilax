@@ -180,21 +180,30 @@
       "networkError": "No se pudo conectar con el servidor. Comprueba que el móvil esté en el mismo Wi‑Fi que el Mac y que la API esté encendida."
     },
     "forgotPasswordScreen": {
-      "description": "Introduce tu email para recibir instrucciones y restablecer tu contraseña.",
+      "description": "Introduce tu email y te enviaremos un código de 6 dígitos para crear una nueva contraseña.",
       "emailRequired": "Introduce tu email",
-      "emailSentTitle": "Email enviado",
-      "emailSentBody": "Revisa tu bandeja de entrada",
-      "sendError": "No se pudo enviar el email"
+      "emailSentTitle": "Revisa tu email",
+      "emailSentBody": "Si hay una cuenta con ese correo, te hemos enviado un código. Caduca en 15 minutos.",
+      "sendError": "No se pudo enviar el email. Inténtalo de nuevo o contacta soporte.",
+      "sendCode": "Enviar código",
+      "enterCode": "Ya tengo el código",
+      "resend": "Volver a enviar",
+      "checkSpam": "Hemos enviado el código a {{email}}. Revisa bandeja de entrada y spam."
     },
     "resetPasswordScreen": {
       "title": "Nueva contraseña",
-      "subtitle": "Usa el token del email",
-      "fillAllFields": "Por favor completa todos los campos",
-      "successBody": "Contraseña actualizada",
+      "subtitle": "Introduce el código del email y tu nueva contraseña",
+      "fillAllFields": "Completa todos los campos",
+      "successBody": "Contraseña actualizada. Ya puedes iniciar sesión.",
       "genericError": "No se pudo restablecer la contraseña",
-      "tokenLabel": "Token",
+      "tokenLabel": "Código de 6 dígitos",
       "newPasswordLabel": "Nueva contraseña",
-      "confirmLabel": "Confirmar"
+      "confirmLabel": "Confirmar",
+      "tokenPlaceholder": "123456",
+      "minLength": "La contraseña debe tener al menos 8 caracteres",
+      "needUppercase": "La contraseña debe tener al menos 1 mayúscula",
+      "readyHint": "Vuelve al inicio de sesión con tu nueva contraseña.",
+      "readyHintWithEmail": "Inicia sesión con {{email}} y tu nueva contraseña."
     },
     "verifyEmailScreen": {
       "title": "Verifica tu email",
@@ -974,7 +983,9 @@
     "hourLabel": "Hora",
     "minuteLabel": "Minuto",
     "futureDateError": "La fecha debe ser futura",
-    "next": "Siguiente"
+    "next": "Siguiente",
+    "minLeadError": "Solo puedes fechar el quiz a partir de {{days}} días desde ahora",
+    "minLeadHint": "Los creadores solo pueden programar el quiz a partir de {{days}} días desde este momento."
   },
   "confirmQuiz": {
     "title": "Enviar quiz",
@@ -1334,5 +1345,17 @@
       "HARASSMENT": "Acoso",
       "OTHER": "Otro"
     }
+  },
+  "quizSubmitted": {
+    "title": "Enviado a revisión",
+    "subtitle": "Gracias por crear en Quilax",
+    "sectionTitle": "Qué pasa ahora",
+    "lead": "Tu quiz se ha mandado a revisión del panel.",
+    "body": "Te avisaremos cuando esté publicado (o si hace falta algún cambio). Hasta entonces no hace falta que hagas nada en la app con el estado de revisión.",
+    "scheduledLabel": "Fecha pedida: {{date}}",
+    "promoteTitle": "Tu siguiente tarea: promocionar",
+    "promoteBody": "Cuando se publique, comparte el quiz y anima a gente a apuntarse. Cuantos más apuntados, mejor para el quiz y para la comunidad.",
+    "goHome": "Ir al inicio",
+    "viewQuiz": "Ver mi quiz"
   }
 }

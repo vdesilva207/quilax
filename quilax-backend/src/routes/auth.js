@@ -187,28 +187,29 @@ router.post("/verify-email", async (req, res) => {
   }
 });
 
-// Solicitar reset de password
-router.post("/forgot-password", rateLimiters.sensitive, async (req, res) => {
+// Solicitar reset de password (auth limiter: más holgado que sensitive 3/h)
+router.post("/forgot-password", rateLimiters.auth, async (req, res) => {
   try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ error: "Email es requerido" });
+    const rawEmail = req.body?.email;
+    if (!rawEmail || !String(rawEmail).trim()) {
+      return res.status(400).json({ error: "Email es requerido", code: "EMAIL_REQUIRED" });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email }
+    const email = String(rawEmail).trim().toLowerCase();
+
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
     });
 
+    // Anti-enumeración: misma forma de respuesta si no existe
     if (!user) {
-      // Por seguridad, no revelamos si el email existe
       return res.json({
         success: true,
-        message: "Si el email existe, recibirás un código para resetear tu contraseña"
+        delivered: true,
+        message: "Si el email existe, recibirás un código para resetear tu contraseña",
       });
     }
 
-    // Generar código de reset de 6 dígitos
     const resetCode = generateVerificationCode();
     const resetExpires = new Date(Date.now() + 900000); // 15 minutos
 
@@ -216,34 +217,46 @@ router.post("/forgot-password", rateLimiters.sensitive, async (req, res) => {
       where: { id: user.id },
       data: {
         resetPasswordToken: resetCode,
-        resetPasswordExpires: resetExpires
-      }
+        resetPasswordExpires: resetExpires,
+      },
     });
 
-    // Enviar email real con el código
     const emailResult = await sendPasswordResetEmail(user.email, resetCode);
 
     if (!emailResult?.ok) {
-      return res.status(500).json({ error: "Error al enviar email de reset" });
+      return res.status(500).json({
+        error: "Error al enviar email de reset",
+        code: "RESET_EMAIL_FAILED",
+      });
+    }
+
+    if (!emailResult.delivered) {
+      // SMTP caído: no fingir éxito (el usuario se queda bloqueado)
+      return res.status(503).json({
+        success: false,
+        delivered: false,
+        error:
+          "No pudimos enviar el email ahora. Revisa spam más tarde o contacta soporte (noreply@appquilax.com).",
+        code: "RESET_EMAIL_NOT_DELIVERED",
+      });
     }
 
     res.json({
       success: true,
-      message: emailResult.delivered
-        ? "Email de reset enviado"
-        : "No se pudo entregar el email; revisa la configuración SMTP",
-      delivered: !!emailResult.delivered,
+      delivered: true,
+      message: "Email de reset enviado",
     });
   } catch (error) {
     console.error("Error sending reset email:", error);
-    res.status(500).json({ error: "Error al enviar email de reset" });
+    res.status(500).json({ error: "Error al enviar email de reset", code: "RESET_EMAIL_ERROR" });
   }
 });
 
 // Resetear password
-router.post("/reset-password", rateLimiters.sensitive, async (req, res) => {
+router.post("/reset-password", rateLimiters.auth, async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
+    const token = String(req.body?.token || "").trim();
+    const newPassword = req.body?.newPassword ?? req.body?.password;
 
     if (!token || !newPassword) {
       return res.status(400).json({ error: "Token y nueva contraseña son requeridos" });

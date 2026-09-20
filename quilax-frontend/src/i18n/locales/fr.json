@@ -180,21 +180,30 @@
       "alreadyExists": "Cet e-mail a déjà un compte. Utilisez « J’ai déjà un compte » et connectez-vous."
     },
     "forgotPasswordScreen": {
-      "description": "Entrez votre email pour recevoir les instructions pour réinitialiser votre mot de passe.",
-      "emailRequired": "Entrez votre email",
-      "emailSentTitle": "Email envoyé",
-      "emailSentBody": "Vérifiez votre boîte de réception",
-      "sendError": "Impossible d'envoyer l'e-mail"
+      "description": "Enter your email and we'll send a 6-digit code so you can set a new password.",
+      "emailRequired": "Enter your email",
+      "emailSentTitle": "Check your email",
+      "emailSentBody": "If an account exists for that address, we sent a code. It expires in 15 minutes.",
+      "sendError": "Couldn't send the email. Try again or contact support.",
+      "sendCode": "Send code",
+      "enterCode": "I have the code",
+      "resend": "Send again",
+      "checkSpam": "We sent the code to {{email}}. Check inbox and spam."
     },
     "resetPasswordScreen": {
-      "title": "Nouveau mot de passe",
-      "subtitle": "Utilisez le jeton de l'e-mail",
-      "fillAllFields": "Veuillez remplir tous les champs",
-      "successBody": "Mot de passe mis à jour",
-      "genericError": "Impossible de réinitialiser le mot de passe",
-      "tokenLabel": "Jeton",
-      "newPasswordLabel": "Nouveau mot de passe",
-      "confirmLabel": "Confirmer"
+      "title": "New password",
+      "subtitle": "Enter the email code and your new password",
+      "fillAllFields": "Please fill in all fields",
+      "successBody": "Password updated. You can sign in now.",
+      "genericError": "Couldn't reset the password",
+      "tokenLabel": "6-digit code",
+      "newPasswordLabel": "New password",
+      "confirmLabel": "Confirm",
+      "tokenPlaceholder": "123456",
+      "minLength": "Password must be at least 8 characters",
+      "needUppercase": "Password must include at least 1 uppercase letter",
+      "readyHint": "Go back to sign in with your new password.",
+      "readyHintWithEmail": "Sign in with {{email}} and your new password."
     },
     "verifyEmailScreen": {
       "title": "Vérifiez votre email",
@@ -970,8 +979,10 @@
     "dayLabel": "Jour",
     "hourLabel": "Heure",
     "minuteLabel": "Minutes",
-    "futureDateError": "La date doit être dans le futur",
-    "next": "Suivant"
+    "futureDateError": "The date must be in the future",
+    "next": "Suivant",
+    "minLeadError": "You can only schedule the quiz from {{days}} days from now",
+    "minLeadHint": "Creators can only schedule a quiz starting {{days}} days from this moment."
   },
   "confirmQuiz": {
     "title": "Envoyer le quiz",
@@ -1330,5 +1341,17 @@
       "HARASSMENT": "Harcèlement",
       "OTHER": "Autre"
     }
+  },
+  "quizSubmitted": {
+    "title": "Submitted for review",
+    "subtitle": "Thanks for creating on Quilax",
+    "sectionTitle": "What happens next",
+    "lead": "Your quiz was sent to the admin panel for review.",
+    "body": "We'll notify you when it's published (or if changes are needed). You don't need to manage the review status in the app.",
+    "scheduledLabel": "Requested date: {{date}}",
+    "promoteTitle": "Your next job: promote it",
+    "promoteBody": "Once it's live, share the quiz and get people to join. More sign-ups make a better quiz and community.",
+    "goHome": "Go home",
+    "viewQuiz": "View my quiz"
   }
 }
