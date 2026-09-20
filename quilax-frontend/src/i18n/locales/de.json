@@ -797,7 +797,10 @@
     "spellError": "Die Rechtschreibung konnte momentan nicht überprüft werden. Versuchen Sie es später noch einmal.",
     "spellReviewTitle": "Überprüfen Sie Rechtschreibung und Wortlaut",
     "spellReviewBody": "Bevor Sie fortfahren, bestätigen Sie, dass Sie den Fragetext überprüft haben (und bei Bedarf die Rechtschreibprüfung verwendet haben).",
-    "spellReviewContinue": "Ich habe es überprüft"
+    "spellReviewContinue": "Ich habe es überprüft",
+    "rulesMaxPointsTitle": "Maximal 1000 Punkte pro Frage",
+    "rulesMaxPointsBody": "Jede richtig beantwortete Frage gibt maximal 1000 Punkte. Je mehr Fragen dein Quiz hat, desto mehr Punkte können Spieler verdienen — und desto attraktiver ist es.",
+    "pointsFieldKicker": "Wichtig · Punkte"
   },
   "quizDetail": {
     "loadError": "Das Quiz konnte nicht geladen werden",
@@ -813,7 +816,7 @@
     "notFound": "Nicht gefunden",
     "headerFallback": "Quiz",
     "liveQuizSubtitle": "Live-Quiz",
-    "questionsBadge": "{{n}} F",
+    "questionsBadge": "{{n}} Fragen",
     "noCoverPhoto": "Kein Titelbild",
     "beforeJoiningSection": "Bevor Sie spielen",
     "recommendations": "Ein paar Tipps",
@@ -879,7 +882,8 @@
       "subtitle": "1 Gutschrift wird jetzt abgezogen",
       "quizFallback": "Quiz #{{id}}"
     },
-    "enterLiveButton": "Zur Partie"
+    "enterLiveButton": "Zur Partie",
+    "questionsCount": "{{n}} Fragen"
   },
   "quizPlay": {
     "loadingEntry": "Teilnahme am Quiz…",
@@ -1005,7 +1009,8 @@
     "submitButton": "Quiz zur Überprüfung einreichen",
     "disclaimer": "Sobald Ihr Quiz zur Überprüfung eingereicht wurde, kann es veröffentlicht oder abgelehnt werden. Sie können nur dann an das Panel schreiben, wenn es abgelehnt wird oder wenn der Administrator Ihnen bei der Genehmigung eine Nachricht hinterlässt (72 Stunden).",
     "writeToPanelWithReason": "Schreiben Sie an das Gremium · {{reason}}",
-    "writeToPanel": "Schreiben Sie an das Admin-Panel"
+    "writeToPanel": "Schreiben Sie an das Admin-Panel",
+    "submitImageError": "Quiz konnte nicht gesendet werden. Wenn du Fotos hinzugefügt hast, entferne sie und wähle sie erneut aus der Galerie (JPG/PNG), und versuche es erneut."
   },
   "search": {
     "title": "Suche",

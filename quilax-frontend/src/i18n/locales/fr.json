@@ -797,7 +797,10 @@
     "spellError": "Impossible de vérifier l'orthographe pour le moment. Réessayez plus tard.",
     "spellReviewTitle": "Réviser l'orthographe et la formulation",
     "spellReviewBody": "Avant de continuer, confirmez que vous avez lu le texte de la question (et utilisé le correcteur orthographique si nécessaire).",
-    "spellReviewContinue": "Je l'ai examiné"
+    "spellReviewContinue": "Je l'ai examiné",
+    "rulesMaxPointsTitle": "Maximum 1000 points par question",
+    "rulesMaxPointsBody": "Chaque question correctement répondue rapporte au maximum 1000 points. Plus votre quiz a de questions, plus les joueurs peuvent gagner de points — et plus il est attractif.",
+    "pointsFieldKicker": "Important · score"
   },
   "quizDetail": {
     "loadError": "Impossible de charger le quiz",
@@ -813,7 +816,7 @@
     "notFound": "Non trouvé",
     "headerFallback": "Quiz",
     "liveQuizSubtitle": "Quiz en direct",
-    "questionsBadge": "{{n}} Q",
+    "questionsBadge": "{{n}} questions",
     "noCoverPhoto": "Pas de photo de couverture",
     "beforeJoiningSection": "Avant de jouer",
     "recommendations": "Quelques conseils",
@@ -879,7 +882,8 @@
       "subtitle": "1 crédit sera déduit maintenant",
       "quizFallback": "Quiz #{{id}}"
     },
-    "enterLiveButton": "Entrer dans la partie"
+    "enterLiveButton": "Entrer dans la partie",
+    "questionsCount": "{{n}} questions"
   },
   "quizPlay": {
     "loadingEntry": "Entrer dans le quiz…",
@@ -1005,7 +1009,8 @@
     "submitButton": "Envoyer le quiz pour examen",
     "disclaimer": "Une fois soumis pour révision, votre quiz peut être publié ou rejeté. Vous ne pourrez écrire au panel que s'il est rejeté, ou si l'administrateur vous laisse un message lors de son approbation (72 h).",
     "writeToPanelWithReason": "Écrire au panneau · {{reason}}",
-    "writeToPanel": "Écrire au panneau d'administration"
+    "writeToPanel": "Écrire au panneau d'administration",
+    "submitImageError": "Impossible d'envoyer le quiz. Si vous avez ajouté des photos, supprimez-les et resélectionnez-les depuis la galerie (JPG/PNG), puis réessayez."
   },
   "search": {
     "title": "Recherche",

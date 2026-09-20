@@ -34,6 +34,7 @@ import {
 } from '@/utils/earlyJoinBonus';
 import { APP_GRADIENT_SOFT, GRADIENT_HORIZONTAL } from '@/constants/gradients';
 import { useAuth } from '@/context/AuthContext';
+import CustomIcon from '@/components/CustomIcon';
 
 /** Prize pool / payout breakdown is hidden until this many players have joined. */
 const PRIZE_POOL_REVEAL_AT = 20;
@@ -305,6 +306,14 @@ export default function QuizDetailScreen() {
           )}
 
           <Text style={styles.entryLine}>{t('quizDetail.entryInfo')}</Text>
+          <View style={styles.questionsCountRow}>
+            <CustomIcon name="rules" size={18} color={Colors.light.text} />
+            <Text style={styles.questionsCountText}>
+              {t('quizDetail.questionsCount', {
+                n: quiz._count?.questions || quiz.questions?.length || 0,
+              })}
+            </Text>
+          </View>
 
           {showEarlyJoin ? (
             <View style={styles.earlyJoinCard}>
@@ -607,8 +616,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.light.textSecondary,
-    marginBottom: Spacing.three,
+    marginBottom: Spacing.two,
     lineHeight: 20,
+  },
+  questionsCountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginBottom: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: 12,
+    backgroundColor: Colors.light.backgroundElement,
+    borderWidth: 1,
+    borderColor: Colors.light.backgroundSelected,
+  },
+  questionsCountText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.light.text,
   },
   earlyJoinCard: {
     width: '100%',

@@ -797,7 +797,10 @@
     "spellError": "Não foi possível verificar a ortografia no momento. Tente novamente mais tarde.",
     "spellReviewTitle": "Revise a ortografia e o texto",
     "spellReviewBody": "Antes de continuar, confirme que você revisou o texto da pergunta (e usou o corretor ortográfico, se necessário).",
-    "spellReviewContinue": "Eu revisei"
+    "spellReviewContinue": "Eu revisei",
+    "rulesMaxPointsTitle": "Máximo 1000 pontos por pergunta",
+    "rulesMaxPointsBody": "Cada pergunta respondida corretamente dá no máximo 1000 pontos. Quanto mais perguntas o teu quiz tiver, mais pontos os jogadores podem ganhar — e mais atrativo fica.",
+    "pointsFieldKicker": "Importante · pontuação"
   },
   "quizDetail": {
     "loadError": "Não foi possível carregar o questionário",
@@ -813,7 +816,7 @@
     "notFound": "Não encontrado",
     "headerFallback": "Quiz",
     "liveQuizSubtitle": "Quiz ao vivo",
-    "questionsBadge": "{{n}}P",
+    "questionsBadge": "{{n}} perguntas",
     "noCoverPhoto": "Sem foto de capa",
     "beforeJoiningSection": "Antes de jogar",
     "recommendations": "Algumas dicas",
@@ -879,7 +882,8 @@
       "subtitle": "1 crédito será deduzido agora",
       "quizFallback": "Quiz #{{id}}"
     },
-    "enterLiveButton": "Entrar na partida"
+    "enterLiveButton": "Entrar na partida",
+    "questionsCount": "{{n}} perguntas"
   },
   "quizPlay": {
     "loadingEntry": "Entrando no quiz…",
@@ -1005,7 +1009,8 @@
     "submitButton": "Enviar questionário para revisão",
     "disclaimer": "Depois de enviado para revisão, seu questionário poderá ser publicado ou rejeitado. Você só poderá escrever para o painel se ele for rejeitado ou se o administrador deixar uma mensagem ao aprová-lo (72 h).",
     "writeToPanelWithReason": "Escreva no painel · {{reason}}",
-    "writeToPanel": "Escreva para o painel de administração"
+    "writeToPanel": "Escreva para o painel de administração",
+    "submitImageError": "Não foi possível enviar o quiz. Se adicionaste fotos, remove-as e volta a escolhê-las da galeria (JPG/PNG), depois tenta de novo."
   },
   "search": {
     "title": "Pesquisar",

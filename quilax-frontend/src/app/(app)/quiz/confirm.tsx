@@ -10,6 +10,23 @@ import { AppScreen, AppHeader, AppSection, AppCard } from '@/components/ui/AppSc
 import { GradientButton, InfoBar } from '@/components/ui/ScreenChrome';
 import { formatQuizStart, resolveViewerTimezone } from '@/utils/timezone';
 
+/** Never surface iOS pasteboard / temp file paths in product alerts. */
+function sanitizeSubmitError(raw: unknown, fallback: string): string {
+  const message = String((raw as any)?.message || raw || '').trim();
+  if (!message) return fallback;
+  if (
+    /\/var\/folders\//i.test(message) ||
+    /useractivityd/i.test(message) ||
+    /shared-pasteboard/i.test(message) ||
+    /\.rtfd\b/i.test(message) ||
+    /^file:\/\//i.test(message) ||
+    /ph:\/\//i.test(message)
+  ) {
+    return fallback;
+  }
+  return message;
+}
+
 export default function ConfirmScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -77,9 +94,10 @@ export default function ConfirmScreen() {
         },
       });
     } catch (error: any) {
-      const message = error.message || t('confirmQuiz.submitGenericError');
-      setSubmitError(message);
-      Alert.alert(t('common.error'), message);
+      const fallback = t('confirmQuiz.submitImageError');
+      const safe = sanitizeSubmitError(error, fallback);
+      setSubmitError(safe);
+      Alert.alert(t('common.error'), safe);
     } finally {
       setSubmitting(false);
     }

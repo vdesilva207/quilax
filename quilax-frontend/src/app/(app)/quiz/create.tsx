@@ -32,6 +32,29 @@ const START_TIME = 3; // Segundos de inicio del quiz (animación)
 const FIXED_CORRECTION_TIME = 2; // Segundos de corrección por pregunta
 const FIXED_RANKING_TIME = 6; // Segundos de ranking por pregunta
 
+function recommendedPointsPerCentisecond(answerSeconds: number): number {
+  if (!answerSeconds || answerSeconds <= 0) return 1;
+  return Math.max(1, Math.ceil(1000 / (answerSeconds * 100)));
+}
+
+function isUnusableLocalImageUri(uri: string): boolean {
+  const u = (uri || '').toLowerCase();
+  return (
+    u.startsWith('file://') ||
+    u.startsWith('ph://') ||
+    u.startsWith('assets-library://') ||
+    u.includes('useractivityd') ||
+    u.includes('shared-pasteboard') ||
+    u.includes('/var/folders/') ||
+    u.includes('.rtfd')
+  );
+}
+
+function isPortableImageUri(uri: string): boolean {
+  const u = (uri || '').trim();
+  return /^data:image\//i.test(u) || /^https:\/\//i.test(u);
+}
+
 interface Question {
   id: string;
   text: string;
@@ -70,7 +93,7 @@ export default function CreateQuizScreen() {
   >({});
   const [spellCheckingId, setSpellCheckingId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([
-    { id: '1', text: '', options: ['', '', '', ''], correctOption: 0, questionReadDuration: 10, questionAnswerDuration: 30, questionType: 'multiple_choice', points: 100 }
+    { id: '1', text: '', options: ['', '', '', ''], correctOption: 0, questionReadDuration: 10, questionAnswerDuration: 30, questionType: 'multiple_choice', points: recommendedPointsPerCentisecond(30) }
   ]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -95,7 +118,7 @@ export default function CreateQuizScreen() {
     
     setQuestions([
       ...questions,
-      { id: Date.now().toString(), text: '', options: ['', '', '', ''], correctOption: 0, questionReadDuration: 10, questionAnswerDuration: 30, questionType: 'multiple_choice', points: 100 }
+      { id: Date.now().toString(), text: '', options: ['', '', '', ''], correctOption: 0, questionReadDuration: 10, questionAnswerDuration: 30, questionType: 'multiple_choice', points: recommendedPointsPerCentisecond(30) }
     ]);
   };
 
@@ -206,10 +229,20 @@ export default function CreateQuizScreen() {
   const handleDurationChange = (questionId: string, field: 'questionReadDuration' | 'questionAnswerDuration' | 'points', value: string) => {
     const numValue = parseInt(value) || 0;
     setQuestions((prev) => {
+      const apply = (q: Question) => {
+        if (field === 'questionAnswerDuration') {
+          return {
+            ...q,
+            questionAnswerDuration: numValue,
+            points: recommendedPointsPerCentisecond(numValue),
+          };
+        }
+        return { ...q, [field]: numValue };
+      };
       if (applyToAll) {
-        return prev.map((q) => ({ ...q, [field]: numValue }));
+        return prev.map(apply);
       }
-      return prev.map((q) => (q.id === questionId ? { ...q, [field]: numValue } : q));
+      return prev.map((q) => (q.id === questionId ? apply(q) : q));
     });
   };
 
@@ -262,28 +295,48 @@ export default function CreateQuizScreen() {
   const progressPercentage = Math.min((totalDurationSeconds / MAX_DURATION_SECONDS) * 100, 100);
 
   const handleAddImage = async (questionId: string) => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.7,
+        base64: true,
+      });
 
-    if (!result.canceled && result.assets[0]) {
+      if (result.canceled || !result.assets?.[0]) return;
+
       const asset = result.assets[0];
-      const uri = (asset.uri || '').toLowerCase();
-      const mime = (asset.mimeType || '').toLowerCase();
+      const uri = asset.uri || '';
+      const mime = (asset.mimeType || 'image/jpeg').toLowerCase();
       const ok =
         mime.startsWith('image/') ||
         /\.(jpe?g|png|webp|gif)$/i.test(uri) ||
-        uri.startsWith('data:image/');
-      if (asset.uri && ok) {
-        setQuestions(questions.map(q => 
-          q.id === questionId ? { ...q, imageUrl: asset.uri } : q
-        ));
-      } else {
+        uri.toLowerCase().startsWith('data:image/');
+
+      if (!ok) {
         Alert.alert(t('createQuiz.invalidFormatTitle'), t('createQuiz.invalidFormatBody'));
+        return;
       }
+
+      let imageUrl: string | null = null;
+      if (asset.base64) {
+        imageUrl = `data:${mime.startsWith('image/') ? mime : 'image/jpeg'};base64,${asset.base64}`;
+      } else if (isPortableImageUri(uri)) {
+        imageUrl = uri;
+      }
+
+      if (!imageUrl || isUnusableLocalImageUri(imageUrl)) {
+        Alert.alert(t('common.error'), t('createQuiz.imageReadError'));
+        return;
+      }
+
+      setQuestions((prev) =>
+        prev.map((q) => (q.id === questionId ? { ...q, imageUrl } : q))
+      );
+    } catch (error) {
+      console.error('Error adding question image:', error);
+      Alert.alert(t('common.error'), t('createQuiz.imageReadError'));
     }
   };
 
@@ -294,24 +347,29 @@ export default function CreateQuizScreen() {
   };
 
   const handleAddCoverImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.7,
-      base64: true,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.7,
+        base64: true,
+      });
 
-    if (!result.canceled && result.assets[0]) {
+      if (result.canceled || !result.assets?.[0]) return;
+
       const asset = result.assets[0];
-      const mime = asset.mimeType || 'image/jpeg';
+      const mime = (asset.mimeType || 'image/jpeg').toLowerCase();
       if (asset.base64) {
-        setCoverImage(`data:${mime};base64,${asset.base64}`);
-      } else if (asset.uri) {
+        setCoverImage(`data:${mime.startsWith('image/') ? mime : 'image/jpeg'};base64,${asset.base64}`);
+      } else if (asset.uri && isPortableImageUri(asset.uri) && !isUnusableLocalImageUri(asset.uri)) {
         setCoverImage(asset.uri);
       } else {
         Alert.alert(t('common.error'), t('createQuiz.imageReadError'));
       }
+    } catch (error) {
+      console.error('Error adding cover image:', error);
+      Alert.alert(t('common.error'), t('createQuiz.imageReadError'));
     }
   };
 
@@ -319,24 +377,55 @@ export default function CreateQuizScreen() {
     setCoverImage('');
   };
 
-  const buildQuizPayload = () => ({
-    title: title.trim(),
-    category: category || undefined,
-    language: quizLanguage,
-    coverImage: coverImage || undefined,
-    description: description.trim() || undefined,
-    tips: tips.trim() || undefined,
-    questions: questions.map((q) => ({
-      text: q.text,
-      imageUrl: q.imageUrl || undefined,
-      timeReadMs: (q.questionReadDuration || 5) * 1000,
-      timeAnswerMs: (q.questionAnswerDuration || 10) * 1000,
-      answers: (q.options || []).map((opt: string, idx: number) => ({
-        text: opt,
-        isCorrect: idx === q.correctOption,
-      })),
-    })),
-  });
+  const buildQuizPayload = () => {
+    const cover =
+      coverImage && isPortableImageUri(coverImage) && !isUnusableLocalImageUri(coverImage)
+        ? coverImage
+        : undefined;
+
+    return {
+      title: title.trim(),
+      category: category || undefined,
+      language: quizLanguage,
+      coverImage: cover,
+      description: description.trim() || undefined,
+      tips: tips.trim() || undefined,
+      questions: questions.map((q) => {
+        const imageUrl =
+          q.imageUrl && isPortableImageUri(q.imageUrl) && !isUnusableLocalImageUri(q.imageUrl)
+            ? q.imageUrl
+            : undefined;
+        return {
+          text: q.text,
+          imageUrl,
+          timeReadMs: (q.questionReadDuration || 5) * 1000,
+          timeAnswerMs: (q.questionAnswerDuration || 10) * 1000,
+          answers: (q.options || []).map((opt: string, idx: number) => ({
+            text: opt,
+            isCorrect: idx === q.correctOption,
+          })),
+        };
+      }),
+    };
+  };
+
+  /** createDraft only stores title — always follow with update so questions persist. */
+  const persistQuiz = async () => {
+    const quizData = buildQuizPayload();
+    if (quizId) {
+      return quizService.updateQuiz(quizId, quizData);
+    }
+    const created = await quizService.createQuiz(quizData);
+    if (!created.success || !created.data?.id) {
+      return created;
+    }
+    const id = created.data.id as number;
+    const updated = await quizService.updateQuiz(id, quizData);
+    if (updated.success) {
+      return { success: true, data: { ...(updated.data || {}), id } };
+    }
+    return updated;
+  };
 
   const handleSaveDraft = async () => {
     if (!title.trim()) {
@@ -357,10 +446,7 @@ export default function CreateQuizScreen() {
     try {
       setSaving(true);
 
-      const quizData = buildQuizPayload();
-      const result = quizId
-        ? await quizService.updateQuiz(quizId, quizData)
-        : await quizService.createQuiz(quizData);
+      const result = await persistQuiz();
 
       if (result.success) {
         if (result.data?.id) setQuizId(result.data.id);
@@ -406,10 +492,7 @@ export default function CreateQuizScreen() {
     try {
       setAdvancing(true);
 
-      const quizData = buildQuizPayload();
-      const result = quizId
-        ? await quizService.updateQuiz(quizId, quizData)
-        : await quizService.createQuiz(quizData);
+      const result = await persistQuiz();
 
       if (!result.success) {
         Alert.alert(t('common.error'), result.error || t('createQuiz.nextErrorBody'));
@@ -454,6 +537,13 @@ export default function CreateQuizScreen() {
       </LinearGradient>
 
       <View style={styles.rulesBar}>
+        <View style={styles.pointsBanner}>
+          <CustomIcon name="star" size={18} color={Colors.light.primary} />
+          <View style={styles.pointsBannerTextCol}>
+            <Text style={styles.pointsBannerTitle}>{t('createQuiz.rulesMaxPointsTitle')}</Text>
+            <Text style={styles.pointsBannerBody}>{t('createQuiz.rulesMaxPointsBody')}</Text>
+          </View>
+        </View>
         <View style={styles.ruleItem}>
           <CustomIcon name="rules" size={16} color={Colors.light.textSecondary} />
           <Text style={styles.rulesText}>
@@ -475,12 +565,6 @@ export default function CreateQuizScreen() {
         <View style={styles.spellBanner}>
           <Text style={styles.spellBannerTitle}>{t('createQuiz.spellBannerTitle')}</Text>
           <Text style={styles.spellBannerBody}>{t('createQuiz.spellBannerBody')}</Text>
-        </View>
-        <View style={styles.ruleItem}>
-          <CustomIcon name="star" size={16} color={Colors.light.textSecondary} />
-          <Text style={styles.rulesText}>
-            {t('createQuiz.rulesMorePoints')}
-          </Text>
         </View>
       </View>
 
@@ -731,32 +815,35 @@ export default function CreateQuizScreen() {
                 </View>
               ) : null}
               <View style={styles.durationContainer}>
-                <View style={styles.durationField}>
-                  <Text style={styles.durationLabel}>{t('createQuiz.readTimeLabel')}</Text>
-                  <TextInput
-                    style={styles.durationInput}
-                    placeholder="10"
-                    placeholderTextColor={Colors.light.textSecondary}
-                    keyboardType="number-pad"
-                    value={question.questionReadDuration.toString()}
-                    onChangeText={(text) => handleDurationChange(question.id, 'questionReadDuration', text)}
-                  />
+                <View style={styles.durationRow}>
+                  <View style={[styles.durationField, styles.durationFieldHalf]}>
+                    <Text style={styles.durationLabel}>{t('createQuiz.readTimeLabel')}</Text>
+                    <TextInput
+                      style={styles.durationInput}
+                      placeholder="10"
+                      placeholderTextColor={Colors.light.textSecondary}
+                      keyboardType="number-pad"
+                      value={question.questionReadDuration.toString()}
+                      onChangeText={(text) => handleDurationChange(question.id, 'questionReadDuration', text)}
+                    />
+                  </View>
+                  <View style={[styles.durationField, styles.durationFieldHalf]}>
+                    <Text style={styles.durationLabel}>{t('createQuiz.answerTimeLabel')}</Text>
+                    <TextInput
+                      style={styles.durationInput}
+                      placeholder="30"
+                      placeholderTextColor={Colors.light.textSecondary}
+                      keyboardType="number-pad"
+                      value={question.questionAnswerDuration.toString()}
+                      onChangeText={(text) => handleDurationChange(question.id, 'questionAnswerDuration', text)}
+                    />
+                  </View>
                 </View>
-                <View style={styles.durationField}>
-                  <Text style={styles.durationLabel}>{t('createQuiz.answerTimeLabel')}</Text>
-                  <TextInput
-                    style={styles.durationInput}
-                    placeholder="30"
-                    placeholderTextColor={Colors.light.textSecondary}
-                    keyboardType="number-pad"
-                    value={question.questionAnswerDuration.toString()}
-                    onChangeText={(text) => handleDurationChange(question.id, 'questionAnswerDuration', text)}
-                  />
-                </View>
-                <View style={styles.durationField}>
+                <View style={styles.pointsFieldHighlight}>
+                  <Text style={styles.pointsFieldKicker}>{t('createQuiz.pointsFieldKicker')}</Text>
                   <Text style={styles.durationLabel}>{t('createQuiz.pointsLabel')}</Text>
                   <TextInput
-                    style={styles.durationInput}
+                    style={styles.pointsInput}
                     placeholder={t('createQuiz.autoPlaceholder')}
                     placeholderTextColor={Colors.light.textSecondary}
                     keyboardType="number-pad"
@@ -767,7 +854,7 @@ export default function CreateQuizScreen() {
                     {t('createQuiz.pointsRecommended', {
                       points:
                         question.questionAnswerDuration > 0
-                          ? Math.ceil(1000 / (question.questionAnswerDuration * 100))
+                          ? recommendedPointsPerCentisecond(question.questionAnswerDuration)
                           : 0,
                       centiseconds: question.questionAnswerDuration * 100,
                     })}
@@ -985,17 +1072,43 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     margin: Spacing.four,
     borderRadius: 12,
-    gap: Spacing.one,
+    gap: Spacing.two,
+  },
+  pointsBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two,
+    backgroundColor: Colors.light.background,
+    borderWidth: 1,
+    borderColor: Colors.light.primary,
+    borderRadius: 10,
+    padding: Spacing.three,
+    marginBottom: Spacing.one,
+  },
+  pointsBannerTextCol: {
+    flex: 1,
+  },
+  pointsBannerTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.light.text,
+    marginBottom: 4,
+  },
+  pointsBannerBody: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: Colors.light.textSecondary,
   },
   ruleItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: Spacing.one,
   },
   rulesText: {
     flex: 1,
     flexShrink: 1,
-    fontSize: 14,
+    fontSize: 13,
+    lineHeight: 18,
     color: Colors.light.textSecondary,
   },
   progressBarContainer: {
@@ -1306,14 +1419,49 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: Spacing.three,
   },
+  durationRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
   durationField: {
     width: '100%',
+  },
+  durationFieldHalf: {
+    flex: 1,
   },
   durationLabel: {
     fontSize: 14,
     color: Colors.light.text,
     marginBottom: Spacing.one,
     fontWeight: '600',
+  },
+  pointsFieldHighlight: {
+    width: '100%',
+    backgroundColor: Colors.light.background,
+    borderWidth: 2,
+    borderColor: Colors.light.primary,
+    borderRadius: 12,
+    padding: Spacing.three,
+    gap: Spacing.one,
+  },
+  pointsFieldKicker: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: Colors.light.primary,
+    marginBottom: 2,
+  },
+  pointsInput: {
+    backgroundColor: Colors.light.backgroundElement,
+    borderWidth: 1,
+    borderColor: Colors.light.primary,
+    borderRadius: 10,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.light.text,
   },
   durationHint: {
     fontSize: 11,

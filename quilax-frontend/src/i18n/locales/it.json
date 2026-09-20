@@ -797,7 +797,10 @@
     "spellError": "Impossibile controllare l'ortografia in questo momento. Riprova più tardi.",
     "spellReviewTitle": "Rivedi l'ortografia e la formulazione",
     "spellReviewBody": "Prima di continuare, conferma di aver rivisto il testo della domanda (e di aver utilizzato il controllo ortografico, se necessario).",
-    "spellReviewContinue": "L'ho rivisto"
+    "spellReviewContinue": "L'ho rivisto",
+    "rulesMaxPointsTitle": "Massimo 1000 punti per domanda",
+    "rulesMaxPointsBody": "Ogni domanda risposta correttamente vale al massimo 1000 punti. Più domande ha il tuo quiz, più punti possono guadagnare i giocatori — e più è attraente.",
+    "pointsFieldKicker": "Importante · punteggio"
   },
   "quizDetail": {
     "loadError": "Impossibile caricare il quiz",
@@ -813,7 +816,7 @@
     "notFound": "Non trovato",
     "headerFallback": "Quiz",
     "liveQuizSubtitle": "Quiz dal vivo",
-    "questionsBadge": "{{n}} Q",
+    "questionsBadge": "{{n}} domande",
     "noCoverPhoto": "Nessuna foto di copertina",
     "beforeJoiningSection": "Prima di giocare",
     "recommendations": "Un paio di consigli",
@@ -879,7 +882,8 @@
       "subtitle": "1 credito verrà detratto ora",
       "quizFallback": "Quiz #{{id}}"
     },
-    "enterLiveButton": "Entra nella partita"
+    "enterLiveButton": "Entra nella partita",
+    "questionsCount": "{{n}} domande"
   },
   "quizPlay": {
     "loadingEntry": "Entrando nel quiz...",
@@ -1005,7 +1009,8 @@
     "submitButton": "Invia il quiz per la revisione",
     "disclaimer": "Una volta inviato per la revisione, il tuo quiz può essere pubblicato o rifiutato. Potrai scrivere al pannello solo se viene rifiutato, o se l'amministratore ti lascia un messaggio al momento dell'approvazione (72 h).",
     "writeToPanelWithReason": "Scrivere al pannello · {{reason}}",
-    "writeToPanel": "Scrivi al pannello di amministrazione"
+    "writeToPanel": "Scrivi al pannello di amministrazione",
+    "submitImageError": "Impossibile inviare il quiz. Se hai aggiunto foto, rimuovile e riselezionale dalla galleria (JPG/PNG), poi riprova."
   },
   "search": {
     "title": "Cerca",

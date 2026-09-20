@@ -9,6 +9,18 @@ const MAX_DESC = 500;
 /** Every N finished plays unlocks 1 create slot (ratio, not a one-time unlock). */
 const PLAYS_PER_CREATE_SLOT = 10;
 
+/** Only persist portable image URLs (https or data URI). Local/pasteboard paths break publish. */
+function sanitizeQuestionImageUrl(raw) {
+  if (raw == null || raw === "") return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  if (/^data:image\//i.test(s)) return s;
+  if (/^https:\/\//i.test(s)) return s;
+  throw new Error(
+    "Hay una imagen de pregunta inválida (ruta local o del portapapeles). Elimínala y vuelve a añadirla desde la galería en JPG o PNG.",
+  );
+}
+
 /*
 ====================================
 VALIDAR SI USUARIO PUEDE CREAR QUIZZES
@@ -112,33 +124,39 @@ export async function updateDraft(userId, quizId, data) {
 
   return await prisma.$transaction(async (tx) => {
     // 🧠 1. UPDATE SIMPLE (sin preguntas)
+    const updateData = {};
+    if (data.title) {
+      updateData.title = data.title.trim().slice(0, MAX_TITLE);
+    }
+    if (data.difficulty !== undefined && data.difficulty !== null && data.difficulty !== "") {
+      const d = Number(data.difficulty);
+      if (Number.isFinite(d) && d >= 1 && d <= 10) {
+        updateData.difficulty = Math.round(d);
+      }
+    }
+
     const updatedQuiz = await tx.quiz.update({
-  where: { id },
-  data: {
-    ...(data.title && {
-      title: data.title.trim().slice(0, 100),
-    }),
-    // ❌ NADA de adminPercent ni creatorPercent aquí
-  },
-});
+      where: { id },
+      data: updateData,
+    });
 
     // 🧠 2. SI VIENEN PREGUNTAS → REEMPLAZAR
     if (data.questions && Array.isArray(data.questions)) {
       // 🎯 VALIDAR REGLAS DE TIEMPO Y PREGUNTAS ANTES DE GUARDAR
       const tempQuiz = {
         title: updatedQuiz.title,
-        questions: data.questions.map(q => ({
+        questions: data.questions.map((q) => ({
           text: q.text,
           readTime: Math.floor((q.timeReadMs || 5000) / 1000),
           answerTime: Math.floor((q.timeAnswerMs || 10000) / 1000),
-}))
+        })),
       };
-      
+
       const validation = validateQuizRules(tempQuiz);
       if (!validation.isValid) {
-        throw new Error(`Validación fallida: ${validation.errors.join('. ')}`);
+        throw new Error(`Validación fallida: ${validation.errors.join(". ")}`);
       }
-      
+
       // borrar anteriores
       await tx.quizQuestion.deleteMany({ where: { quizId: id } });
 
@@ -147,11 +165,11 @@ export async function updateDraft(userId, quizId, data) {
           throw new Error("Formato de preguntas inválido");
         }
 
-        const createdQuestion = await tx.quizQuestion.create({
+        await tx.quizQuestion.create({
           data: {
             quizId: id,
             text: q.text.trim(),
-            imageUrl: q.imageUrl ? String(q.imageUrl).trim() : null,
+            imageUrl: sanitizeQuestionImageUrl(q.imageUrl),
             maxPoints: 1000,
             readTime: Math.floor((q.timeReadMs || 5000) / 1000),
             answerTime: Math.floor((q.timeAnswerMs || 10000) / 1000),
@@ -164,8 +182,6 @@ export async function updateDraft(userId, quizId, data) {
           },
         });
       }
-      // estimatedDuration not on Quiz schema — skip persistence.
-
     }
 
     // 🧠 ACTUALIZAR REWARD RULES (economía)

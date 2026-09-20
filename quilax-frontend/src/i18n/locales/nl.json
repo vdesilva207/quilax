@@ -797,7 +797,10 @@
     "spellError": "Kan de spelling momenteel niet controleren. Probeer het later opnieuw.",
     "spellReviewTitle": "Controleer de spelling en formulering",
     "spellReviewBody": "Voordat u doorgaat, moet u bevestigen dat u de vraagtekst heeft gecontroleerd (en indien nodig de spellingcontrole heeft gebruikt).",
-    "spellReviewContinue": "Ik heb het beoordeeld"
+    "spellReviewContinue": "Ik heb het beoordeeld",
+    "rulesMaxPointsTitle": "Maximaal 1000 punten per vraag",
+    "rulesMaxPointsBody": "Elke goed beantwoorde vraag levert maximaal 1000 punten op. Hoe meer vragen je quiz heeft, hoe meer punten spelers kunnen verdienen — en hoe aantrekkelijker hij is.",
+    "pointsFieldKicker": "Belangrijk · score"
   },
   "quizDetail": {
     "loadError": "Kan de quiz niet laden",
@@ -813,7 +816,7 @@
     "notFound": "Niet gevonden",
     "headerFallback": "Quiz",
     "liveQuizSubtitle": "Live-quiz",
-    "questionsBadge": "{{n}} Q",
+    "questionsBadge": "{{n}} vragen",
     "noCoverPhoto": "Geen omslagfoto",
     "beforeJoiningSection": "Voordat je gaat spelen",
     "recommendations": "Een paar tips",
@@ -879,7 +882,8 @@
       "subtitle": "Er wordt nu 1 credit afgeschreven",
       "quizFallback": "Quiz #{{id}}"
     },
-    "enterLiveButton": "Deelnemen aan wedstrijd"
+    "enterLiveButton": "Deelnemen aan wedstrijd",
+    "questionsCount": "{{n}} vragen"
   },
   "quizPlay": {
     "loadingEntry": "Meedoen aan de quiz…",
@@ -1005,7 +1009,8 @@
     "submitButton": "Quiz ter beoordeling indienen",
     "disclaimer": "Zodra uw quiz ter beoordeling is ingediend, kan deze worden gepubliceerd of afgewezen. U kunt alleen naar het panel schrijven als het wordt afgewezen, of als de beheerder een bericht achterlaat bij het goedkeuren (72 uur).",
     "writeToPanelWithReason": "Schrijf naar het paneel · {{reason}}",
-    "writeToPanel": "Schrijf naar het beheerdersdashboard"
+    "writeToPanel": "Schrijf naar het beheerdersdashboard",
+    "submitImageError": "Quiz kon niet worden ingediend. Als je foto’s hebt toegevoegd, verwijder ze en kies ze opnieuw uit de galerij (JPG/PNG), probeer het daarna opnieuw."
   },
   "search": {
     "title": "Zoeken",
