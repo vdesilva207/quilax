@@ -1008,12 +1008,15 @@
     "yearLabel": "Année",
     "monthLabel": "Mois",
     "dayLabel": "Jour",
-    "hourLabel": "Heure",
+    "hourLabel": "Heure (0–23)",
     "minuteLabel": "Minutes",
     "futureDateError": "The date must be in the future",
     "next": "Suivant",
     "minLeadError": "You can only schedule the quiz from {{days}} days from now",
-    "minLeadHint": "Creators can only schedule a quiz starting {{days}} days from this moment."
+    "minLeadHint": "Creators can only schedule a quiz starting {{days}} days from this moment.",
+    "timezoneHint": "L’heure est dans votre fuseau ({{abbr}} · {{tz}}). Les joueurs la verront dans le leur.",
+    "previewLabel": "Comme vous le verrez",
+    "invalidDateError": "Date ou heure invalide"
   },
   "confirmQuiz": {
     "title": "Envoyer le quiz",

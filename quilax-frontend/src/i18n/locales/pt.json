@@ -1008,12 +1008,15 @@
     "yearLabel": "Ano",
     "monthLabel": "Mês",
     "dayLabel": "Dia",
-    "hourLabel": "Hora",
-    "minuteLabel": "Minuto",
+    "hourLabel": "Hora (0–23)",
+    "minuteLabel": "Minutos",
     "futureDateError": "The date must be in the future",
     "next": "Seguinte",
     "minLeadError": "You can only schedule the quiz from {{days}} days from now",
-    "minLeadHint": "Creators can only schedule a quiz starting {{days}} days from this moment."
+    "minLeadHint": "Creators can only schedule a quiz starting {{days}} days from this moment.",
+    "timezoneHint": "A hora é no teu fuso ({{abbr}} · {{tz}}). Os jogadores veem-na no deles.",
+    "previewLabel": "Como vais ver",
+    "invalidDateError": "Data ou hora inválida"
   },
   "confirmQuiz": {
     "title": "Enviar quiz",

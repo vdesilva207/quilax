@@ -1011,12 +1011,15 @@
     "yearLabel": "Year",
     "monthLabel": "Month",
     "dayLabel": "Day",
-    "hourLabel": "Hour",
-    "minuteLabel": "Minute",
+    "hourLabel": "Hour (0–23)",
+    "minuteLabel": "Minutes",
     "futureDateError": "The date must be in the future",
     "next": "Next",
     "minLeadError": "You can only schedule the quiz from {{days}} days from now",
-    "minLeadHint": "Creators can only schedule a quiz starting {{days}} days from this moment."
+    "minLeadHint": "Creators can only schedule a quiz starting {{days}} days from this moment.",
+    "timezoneHint": "Time is in your timezone ({{abbr}} · {{tz}}). Players will see it converted to theirs.",
+    "previewLabel": "How you’ll see it",
+    "invalidDateError": "Invalid date or time"
   },
   "confirmQuiz": {
     "title": "Submit quiz",

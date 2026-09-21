@@ -1008,12 +1008,15 @@
     "yearLabel": "Jaar",
     "monthLabel": "Maand",
     "dayLabel": "Dag",
-    "hourLabel": "Uur",
-    "minuteLabel": "Minuut",
+    "hourLabel": "Uur (0–23)",
+    "minuteLabel": "Minuten",
     "futureDateError": "The date must be in the future",
     "next": "Volgende",
     "minLeadError": "You can only schedule the quiz from {{days}} days from now",
-    "minLeadHint": "Creators can only schedule a quiz starting {{days}} days from this moment."
+    "minLeadHint": "Creators can only schedule a quiz starting {{days}} days from this moment.",
+    "timezoneHint": "De tijd is in jouw tijdzone ({{abbr}} · {{tz}}). Spelers zien die in de hunne.",
+    "previewLabel": "Zo zie jij het",
+    "invalidDateError": "Ongeldige datum of tijd"
   },
   "confirmQuiz": {
     "title": "Quiz indienen",

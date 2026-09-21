@@ -1008,12 +1008,15 @@
     "yearLabel": "Jahr",
     "monthLabel": "Monat",
     "dayLabel": "Tag",
-    "hourLabel": "Stunde",
-    "minuteLabel": "Minute",
+    "hourLabel": "Stunde (0–23)",
+    "minuteLabel": "Minuten",
     "futureDateError": "The date must be in the future",
     "next": "Weiter",
     "minLeadError": "You can only schedule the quiz from {{days}} days from now",
-    "minLeadHint": "Creators can only schedule a quiz starting {{days}} days from this moment."
+    "minLeadHint": "Creators can only schedule a quiz starting {{days}} days from this moment.",
+    "timezoneHint": "Die Zeit gilt in Ihrer Zeitzone ({{abbr}} · {{tz}}). Spieler sehen sie in ihrer eigenen.",
+    "previewLabel": "So siehst du es",
+    "invalidDateError": "Ungültiges Datum oder Uhrzeit"
   },
   "confirmQuiz": {
     "title": "Quiz einreichen",

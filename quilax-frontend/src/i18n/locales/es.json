@@ -1011,12 +1011,15 @@
     "yearLabel": "Año",
     "monthLabel": "Mes",
     "dayLabel": "Día",
-    "hourLabel": "Hora",
-    "minuteLabel": "Minuto",
+    "hourLabel": "Hora (0–23)",
+    "minuteLabel": "Minutos",
     "futureDateError": "La fecha debe ser futura",
     "next": "Siguiente",
     "minLeadError": "Solo puedes fechar el quiz a partir de {{days}} días desde ahora",
-    "minLeadHint": "Los creadores solo pueden programar el quiz a partir de {{days}} días desde este momento."
+    "minLeadHint": "Los creadores solo pueden programar el quiz a partir de {{days}} días desde este momento.",
+    "timezoneHint": "La hora se interpreta en tu zona horaria ({{abbr}} · {{tz}}). Los jugadores la verán convertida a la suya.",
+    "previewLabel": "Así lo verás tú",
+    "invalidDateError": "Fecha u hora no válida"
   },
   "confirmQuiz": {
     "title": "Enviar quiz",
