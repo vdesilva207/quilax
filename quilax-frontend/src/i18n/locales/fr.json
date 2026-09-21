@@ -827,7 +827,10 @@
       "SCHEDULED": "Scheduled",
       "FINISHED": "Finished",
       "CANCELLED": "Cancelled"
-    }
+    },
+    "draftOpenedTitle": "Draft opened",
+    "draftOpenedBody": "Draft loaded with {{n}} question(s). Review the info and tap Forward to see each question.",
+    "openDraftA11y": "Open draft {{title}}"
   },
   "quizDetail": {
     "loadError": "Impossible de charger le quiz",

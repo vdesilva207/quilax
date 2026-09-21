@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -106,20 +106,24 @@ function mapDraftQuestions(raw: any[], t: (k: string) => string): Question[] {
       options.length === 2 &&
       /verdadero|true|vrai|wahr|vero|waar/i.test(options[0] || '') &&
       /falso|false|faux|falsch|falso|onwaar/i.test(options[1] || '');
-    const normalized =
-      isTf
-        ? options.slice(0, 2)
-        : [...options, '', '', '', ''].slice(0, 4);
-    while (normalized.length < (isTf ? 2 : 4)) normalized.push('');
+    let normalized: string[];
+    let questionType: QuestionType;
+    if (isTf) {
+      normalized = options.slice(0, 2);
+      questionType = 'true_false';
+    } else {
+      normalized = [...options.slice(0, 4), '', '', '', ''].slice(0, 4);
+      questionType = 'four_options';
+    }
     return {
-      id: String(q.id || Date.now()),
+      id: String(q.id || `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`),
       text: String(q.text || ''),
       options: normalized,
-      correctOption: correctOption >= 0 ? correctOption : 0,
+      correctOption: correctOption >= 0 ? Math.min(correctOption, normalized.length - 1) : 0,
       imageUrl: q.imageUrl && isPortableImageUri(q.imageUrl) ? q.imageUrl : undefined,
       questionReadDuration: Number(q.readTime) || 10,
       questionAnswerDuration: Number(q.answerTime) || 30,
-      questionType: isTf ? 'true_false' : 'four_options',
+      questionType,
       points: recommendedPoints(Number(q.answerTime) || 30),
     };
   });
@@ -129,6 +133,13 @@ export default function CreateQuizScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const chrome = useChromeInsets();
+  const scrollRef = useRef<ScrollView>(null);
+
+  const scrollToTop = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    });
+  }, []);
 
   const [step, setStep] = useState<Step>('info');
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -165,6 +176,10 @@ export default function CreateQuizScreen() {
   useEffect(() => {
     void loadDrafts();
   }, [loadDrafts]);
+
+  useEffect(() => {
+    scrollToTop();
+  }, [step, questionIndex, scrollToTop]);
 
   const totalDurationSeconds = useMemo(() => {
     const fixed = questions.length * (FIXED_CORRECTION_TIME + FIXED_RANKING_TIME);
@@ -288,19 +303,30 @@ export default function CreateQuizScreen() {
 
   const openDraft = async (draft: any) => {
     setLoadingDraftId(draft.id);
-    setQuizId(draft.id);
-    setTitle(draft.title || '');
-    setCategory(draft.category || '');
-    setQuizLanguage((draft.language || 'es') as QuizContentLanguage);
-    setDescription(draft.description || '');
-    setTips(draft.tips || '');
-    setCoverImage(
-      draft.coverImage && isPortableImageUri(draft.coverImage) ? draft.coverImage : ''
-    );
-    setQuestions(mapDraftQuestions(draft.questions || [], t));
-    setStep('info');
-    setQuestionIndex(0);
-    setLoadingDraftId(null);
+    try {
+      // Prefer fresh payload from list (includes questions+answers).
+      setQuizId(draft.id);
+      setTitle(draft.title || '');
+      setCategory(draft.category || '');
+      setQuizLanguage((draft.language || 'es') as QuizContentLanguage);
+      setDescription(draft.description || '');
+      setTips(draft.tips || '');
+      setCoverImage(
+        draft.coverImage && isPortableImageUri(draft.coverImage) ? draft.coverImage : ''
+      );
+      const mapped = mapDraftQuestions(draft.questions || [], t);
+      setQuestions(mapped);
+      setStep('info');
+      setQuestionIndex(0);
+      scrollToTop();
+      const n = mapped.filter((q) => q.text.trim()).length;
+      Alert.alert(
+        t('createQuiz.draftOpenedTitle'),
+        t('createQuiz.draftOpenedBody', { n })
+      );
+    } finally {
+      setLoadingDraftId(null);
+    }
   };
 
   const goForwardFromInfo = () => {
@@ -315,6 +341,7 @@ export default function CreateQuizScreen() {
     if (!questions.length) setQuestions([emptyQuestion(t)]);
     setQuestionIndex(0);
     setStep('question');
+    scrollToTop();
   };
 
   const goBack = () => {
@@ -324,9 +351,11 @@ export default function CreateQuizScreen() {
     }
     if (questionIndex <= 0) {
       setStep('info');
+      scrollToTop();
       return;
     }
     setQuestionIndex((i) => i - 1);
+    scrollToTop();
   };
 
   const goForwardQuestion = () => {
@@ -344,6 +373,7 @@ export default function CreateQuizScreen() {
     }
     if (questionIndex < questions.length - 1) {
       setQuestionIndex(questionIndex + 1);
+      scrollToTop();
       return;
     }
     if (questions.length >= MAX_QUESTIONS) {
@@ -356,6 +386,7 @@ export default function CreateQuizScreen() {
     const next = emptyQuestion(t);
     setQuestions([...questions, next]);
     setQuestionIndex(questions.length);
+    scrollToTop();
   };
 
   const goToSchedule = async () => {
@@ -418,6 +449,7 @@ export default function CreateQuizScreen() {
     <CreateGate>
       <View style={styles.root}>
         <ScrollView
+          ref={scrollRef}
           style={styles.container}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -454,9 +486,17 @@ export default function CreateQuizScreen() {
                     drafts.map((d) => (
                       <Pressable
                         key={d.id}
-                        style={styles.draftRow}
+                        style={({ pressed }) => [
+                          styles.draftButton,
+                          pressed && styles.draftButtonPressed,
+                          loadingDraftId === d.id && styles.draftButtonBusy,
+                        ]}
                         onPress={() => void openDraft(d)}
                         disabled={loadingDraftId === d.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('createQuiz.openDraftA11y', {
+                          title: d.title || t('createQuiz.untitledDraft'),
+                        })}
                       >
                         <View style={{ flex: 1 }}>
                           <Text style={styles.draftRowTitle} numberOfLines={1}>
@@ -469,9 +509,12 @@ export default function CreateQuizScreen() {
                           </Text>
                         </View>
                         {loadingDraftId === d.id ? (
-                          <ActivityIndicator size="small" color={Colors.light.primary} />
+                          <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
-                          <Text style={styles.draftOpen}>{t('createQuiz.openDraft')}</Text>
+                          <View style={styles.draftCta}>
+                            <Text style={styles.draftCtaText}>{t('createQuiz.openDraft')}</Text>
+                            <Text style={styles.draftCtaArrow}>→</Text>
+                          </View>
                         )}
                       </Pressable>
                     ))
@@ -488,19 +531,24 @@ export default function CreateQuizScreen() {
                     myQuizzes.map((q) => (
                       <Pressable
                         key={q.id}
-                        style={styles.draftRow}
+                        style={({ pressed }) => [
+                          styles.draftButton,
+                          styles.submittedButton,
+                          pressed && styles.draftButtonPressed,
+                        ]}
                         onPress={() =>
                           router.push({
                             pathname: '/(app)/quiz/[id]',
                             params: { id: String(q.id) },
                           })
                         }
+                        accessibilityRole="button"
                       >
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.draftRowTitle} numberOfLines={1}>
+                          <Text style={[styles.draftRowTitle, styles.submittedTitle]} numberOfLines={1}>
                             {q.title || t('createQuiz.untitledDraft')}
                           </Text>
-                          <Text style={styles.draftRowMeta}>
+                          <Text style={[styles.draftRowMeta, styles.submittedMeta]}>
                             {t(`createQuiz.status.${q.status}`, {
                               defaultValue: q.status,
                             })}
@@ -510,7 +558,12 @@ export default function CreateQuizScreen() {
                             })}
                           </Text>
                         </View>
-                        <Text style={styles.draftOpen}>{t('createQuiz.viewSubmitted')}</Text>
+                        <View style={[styles.draftCta, styles.submittedCta]}>
+                          <Text style={[styles.draftCtaText, styles.submittedCtaText]}>
+                            {t('createQuiz.viewSubmitted')}
+                          </Text>
+                          <Text style={[styles.draftCtaArrow, styles.submittedCtaText]}>→</Text>
+                        </View>
                       </Pressable>
                     ))
                   )}
@@ -918,16 +971,41 @@ const styles = StyleSheet.create({
   },
   draftsTitle: { fontSize: 15, fontWeight: '800', color: Colors.light.text },
   draftsEmpty: { fontSize: 13, color: Colors.light.textSecondary },
-  draftRow: {
+  draftButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    paddingVertical: Spacing.two,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.light.backgroundSelected,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 12,
+    backgroundColor: Colors.light.primary,
+    borderWidth: 1,
+    borderColor: Colors.light.primary,
+    minHeight: 56,
   },
-  draftRowTitle: { fontSize: 14, fontWeight: '700', color: Colors.light.text },
-  draftRowMeta: { fontSize: 12, color: Colors.light.textSecondary, marginTop: 2 },
+  draftButtonPressed: { opacity: 0.88, transform: [{ scale: 0.98 }] },
+  draftButtonBusy: { opacity: 0.7 },
+  submittedButton: {
+    backgroundColor: Colors.light.backgroundElement,
+    borderColor: Colors.light.primary,
+  },
+  draftRowTitle: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+  draftRowMeta: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  draftCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    borderRadius: 8,
+  },
+  draftCtaText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
+  draftCtaArrow: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
+  submittedCta: { backgroundColor: Colors.light.primary },
+  submittedCtaText: { color: '#FFFFFF' },
+  submittedTitle: { color: Colors.light.text },
+  submittedMeta: { color: Colors.light.textSecondary },
   draftOpen: { fontSize: 13, fontWeight: '700', color: Colors.light.primary },
   pointsBanner: {
     flexDirection: 'row',

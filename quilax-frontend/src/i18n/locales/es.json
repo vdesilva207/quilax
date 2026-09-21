@@ -827,7 +827,10 @@
       "SCHEDULED": "Programado",
       "FINISHED": "Finalizado",
       "CANCELLED": "Cancelado"
-    }
+    },
+    "draftOpenedTitle": "Borrador abierto",
+    "draftOpenedBody": "Se ha cargado el borrador con {{n}} pregunta(s). Revisa la info y usa Adelante para ver cada pregunta.",
+    "openDraftA11y": "Abrir borrador {{title}}"
   },
   "quizDetail": {
     "loadError": "No se pudo cargar el quiz",
