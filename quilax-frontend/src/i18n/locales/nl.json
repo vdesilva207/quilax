@@ -800,7 +800,22 @@
     "spellReviewContinue": "Ik heb het beoordeeld",
     "rulesMaxPointsTitle": "Maximaal 1000 punten per vraag",
     "rulesMaxPointsBody": "Elke goed beantwoorde vraag levert maximaal 1000 punten op. Hoe meer vragen je quiz heeft, hoe meer punten spelers kunnen verdienen — en hoe aantrekkelijker hij is.",
-    "pointsFieldKicker": "Belangrijk · score"
+    "pointsFieldKicker": "Belangrijk · score",
+    "spellOnlyMessage": "Controleer spelling en formulering van elke vraag en antwoord zorgvuldig vóór het indienen.",
+    "questionTypeFour": "4 opties",
+    "answersLabel": "Antwoorden (markeer de juiste)",
+    "languageLabel": "Quiztaal",
+    "draftsTitle": "Jouw concepten",
+    "draftsEmpty": "Nog geen concepten. Vul een titel in en bewaar.",
+    "draftsMeta": "{{n}} vragen",
+    "untitledDraft": "Concept zonder titel",
+    "openDraft": "Openen",
+    "navBack": "Terug",
+    "navForward": "Verder",
+    "savingDraft": "Opslaan…",
+    "continueToSchedule": "Volgende · quiz plannen",
+    "questionIncompleteError": "Vul tekst, opties en tijden in voordat je verdergaat.",
+    "questionProgress": "Vraag {{current}}/{{total}} · {{complete}}/{{min}} klaar"
   },
   "quizDetail": {
     "loadError": "Kan de quiz niet laden",

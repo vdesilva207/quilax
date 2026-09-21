@@ -800,7 +800,22 @@
     "spellReviewContinue": "Eu revisei",
     "rulesMaxPointsTitle": "Máximo 1000 pontos por pergunta",
     "rulesMaxPointsBody": "Cada pergunta respondida corretamente dá no máximo 1000 pontos. Quanto mais perguntas o teu quiz tiver, mais pontos os jogadores podem ganhar — e mais atrativo fica.",
-    "pointsFieldKicker": "Importante · pontuação"
+    "pointsFieldKicker": "Importante · pontuação",
+    "spellOnlyMessage": "Revisa bem a ortografia e a redação de cada pergunta e resposta antes de enviar.",
+    "questionTypeFour": "4 opções",
+    "answersLabel": "Respostas (marca a correta)",
+    "languageLabel": "Idioma do quiz",
+    "draftsTitle": "Os teus rascunhos",
+    "draftsEmpty": "Ainda sem rascunhos. Escreve um título e guarda.",
+    "draftsMeta": "{{n}} perguntas",
+    "untitledDraft": "Rascunho sem título",
+    "openDraft": "Abrir",
+    "navBack": "Voltar",
+    "navForward": "Avançar",
+    "savingDraft": "A guardar…",
+    "continueToSchedule": "Seguinte · agendar quiz",
+    "questionIncompleteError": "Completa o texto, as opções e os tempos antes de avançar.",
+    "questionProgress": "Pergunta {{current}}/{{total}} · {{complete}}/{{min}} prontas"
   },
   "quizDetail": {
     "loadError": "Não foi possível carregar o questionário",

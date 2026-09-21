@@ -11,6 +11,9 @@ function sanitizeQuizError(error) {
   ) {
     return 'Hay una imagen inválida. Elimínala y vuelve a añadirla desde la galería (JPG/PNG).';
   }
+  if (/unknown argument|does not exist|invalid.*field|Unknown arg/i.test(message)) {
+    return 'El servidor aún no tiene los campos del quiz actualizados. Espera un minuto e inténtalo de nuevo.';
+  }
   return message || 'Error';
 }
 
@@ -76,6 +79,16 @@ export const quizService = {
     } catch (error) {
       console.error('Error creating quiz:', error);
       return { success: false, error: sanitizeQuizError(error) };
+    }
+  },
+
+  getMyDrafts: async () => {
+    try {
+      const drafts = await apiClient.get('/quiz-creation/my-drafts');
+      return { success: true, data: Array.isArray(drafts) ? drafts : [] };
+    } catch (error) {
+      console.error('Error fetching drafts:', error);
+      return { success: false, error: sanitizeQuizError(error), data: [] };
     }
   },
 

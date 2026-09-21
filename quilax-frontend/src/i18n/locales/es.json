@@ -800,7 +800,22 @@
     "spellError": "No se pudo corregir ahora. Inténtalo más tarde.",
     "spellReviewTitle": "Revisa ortografía y redacción",
     "spellReviewBody": "Antes de continuar, confirma que has revisado el texto de las preguntas (y usado el corrector ortográfico si lo necesitas).",
-    "spellReviewContinue": "Ya lo he revisado"
+    "spellReviewContinue": "Ya lo he revisado",
+    "spellOnlyMessage": "Revisa bien la ortografía y la redacción de cada pregunta y respuesta antes de enviar. Un texto claro reduce rechazos en revisión.",
+    "questionTypeFour": "4 opciones",
+    "answersLabel": "Respuestas (marca la correcta)",
+    "languageLabel": "Idioma del quiz",
+    "draftsTitle": "Tus borradores",
+    "draftsEmpty": "Aún no tienes borradores. Escribe un título y pulsa Guardar borrador.",
+    "draftsMeta": "{{n}} preguntas",
+    "untitledDraft": "Borrador sin título",
+    "openDraft": "Abrir",
+    "navBack": "Atrás",
+    "navForward": "Adelante",
+    "savingDraft": "Guardando…",
+    "continueToSchedule": "Siguiente · fechar quiz",
+    "questionIncompleteError": "Completa el texto, las 4 opciones (o V/F) y los tiempos antes de avanzar.",
+    "questionProgress": "Pregunta {{current}}/{{total}} · {{complete}}/{{min}} listas para enviar"
   },
   "quizDetail": {
     "loadError": "No se pudo cargar el quiz",

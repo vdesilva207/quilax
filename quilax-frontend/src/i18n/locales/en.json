@@ -800,7 +800,22 @@
     "spellError": "Couldn’t check spelling right now. Try again later.",
     "spellReviewTitle": "Review spelling & wording",
     "spellReviewBody": "Before continuing, confirm you’ve reviewed the question text (and used the spell checker if needed).",
-    "spellReviewContinue": "I’ve reviewed it"
+    "spellReviewContinue": "I’ve reviewed it",
+    "spellOnlyMessage": "Please carefully check spelling and wording for every question and answer before submitting. Clear text reduces review rejections.",
+    "questionTypeFour": "4 options",
+    "answersLabel": "Answers (mark the correct one)",
+    "languageLabel": "Quiz language",
+    "draftsTitle": "Your drafts",
+    "draftsEmpty": "No drafts yet. Enter a title and tap Save draft.",
+    "draftsMeta": "{{n}} questions",
+    "untitledDraft": "Untitled draft",
+    "openDraft": "Open",
+    "navBack": "Back",
+    "navForward": "Forward",
+    "savingDraft": "Saving…",
+    "continueToSchedule": "Next · schedule quiz",
+    "questionIncompleteError": "Complete the text, all options (or T/F), and times before continuing.",
+    "questionProgress": "Question {{current}}/{{total}} · {{complete}}/{{min}} ready to submit"
   },
   "quizDetail": {
     "loadError": "Couldn't load the quiz",

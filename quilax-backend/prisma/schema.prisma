@@ -177,6 +177,11 @@ model Quiz {
   credits       Int              @default(0)
   createdAt     DateTime         @default(now())
   creatorId     Int
+  category      String?
+  language      String?
+  coverImage    String?
+  description   String?
+  tips          String?
 
   creator       User             @relation("CreatorQuizzes", fields: [creatorId], references: [id])
   enrollments   QuizEnrollment[]

@@ -134,7 +134,7 @@ app.use(
 
 // Profile photos / post images travel as data URLs (base64). 100kb was too small
 // and silently broke avatar upload on TestFlight.
-app.use(express.json({ limit: "6mb" }));
+app.use(express.json({ limit: "20mb" }));
 
 app.use(platformMiddleware);
 
@@ -384,9 +384,39 @@ if (process.env.NODE_ENV === 'production' && process.env.ENABLE_CLUSTERING === '
               `ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "prizeConfig" JSONB`
             )
           )
-          .then(() => console.log("✅ SystemSettings columns ensured"))
+          .then(() =>
+            prisma.$executeRawUnsafe(
+              `ALTER TABLE "Quiz" ADD COLUMN IF NOT EXISTS "category" TEXT`
+            )
+          )
+          .then(() =>
+            prisma.$executeRawUnsafe(
+              `ALTER TABLE "Quiz" ADD COLUMN IF NOT EXISTS "language" TEXT`
+            )
+          )
+          .then(() =>
+            prisma.$executeRawUnsafe(
+              `ALTER TABLE "Quiz" ADD COLUMN IF NOT EXISTS "coverImage" TEXT`
+            )
+          )
+          .then(() =>
+            prisma.$executeRawUnsafe(
+              `ALTER TABLE "Quiz" ADD COLUMN IF NOT EXISTS "description" TEXT`
+            )
+          )
+          .then(() =>
+            prisma.$executeRawUnsafe(
+              `ALTER TABLE "Quiz" ADD COLUMN IF NOT EXISTS "tips" TEXT`
+            )
+          )
+          .then(() =>
+            prisma.$executeRawUnsafe(
+              `ALTER TABLE "QuizQuestion" ADD COLUMN IF NOT EXISTS "imageUrl" TEXT`
+            )
+          )
+          .then(() => console.log("✅ Quiz/SystemSettings columns ensured"))
           .catch((err) =>
-            console.error("ensure SystemSettings columns:", err?.message || err)
+            console.error("ensure schema columns:", err?.message || err)
           );
 
         import("node:child_process")

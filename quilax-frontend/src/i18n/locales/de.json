@@ -800,7 +800,22 @@
     "spellReviewContinue": "Ich habe es überprüft",
     "rulesMaxPointsTitle": "Maximal 1000 Punkte pro Frage",
     "rulesMaxPointsBody": "Jede richtig beantwortete Frage gibt maximal 1000 Punkte. Je mehr Fragen dein Quiz hat, desto mehr Punkte können Spieler verdienen — und desto attraktiver ist es.",
-    "pointsFieldKicker": "Wichtig · Punkte"
+    "pointsFieldKicker": "Wichtig · Punkte",
+    "spellOnlyMessage": "Bitte prüfe Rechtschreibung und Formulierung jeder Frage und Antwort vor dem Absenden.",
+    "questionTypeFour": "4 Optionen",
+    "answersLabel": "Antworten (richtige markieren)",
+    "languageLabel": "Quiz-Sprache",
+    "draftsTitle": "Deine Entwürfe",
+    "draftsEmpty": "Noch keine Entwürfe. Titel eingeben und speichern.",
+    "draftsMeta": "{{n}} Fragen",
+    "untitledDraft": "Entwurf ohne Titel",
+    "openDraft": "Öffnen",
+    "navBack": "Zurück",
+    "navForward": "Weiter",
+    "savingDraft": "Speichern…",
+    "continueToSchedule": "Weiter · Termin wählen",
+    "questionIncompleteError": "Text, Optionen und Zeiten vervollständigen, bevor du weitergehst.",
+    "questionProgress": "Frage {{current}}/{{total}} · {{complete}}/{{min}} fertig"
   },
   "quizDetail": {
     "loadError": "Das Quiz konnte nicht geladen werden",

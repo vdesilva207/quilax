@@ -800,7 +800,22 @@
     "spellReviewContinue": "Je l'ai examiné",
     "rulesMaxPointsTitle": "Maximum 1000 points par question",
     "rulesMaxPointsBody": "Chaque question correctement répondue rapporte au maximum 1000 points. Plus votre quiz a de questions, plus les joueurs peuvent gagner de points — et plus il est attractif.",
-    "pointsFieldKicker": "Important · score"
+    "pointsFieldKicker": "Important · score",
+    "spellOnlyMessage": "Vérifiez soigneusement l’orthographe et la rédaction de chaque question et réponse avant d’envoyer.",
+    "questionTypeFour": "4 options",
+    "answersLabel": "Réponses (cochez la bonne)",
+    "languageLabel": "Langue du quiz",
+    "draftsTitle": "Vos brouillons",
+    "draftsEmpty": "Pas encore de brouillons. Écrivez un titre et enregistrez.",
+    "draftsMeta": "{{n}} questions",
+    "untitledDraft": "Brouillon sans titre",
+    "openDraft": "Ouvrir",
+    "navBack": "Retour",
+    "navForward": "Suivant",
+    "savingDraft": "Enregistrement…",
+    "continueToSchedule": "Suivant · planifier",
+    "questionIncompleteError": "Complétez le texte, les options et les temps avant d’avancer.",
+    "questionProgress": "Question {{current}}/{{total}} · {{complete}}/{{min}} prêtes"
   },
   "quizDetail": {
     "loadError": "Impossible de charger le quiz",
