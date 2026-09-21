@@ -815,7 +815,19 @@
     "savingDraft": "Salvataggio…",
     "continueToSchedule": "Avanti · programma quiz",
     "questionIncompleteError": "Completa testo, opzioni e tempi prima di avanzare.",
-    "questionProgress": "Domanda {{current}}/{{total}} · {{complete}}/{{min}} pronte"
+    "questionProgress": "Domanda {{current}}/{{total}} · {{complete}}/{{min}} pronte",
+    "submittedTitle": "Submitted / in review",
+    "submittedEmpty": "You haven’t submitted any quiz for review yet.",
+    "viewSubmitted": "View",
+    "status": {
+      "PENDING_REVIEW": "In review",
+      "PUBLISHED": "Published",
+      "REJECTED": "Rejected",
+      "APPROVED": "Approved",
+      "SCHEDULED": "Scheduled",
+      "FINISHED": "Finished",
+      "CANCELLED": "Cancelled"
+    }
   },
   "quizDetail": {
     "loadError": "Impossibile caricare il quiz",

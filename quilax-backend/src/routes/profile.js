@@ -2004,7 +2004,7 @@ router.get('/:userId/history', async (req, res) => {
       return res.status(403).json({ error: 'Historial privado', private: true });
     }
 
-    const [participants, scores, prizes] = await Promise.all([
+    const [participants, scores, prizes, createdQuizzes] = await Promise.all([
       prisma.quizParticipant.findMany({
         where: { userId },
         take: 100,
@@ -2041,6 +2041,19 @@ router.get('/:userId/history', async (req, res) => {
         orderBy: { createdAt: 'desc' },
         include: {
           quiz: { select: { id: true, title: true } },
+        },
+      }),
+      prisma.quiz.findMany({
+        where: { creatorId: userId },
+        take: 50,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          category: true,
+          language: true,
+          createdAt: true,
         },
       }),
     ]);
@@ -2081,6 +2094,14 @@ router.get('/:userId/history', async (req, res) => {
           percent: p.percent,
           type: p.type,
           createdAt: p.createdAt,
+        })),
+        created: createdQuizzes.map((q) => ({
+          id: q.id,
+          title: q.title,
+          status: q.status,
+          category: q.category,
+          language: q.language,
+          createdAt: q.createdAt,
         })),
       },
     });

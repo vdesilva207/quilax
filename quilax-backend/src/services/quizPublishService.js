@@ -84,6 +84,7 @@ export async function publishQuiz(userId, quizId, scheduledAt) {
     where: { id: quizId },
     data: {
       status: "PENDING_REVIEW",
+      requestedDate: date,
       schedules: {
         create: {
           scheduledAt: date,

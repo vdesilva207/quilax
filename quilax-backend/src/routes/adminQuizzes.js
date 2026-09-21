@@ -10,7 +10,7 @@ MIDDLEWARE GLOBAL ADMIN
 ====================================
 */
 router.use(auth);
-router.use(roleMiddleware(["ADMIN"]));
+router.use(roleMiddleware(["ADMIN", "ADMIN_WORKER"]));
 
 /*
 ====================================
@@ -52,12 +52,15 @@ router.get("/", async (req, res) => {
       where: { status: "PENDING_REVIEW" },
       orderBy: { createdAt: "asc" },
       include: {
-        creator: { select: { id: true, email: true } },
+        creator: { select: { id: true, email: true, username: true } },
+        schedules: { orderBy: { scheduledAt: "asc" }, take: 1 },
+        _count: { select: { questions: true } },
       },
     });
 
     res.json(quizzes);
-  } catch {
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Error fetching quizzes" });
   }
 });
@@ -252,6 +255,38 @@ router.delete("/:quizId/reward-rules/:ruleId", async (req, res) => {
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: "Delete error" });
+  }
+});
+
+/*
+====================================
+DETALLE QUIZ (revisión) — after static paths
+====================================
+*/
+router.get("/:id", async (req, res) => {
+  try {
+    if (!/^\d+$/.test(String(req.params.id || ""))) {
+      return res.status(404).json({ error: "Not found" });
+    }
+    const quizId = Number(req.params.id);
+    const quiz = await prisma.quiz.findUnique({
+      where: { id: quizId },
+      include: {
+        creator: { select: { id: true, email: true, username: true, fullName: true } },
+        schedules: { orderBy: { scheduledAt: "asc" } },
+        questions: {
+          orderBy: { id: "asc" },
+          include: { answers: true },
+        },
+        rewardRules: true,
+        _count: { select: { questions: true, enrollments: true } },
+      },
+    });
+    if (!quiz) return res.status(404).json({ error: "Quiz no encontrado" });
+    res.json({ quiz });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error fetching quiz" });
   }
 });
 

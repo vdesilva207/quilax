@@ -815,7 +815,19 @@
     "savingDraft": "Speichern…",
     "continueToSchedule": "Weiter · Termin wählen",
     "questionIncompleteError": "Text, Optionen und Zeiten vervollständigen, bevor du weitergehst.",
-    "questionProgress": "Frage {{current}}/{{total}} · {{complete}}/{{min}} fertig"
+    "questionProgress": "Frage {{current}}/{{total}} · {{complete}}/{{min}} fertig",
+    "submittedTitle": "Submitted / in review",
+    "submittedEmpty": "You haven’t submitted any quiz for review yet.",
+    "viewSubmitted": "View",
+    "status": {
+      "PENDING_REVIEW": "In review",
+      "PUBLISHED": "Published",
+      "REJECTED": "Rejected",
+      "APPROVED": "Approved",
+      "SCHEDULED": "Scheduled",
+      "FINISHED": "Finished",
+      "CANCELLED": "Cancelled"
+    }
   },
   "quizDetail": {
     "loadError": "Das Quiz konnte nicht geladen werden",

@@ -1,4 +1,4 @@
-import { Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing } from '@/constants/theme';
@@ -38,21 +38,23 @@ export default function QuizSubmittedScreen() {
           <Text style={styles.promoteTitle}>{t('quizSubmitted.promoteTitle')}</Text>
           <Text style={styles.body}>{t('quizSubmitted.promoteBody')}</Text>
         </AppCard>
-        <GradientButton
-          label={t('quizSubmitted.goHome')}
-          onPress={() => router.replace('/(app)')}
-        />
-        {params.quizId ? (
+        <View style={styles.actions}>
           <GradientButton
-            label={t('quizSubmitted.viewQuiz')}
-            onPress={() =>
-              router.replace({
-                pathname: '/(app)/quiz/[id]',
-                params: { id: String(params.quizId) },
-              })
-            }
+            label={t('quizSubmitted.goHome')}
+            onPress={() => router.replace('/(app)')}
           />
-        ) : null}
+          {params.quizId ? (
+            <GradientButton
+              label={t('quizSubmitted.viewQuiz')}
+              onPress={() =>
+                router.replace({
+                  pathname: '/(app)/quiz/[id]',
+                  params: { id: String(params.quizId) },
+                })
+              }
+            />
+          ) : null}
+        </View>
       </AppSection>
     </AppScreen>
   );
@@ -82,5 +84,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.light.text,
     marginBottom: Spacing.two,
+  },
+  actions: {
+    gap: Spacing.three,
+    marginTop: Spacing.two,
   },
 });

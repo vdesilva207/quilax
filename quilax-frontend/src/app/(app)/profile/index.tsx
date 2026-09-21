@@ -606,7 +606,7 @@ export default function ProfileScreen() {
                     title={item.title}
                     category={item.category}
                     language={item.language}
-                    meta={item.status}
+                    meta={t(`createQuiz.status.${item.status}`, { defaultValue: item.status })}
                     onPress={() => router.push(`/(app)/quiz/${item.id}`)}
                   />
                 ))

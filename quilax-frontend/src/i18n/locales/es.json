@@ -815,7 +815,19 @@
     "savingDraft": "Guardando…",
     "continueToSchedule": "Siguiente · fechar quiz",
     "questionIncompleteError": "Completa el texto, las 4 opciones (o V/F) y los tiempos antes de avanzar.",
-    "questionProgress": "Pregunta {{current}}/{{total}} · {{complete}}/{{min}} listas para enviar"
+    "questionProgress": "Pregunta {{current}}/{{total}} · {{complete}}/{{min}} listas para enviar",
+    "submittedTitle": "Enviados / en revisión",
+    "submittedEmpty": "Aún no has enviado ningún quiz a revisión.",
+    "viewSubmitted": "Ver",
+    "status": {
+      "PENDING_REVIEW": "En revisión",
+      "PUBLISHED": "Publicado",
+      "REJECTED": "Rechazado",
+      "APPROVED": "Aprobado",
+      "SCHEDULED": "Programado",
+      "FINISHED": "Finalizado",
+      "CANCELLED": "Cancelado"
+    }
   },
   "quizDetail": {
     "loadError": "No se pudo cargar el quiz",

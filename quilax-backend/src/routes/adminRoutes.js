@@ -22,76 +22,102 @@ GET /admin/quizzes/occupied-dates
 router.get("/quizzes/occupied-dates", async (req, res) => {
   try {
     const { year, month } = req.query;
-    const yearNum = parseInt(year);
-    const monthNum = parseInt(month);
+    const yearNum = parseInt(String(year), 10);
+    const monthNum = month != null && month !== "" ? parseInt(String(month), 10) : null;
 
-    if (!yearNum || !monthNum) {
-      return res.status(400).json({ error: "Year and month are required" });
+    if (!yearNum || Number.isNaN(yearNum)) {
+      return res.status(400).json({ error: "Year is required" });
     }
 
-    // Obtener todos los quizzes con fecha programada en el mes/año especificado
-    const quizzes = await prisma.quiz.findMany({
+    const yearStart = new Date(yearNum, 0, 1, 0, 0, 0, 0);
+    const yearEnd = new Date(yearNum + 1, 0, 1, 0, 0, 0, 0);
+
+    const rangeStart =
+      monthNum && !Number.isNaN(monthNum)
+        ? new Date(yearNum, monthNum - 1, 1, 0, 0, 0, 0)
+        : yearStart;
+    const rangeEnd =
+      monthNum && !Number.isNaN(monthNum)
+        ? new Date(yearNum, monthNum, 1, 0, 0, 0, 0)
+        : yearEnd;
+
+    const schedules = await prisma.quizSchedule.findMany({
       where: {
-        scheduledDate: {
-          not: null,
+        scheduledAt: { gte: rangeStart, lt: rangeEnd },
+      },
+      include: {
+        quiz: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+          },
         },
       },
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        scheduledDate: true,
-      },
+      orderBy: { scheduledAt: "asc" },
     });
 
-    // Filtrar quizzes por mes/año y organizar por fecha/hora/minuto
     const occupiedDates = {};
+    const monthStatuses = {};
 
-    quizzes.forEach((quiz) => {
-      if (!quiz.scheduledDate) return;
-
-      const date = new Date(quiz.scheduledDate);
+    for (const row of schedules) {
+      if (!row.quiz) continue;
+      const date = new Date(row.scheduledAt);
       const quizYear = date.getFullYear();
       const quizMonth = date.getMonth() + 1;
       const quizDay = date.getDate();
       const quizHour = date.getHours();
       const quizMinute = date.getMinutes();
 
-      // Solo incluir quizzes del mes/año seleccionado
-      if (quizYear !== yearNum || quizMonth !== monthNum) return;
+      if (quizYear !== yearNum) continue;
+
+      const monthKey = String(quizMonth);
+      const st = String(row.quiz.status || "");
+      // Prefer PENDING over APPROVED when mixed in a month
+      if (
+        !monthStatuses[monthKey] ||
+        st === "PENDING_REVIEW" ||
+        (monthStatuses[monthKey] !== "PENDING_REVIEW" &&
+          (st === "PUBLISHED" || st === "APPROVED" || st === "SCHEDULED"))
+      ) {
+        monthStatuses[monthKey] =
+          st === "PENDING_REVIEW"
+            ? "PENDING"
+            : st === "PUBLISHED" || st === "APPROVED" || st === "SCHEDULED"
+              ? "APPROVED"
+              : st === "REJECTED"
+                ? "REJECTED"
+                : st;
+      }
+
+      if (monthNum && quizMonth !== monthNum) continue;
 
       const dateKey = `${quizYear}-${quizMonth}-${quizDay}`;
-
       if (!occupiedDates[dateKey]) {
-        occupiedDates[dateKey] = {
-          date: dateKey,
-          hours: {},
-        };
+        occupiedDates[dateKey] = { date: dateKey, hours: {} };
       }
-
-      const hourKey = quizHour.toString();
+      const hourKey = String(quizHour);
       if (!occupiedDates[dateKey].hours[hourKey]) {
-        occupiedDates[dateKey].hours[hourKey] = {
-          hour: hourKey,
-          minutes: {},
-        };
+        occupiedDates[dateKey].hours[hourKey] = { hour: hourKey, minutes: {} };
       }
-
-      const minuteKey = quizMinute.toString();
+      const minuteKey = String(quizMinute);
       occupiedDates[dateKey].hours[hourKey].minutes[minuteKey] = {
         minute: minuteKey,
-        status: quiz.status,
-        quizId: quiz.id,
-        quizTitle: quiz.title,
+        status: row.quiz.status,
+        quizId: row.quiz.id,
+        quizTitle: row.quiz.title,
       };
-    });
-
-    // Convertir a array
-    const occupiedDatesArray = Object.values(occupiedDates);
+    }
 
     res.json({
       success: true,
-      occupiedDates: occupiedDatesArray,
+      occupiedDates: Object.values(occupiedDates),
+      monthStatuses,
+      yearStatus: Object.values(monthStatuses).includes("PENDING")
+        ? "PENDING"
+        : Object.keys(monthStatuses).length
+          ? "APPROVED"
+          : null,
     });
   } catch (error) {
     console.error("Error getting occupied dates:", error);

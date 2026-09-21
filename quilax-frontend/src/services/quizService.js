@@ -92,6 +92,17 @@ export const quizService = {
     }
   },
 
+  getMyQuizzes: async () => {
+    try {
+      const data = await apiClient.get('/quiz-creation/my-quizzes');
+      const list = data?.quizzes || data || [];
+      return { success: true, data: Array.isArray(list) ? list : [] };
+    } catch (error) {
+      console.error('Error fetching my quizzes:', error);
+      return { success: false, error: sanitizeQuizError(error), data: [] };
+    }
+  },
+
   // Actualizar un quiz en borrador
   updateQuiz: async (quizId, data) => {
     try {

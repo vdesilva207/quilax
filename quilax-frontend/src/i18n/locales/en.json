@@ -815,7 +815,19 @@
     "savingDraft": "Saving…",
     "continueToSchedule": "Next · schedule quiz",
     "questionIncompleteError": "Complete the text, all options (or T/F), and times before continuing.",
-    "questionProgress": "Question {{current}}/{{total}} · {{complete}}/{{min}} ready to submit"
+    "questionProgress": "Question {{current}}/{{total}} · {{complete}}/{{min}} ready to submit",
+    "submittedTitle": "Submitted / in review",
+    "submittedEmpty": "You haven’t submitted any quiz for review yet.",
+    "viewSubmitted": "View",
+    "status": {
+      "PENDING_REVIEW": "In review",
+      "PUBLISHED": "Published",
+      "REJECTED": "Rejected",
+      "APPROVED": "Approved",
+      "SCHEDULED": "Scheduled",
+      "FINISHED": "Finished",
+      "CANCELLED": "Cancelled"
+    }
   },
   "quizDetail": {
     "loadError": "Couldn't load the quiz",

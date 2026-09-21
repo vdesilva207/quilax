@@ -815,7 +815,19 @@
     "savingDraft": "Opslaan…",
     "continueToSchedule": "Volgende · quiz plannen",
     "questionIncompleteError": "Vul tekst, opties en tijden in voordat je verdergaat.",
-    "questionProgress": "Vraag {{current}}/{{total}} · {{complete}}/{{min}} klaar"
+    "questionProgress": "Vraag {{current}}/{{total}} · {{complete}}/{{min}} klaar",
+    "submittedTitle": "Submitted / in review",
+    "submittedEmpty": "You haven’t submitted any quiz for review yet.",
+    "viewSubmitted": "View",
+    "status": {
+      "PENDING_REVIEW": "In review",
+      "PUBLISHED": "Published",
+      "REJECTED": "Rejected",
+      "APPROVED": "Approved",
+      "SCHEDULED": "Scheduled",
+      "FINISHED": "Finished",
+      "CANCELLED": "Cancelled"
+    }
   },
   "quizDetail": {
     "loadError": "Kan de quiz niet laden",

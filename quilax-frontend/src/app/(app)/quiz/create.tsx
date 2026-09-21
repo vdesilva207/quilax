@@ -143,13 +143,22 @@ export default function CreateQuizScreen() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [drafts, setDrafts] = useState<any[]>([]);
+  const [myQuizzes, setMyQuizzes] = useState<any[]>([]);
   const [loadingDrafts, setLoadingDrafts] = useState(true);
   const [loadingDraftId, setLoadingDraftId] = useState<number | null>(null);
 
   const loadDrafts = useCallback(async () => {
     setLoadingDrafts(true);
-    const res = await quizService.getMyDrafts();
-    if (res.success) setDrafts(res.data || []);
+    const [draftRes, mineRes] = await Promise.all([
+      quizService.getMyDrafts(),
+      quizService.getMyQuizzes(),
+    ]);
+    if (draftRes.success) setDrafts(draftRes.data || []);
+    if (mineRes.success) {
+      setMyQuizzes(
+        (mineRes.data || []).filter((q: any) => q.status && q.status !== 'DRAFT')
+      );
+    }
     setLoadingDrafts(false);
   }, []);
 
@@ -464,6 +473,44 @@ export default function CreateQuizScreen() {
                         ) : (
                           <Text style={styles.draftOpen}>{t('createQuiz.openDraft')}</Text>
                         )}
+                      </Pressable>
+                    ))
+                  )}
+                </View>
+
+                <View style={styles.draftsBox}>
+                  <Text style={styles.draftsTitle}>{t('createQuiz.submittedTitle')}</Text>
+                  {loadingDrafts ? (
+                    <ActivityIndicator color={Colors.light.primary} />
+                  ) : myQuizzes.length === 0 ? (
+                    <Text style={styles.draftsEmpty}>{t('createQuiz.submittedEmpty')}</Text>
+                  ) : (
+                    myQuizzes.map((q) => (
+                      <Pressable
+                        key={q.id}
+                        style={styles.draftRow}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/(app)/quiz/[id]',
+                            params: { id: String(q.id) },
+                          })
+                        }
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.draftRowTitle} numberOfLines={1}>
+                            {q.title || t('createQuiz.untitledDraft')}
+                          </Text>
+                          <Text style={styles.draftRowMeta}>
+                            {t(`createQuiz.status.${q.status}`, {
+                              defaultValue: q.status,
+                            })}
+                            {' · '}
+                            {t('createQuiz.draftsMeta', {
+                              n: q._count?.questions ?? q.questions?.length ?? 0,
+                            })}
+                          </Text>
+                        </View>
+                        <Text style={styles.draftOpen}>{t('createQuiz.viewSubmitted')}</Text>
                       </Pressable>
                     ))
                   )}
