@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, MaxContentWidth, titleTypeface, bodyTypeface } from '@/constants/theme';
 import { brandGradientProps, SCREEN_BACKGROUND } from '@/constants/gradients';
@@ -21,15 +21,17 @@ import { getWalletAppUrl } from '@/lib/walletAppUrl';
 
 export default function WalletGateScreen() {
   const { t, i18n } = useTranslation();
+  const router = useRouter();
   const { user, token: authToken, refreshProfile } = useAuth() as any;
   const [loading, setLoading] = useState(false);
   const [openError, setOpenError] = useState('');
   const balance = Number(user?.balance ?? 0) || 0;
+  const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
 
   useFocusEffect(
     useCallback(() => {
       refreshProfile?.({ full: false }).catch(() => null);
-    }, [refreshProfile])
+    }, [refreshProfile]),
   );
 
   const openWebGestion = async () => {
@@ -59,7 +61,6 @@ export default function WalletGateScreen() {
         await refreshProfile?.({ full: false }).catch(() => null);
       }
     } catch {
-      // Never surface raw network/dev messages (e.g. "Load failed", ports) to users.
       setOpenError(t('wallet.openErrorBody'));
     } finally {
       setLoading(false);
@@ -103,21 +104,52 @@ export default function WalletGateScreen() {
             </View>
           ) : null}
 
+          {isNative ? (
+            <>
+              <Pressable
+                style={({ pressed }) => [styles.ctaWrap, pressed && styles.ctaPressed]}
+                onPress={() => router.push('/(app)/wallet/buy-credits')}
+                testID="buy-credits-iap"
+              >
+                <LinearGradient {...brandGradientProps} style={styles.cta}>
+                  <Text style={styles.ctaText}>{t('wallet.buyCredits')}</Text>
+                </LinearGradient>
+              </Pressable>
+              <Text style={styles.buyHint}>{t('wallet.buyCreditsHint')}</Text>
+            </>
+          ) : null}
+
           <Pressable
-            style={({ pressed }) => [styles.ctaWrap, pressed && styles.ctaPressed]}
+            style={({ pressed }) => [
+              styles.ctaWrap,
+              isNative && styles.ctaSecondary,
+              pressed && styles.ctaPressed,
+            ]}
             onPress={openWebGestion}
             disabled={loading}
             testID="open-web-wallet"
           >
-            <LinearGradient {...brandGradientProps} style={styles.cta}>
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.ctaText}>
-                  {openError ? t('common.retry') : t('wallet.openWeb')}
-                </Text>
-              )}
-            </LinearGradient>
+            {isNative ? (
+              <View style={styles.ctaOutline}>
+                {loading ? (
+                  <ActivityIndicator color={Colors.light.primary} />
+                ) : (
+                  <Text style={styles.ctaOutlineText}>
+                    {openError ? t('common.retry') : t('wallet.openWeb')}
+                  </Text>
+                )}
+              </View>
+            ) : (
+              <LinearGradient {...brandGradientProps} style={styles.cta}>
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.ctaText}>
+                    {openError ? t('common.retry') : t('wallet.openWeb')}
+                  </Text>
+                )}
+              </LinearGradient>
+            )}
           </Pressable>
 
           <Text style={styles.appOnly}>{t('wallet.appOnlyHint')}</Text>
@@ -257,6 +289,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
+  ctaSecondary: {
+    marginTop: Spacing.three,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   ctaPressed: { opacity: 0.92 },
   cta: {
     paddingVertical: Spacing.four,
@@ -264,11 +301,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 54,
   },
+  ctaOutline: {
+    paddingVertical: Spacing.four,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 54,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.light.primary,
+    backgroundColor: 'transparent',
+  },
   ctaText: {
     ...titleTypeface,
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  ctaOutlineText: {
+    ...titleTypeface,
+    color: Colors.light.primary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  buyHint: {
+    ...bodyTypeface,
+    marginTop: Spacing.two,
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    textAlign: 'center',
   },
   appOnly: {
     ...bodyTypeface,

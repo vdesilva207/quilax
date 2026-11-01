@@ -16,7 +16,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { Colors, Spacing, titleTypeface } from '@/constants/theme';
+import { Colors, Spacing, sora, titleTypeface } from '@/constants/theme';
 import { brandGradientProps } from '@/constants/gradients';
 import { useAuth } from '@/context/AuthContext';
 import { AppScreen } from '@/components/ui/AppScreen';
@@ -25,6 +25,8 @@ import CustomIcon from '@/components/CustomIcon';
 import apiClient from '@/lib/api';
 import settingsService from '@/services/settingsService';
 import { getDateLocale, formatQuizStart, resolveViewerTimezone } from '@/utils/timezone';
+import { StatusBar } from 'expo-status-bar';
+import { useChromeInsets } from '@/hooks/useChromeInsets';
 
 type Tab = 'posts' | 'history';
 
@@ -40,6 +42,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { user, logout, refreshProfile } = useAuth() as any;
+  const chrome = useChromeInsets(Spacing.three + 8);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('posts');
   const [posts, setPosts] = useState<Post[]>([]);
@@ -234,7 +237,11 @@ export default function ProfileScreen() {
     <AppScreen>
       {/* Banner + avatar in one pinned block so the photo isn't clipped by the sticky header. */}
       <View style={styles.profileChrome}>
-        <LinearGradient {...brandGradientProps} style={styles.banner}>
+        <StatusBar style="light" />
+        <LinearGradient
+          {...brandGradientProps}
+          style={[styles.banner, { paddingTop: chrome.headerPaddingTop }]}
+        >
           <View style={styles.bannerTop}>
             <Text style={styles.brand}>QUILAX</Text>
           </View>
@@ -639,9 +646,11 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.two,
   },
   banner: {
-    height: 128,
-    paddingTop: Platform.OS === 'web' ? 24 : 52,
+    width: '100%',
+    height: undefined,
+    minHeight: 120,
     paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.five,
     justifyContent: 'flex-start',
   },
   bannerTop: {
@@ -649,11 +658,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   brand: {
-    ...titleTypeface,
+    ...sora(800),
     color: '#FFF',
     fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
   avatarRow: {
     flexDirection: 'row',

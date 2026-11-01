@@ -12,6 +12,7 @@ import {
 import { Stack } from 'expo-router';
 import { useFonts, Sora_500Medium, Sora_600SemiBold, Sora_700Bold, Sora_800ExtraBold } from '@expo-google-fonts/sora';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '@/context/AuthContext';
 import { QuizPlayUiProvider } from '@/context/QuizPlayUiContext';
 import { Colors, Spacing, bodyTypeface, sora } from '@/constants/theme';
@@ -126,6 +127,7 @@ export default function RootLayout() {
 
   return (
     <View style={styles.root} onLayout={onLayout}>
+      <StatusBar style="dark" translucent />
       <RootErrorBoundary>
         <LanguageBootstrap>
           <AuthProvider>
@@ -157,6 +159,7 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    // Transparent under status bar when translucent; screens paint their own chrome
     backgroundColor: Colors.light.background,
   },
   errorBox: {

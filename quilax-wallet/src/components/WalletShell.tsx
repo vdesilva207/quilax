@@ -211,6 +211,9 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.lg,
     gap: Spacing.sm,
   },
+  heroStripe: {
+    height: 3,
+  },
   back: {
     alignSelf: 'flex-start',
     marginBottom: Spacing.sm,
@@ -251,19 +254,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.lg,
   },
-  primaryBtn: {
-    backgroundColor: Colors.primary,
+  primaryBtnWrap: {
     borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
+    overflow: 'hidden',
     shadowColor: '#3B82F6',
     shadowOpacity: 0.22,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
   },
+  primaryBtn: {
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
   primaryBtnLocked: {
-    backgroundColor: '#D6D3D1',
     shadowOpacity: 0,
+  },
+  primaryBtnLockedInner: {
+    backgroundColor: '#D6D3D1',
   },
   primaryBtnText: {
     fontFamily: Fonts.body,

@@ -15,7 +15,6 @@ import { Colors, Fonts, Spacing } from '@/constants/theme';
 import {
   creditsToFiat,
   formatDateTime,
-  getBankStatusLabelDetailed,
   getTxLabel,
 } from '@/constants/money';
 
@@ -144,72 +143,43 @@ export default function WalletHome() {
 
   const balance = status?.balance ?? 0;
   const currency = status?.currency || 'EUR';
-  const bankStatus =
-    status?.verification?.bankVerificationStatus ||
-    status?.bankAccount?.verificationStatus ||
-    'NONE';
-  const bankVerified =
-    bankStatus === 'VERIFIED' || !!status?.verification?.isBankVerified;
   const idVerified = !!status?.verification?.idVerified;
-  const hasConnect =
-    !!status?.verification?.hasConnectAccount ||
-    bankStatus === 'PENDING' ||
-    bankStatus === 'VERIFIED' ||
-    bankStatus === 'RESTRICTED';
   const canDeposit = status?.eligibility?.canDeposit !== false;
-  const canWithdraw = status?.eligibility?.canWithdraw === true && bankVerified;
-
-  const showBankLockHint = (action: 'deposit' | 'withdraw') => {
-    if (action === 'withdraw') {
-      setLockHint(t('home.lockWithdraw'));
-      return;
-    }
-    setLockHint(
-      t('home.lockRequirements', {
-        action: t('home.actionAddCredits'),
-      })
-    );
-  };
+  const canWithdraw = status?.eligibility?.canWithdraw !== false;
 
   const goDeposit = () => {
     setLockHint(null);
-    if (!twoFactorEnabled) {
-      setLockHint(t('home.lockDeposit2fa'));
-      router.push('/security/2fa');
-      return;
-    }
     if (!canDeposit) {
-      showBankLockHint('deposit');
+      setLockHint(
+        t('home.lockRequirements', {
+          action: t('home.actionAddCredits'),
+        }),
+      );
       return;
     }
-    router.push('/deposit');
+    // Soft-launch: bank transfer with unique reference (no Stripe card)
+    router.push('/deposit-manual');
   };
 
   const goWithdraw = () => {
     setLockHint(null);
-    if (!bankVerified) {
-      showBankLockHint('withdraw');
-      router.push('/bank?start=1');
+    if (!canWithdraw) {
+      setLockHint(t('home.lockWithdraw'));
       return;
     }
     if (!twoFactorEnabled) {
       setLockHint(t('home.lockWithdraw2fa'));
+      router.push('/security/2fa');
       return;
     }
-    if (!canWithdraw) {
-      setLockHint(t('home.lockWithdrawBlocked'));
-    }
-    router.push('/withdraw');
+    // Manual SEPA payout — IBAN collected on withdraw screen
+    router.push('/withdraw?mode=manual');
   };
-
-  const bankStatusCopy = getBankStatusLabelDetailed(bankStatus, t);
 
   return (
     <WalletShell
       title={t('home.title')}
-      subtitle={
-        bankVerified ? t('home.subtitleReady') : t('home.subtitlePending')
-      }
+      subtitle={t('home.subtitleReady')}
     >
       <View style={styles.balanceBlock}>
         <Text style={styles.balanceLabel}>{t('home.availableCredits')}</Text>
@@ -227,53 +197,24 @@ export default function WalletHome() {
           <Text style={styles.kycWarnCopy}>{t('home.identityPendingBody')}</Text>
         </View>
       )}
-      {bankVerified ? (
-        <View style={styles.bankLinked}>
-          <View style={styles.verifiedRow}>
-            <View style={styles.checkCircle}>
-              <Text style={styles.checkMark}>✓</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.verifiedTitle}>{t('home.readyForWithdrawals')}</Text>
-              <Text style={styles.verifiedMeta}>
-                {status?.bankAccount?.ibanMasked || t('common.ibanInStripe')}
-                {status?.bankAccount?.accountName
-                  ? ` · ${status.bankAccount.accountName}`
-                  : ''}
-              </Text>
-              <Text style={styles.readyHint}>{bankStatusCopy}</Text>
-            </View>
+      <View style={styles.bankLinked}>
+        <View style={styles.verifiedRow}>
+          <View style={styles.checkCircle}>
+            <Text style={styles.checkMark}>✓</Text>
           </View>
-          <Pressable onPress={() => router.push('/bank')}>
-            <Text style={styles.readyHint}>{t('home.manageStatus')}</Text>
-          </Pressable>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.verifiedTitle}>{t('home.manualRailsTitle')}</Text>
+            <Text style={styles.verifiedMeta}>{t('home.manualRailsBody')}</Text>
+          </View>
         </View>
-      ) : (
-        <View style={styles.bankMissing}>
-          <Text style={styles.bankMissingTitle}>
-            {hasConnect ? t('home.bankPendingTitle') : t('home.bankMissingTitle')}
-          </Text>
-          <Text style={styles.bankMissingCopy}>
-            {hasConnect ? t('home.bankPendingBody') : t('home.bankMissingBody')}
-          </Text>
-          <Text style={styles.bankMissingCopy}>
-            {t('common.statusLabel', { status: bankStatusCopy })}
-          </Text>
-          <PrimaryButton
-            label={
-              hasConnect ? t('home.continueVerification') : t('home.linkStripe')
-            }
-            onPress={() => router.push('/bank?start=1')}
-          />
-        </View>
-      )}
+      </View>
 
       <View style={styles.actions}>
         <PrimaryButton label={t('home.addCredits')} onPress={goDeposit} />
         <PrimaryButton
           label={t('home.withdrawToBank')}
           onPress={goWithdraw}
-          locked={!bankVerified}
+          locked={!canWithdraw}
         />
         {lockHint ? (
           <View style={styles.lockBox}>

@@ -75,6 +75,8 @@ model User {
   receivedMessages      Message[]            @relation("ReceivedMessages")
   notifications         Notification[]
   payments              Payment[]
+  manualBankDeposits    ManualBankDeposit[]
+  iapPurchases          IapPurchase[]
   premium               PremiumSubscription?
   createdQuizzes        Quiz[]               @relation("CreatorQuizzes")
   quizAnswers           QuizAnswer[]
@@ -284,11 +286,14 @@ model Withdraw {
   amount          Int
   currency        String         @default("EUR")
   status          WithdrawStatus @default(REQUESTED)
+  /// STRIPE | MANUAL — soft-launch bank transfer payouts use MANUAL
+  payoutMethod    String         @default("STRIPE")
   stripePayoutId String?        @unique
   bankAccountIban String?
   bankAccountName String?
   processingFee   Int             @default(0)
   failureReason   String?
+  adminNotes      String?
   processedAt     DateTime?
   createdAt       DateTime       @default(now())
   // Para retiros fraccionados
@@ -297,6 +302,62 @@ model Withdraw {
   seriesIndex      Int?          // Índice en la serie (1, 2, 3...)
   scheduledFor     DateTime?     // Cuándo está programado este retiro
   user            User           @relation(fields: [userId], references: [id])
+
+  @@index([status, payoutMethod])
+}
+
+/// Soft-launch: user wires money to platform IBAN with unique reference; admin confirms.
+model ManualBankDeposit {
+  id               Int                   @id @default(autoincrement())
+  userId           Int
+  referenceCode    String                @unique
+  creditsRequested Int
+  amountExpected   Int                   // major units in user currency (≈ credits)
+  currency         String                @default("EUR")
+  status           ManualDepositStatus   @default(PENDING)
+  userNote         String?
+  adminNotes       String?
+  confirmedByAdminId Int?
+  confirmedAt      DateTime?
+  expiresAt        DateTime
+  createdAt        DateTime              @default(now())
+  user             User                  @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+enum ManualDepositStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+/// App Store / Play Billing credit packs (IAP).
+model IapPurchase {
+  id                 Int              @id @default(autoincrement())
+  userId             Int
+  store              String           // APPLE | GOOGLE
+  productId          String
+  storeTransactionId String           @unique
+  creditsGranted     Int
+  status             IapPurchaseStatus @default(PENDING)
+  rawReceipt         String?          @db.Text
+  failureReason      String?
+  createdAt          DateTime         @default(now())
+  creditedAt         DateTime?
+  user               User             @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+enum IapPurchaseStatus {
+  PENDING
+  CREDITED
+  FAILED
+  REFUNDED
 }
 
 model SystemSettings {

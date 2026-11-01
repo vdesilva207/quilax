@@ -194,8 +194,8 @@
   },
   "home": {
     "title": "Gestión",
-    "subtitleReady": "Cuenta lista. Compra créditos o retira a tu banco.",
-    "subtitlePending": "Puedes comprar créditos ya. Para retirar, vincula tu banco (IBAN) con Stripe.",
+    "subtitleReady": "Puedes añadir créditos por transferencia y solicitar retiros a tu IBAN.",
+    "subtitlePending": "Compra créditos por transferencia. Los retiros se pagan a tu IBAN (manual, 1–3 días laborables).",
     "availableCredits": "Créditos disponibles",
     "identityVerified": "Identidad verificada en Quilax",
     "identityPending": "Identidad pendiente",
@@ -208,7 +208,7 @@
     "bankMissingBody": "Para retirar necesitas vincular tu banco (IBAN) con Stripe Connect. La tarjeta de compra se introduce solo al añadir créditos.",
     "addCredits": "Añadir créditos",
     "withdrawToBank": "Retirar a cuenta bancaria",
-    "lockWithdraw": "Para retirar hace falta tu cuenta bancaria (IBAN) verificada con Stripe Connect. No es la tarjeta de compra.",
+    "lockWithdraw": "Ahora mismo no puedes retirar. Revisa identidad (KYC), mayoría de edad y requisitos de la cuenta.",
     "lockRequirements": "Para {{action}}, revisa los requisitos de tu cuenta",
     "lockDeposit2fa": "Para añadir créditos necesitas activar Google Authenticator (2FA). Pulsa el aviso de abajo o ve a Configurar 2FA.",
     "lockWithdraw2fa": "Para retirar necesitas activar Google Authenticator (2FA). Pulsa el aviso de abajo o ve a Configurar 2FA.",
@@ -221,7 +221,9 @@
     "continueVerification": "Continuar verificación",
     "linkStripe": "Vincular con Stripe",
     "actionAddCredits": "añadir créditos",
-    "actionWithdraw": "retirar a cuenta bancaria"
+    "actionWithdraw": "retirar a cuenta bancaria",
+    "manualRailsTitle": "Transferencia bancaria (soft-launch)",
+    "manualRailsBody": "Añade créditos con IBAN + concepto QLX. Los retiros se pagan a tu IBAN en 1–3 días laborables."
   },
   "deposit": {
     "title": "Añadir créditos",
@@ -252,14 +254,22 @@
     "verifyWithStripe": "Verificar con Stripe",
     "verificationCopy": "Los retiros solo están disponibles cuando Stripe confirma tu cuenta Connect e IBAN (estado: Lista para retiros).",
     "subtitleTotp": "Confirma con Google Authenticator",
-    "amountLabel": "Cantidad",
+    "amountLabel": "Créditos a retirar",
     "needBankVerification": "Completa la verificación bancaria con Stripe antes de retirar.",
     "minWithdraw": "El mínimo de retiro es {{min}} créditos.",
     "need2fa": "Antes de retirar debes configurar Google Authenticator.",
     "confirmWithdraw": "Confirma el retiro",
     "confirmWithdrawHint": "Vas a retirar {{credits}} créditos ({{amount}}).",
     "withdrawAmount": "Retirar {{amount}}",
-    "pendingReview": "Retiro recibido: queda en revisión manual antes del pago al banco."
+    "pendingReview": "Retiro recibido: queda en revisión manual antes del pago al banco.",
+    "manualSubtitle": "Mínimo {{min}} créditos. Te pagamos por transferencia SEPA.",
+    "manualCopy": "Indica el IBAN donde quieres recibir el dinero. Un administrador enviará la transferencia (suele tardar 1–3 días laborables).",
+    "needIban": "Introduce un IBAN válido",
+    "needAccountName": "Introduce el nombre del titular",
+    "ibanLabel": "IBAN de destino",
+    "accountNameLabel": "Nombre del titular",
+    "accountNamePlaceholder": "Como figura en el banco",
+    "manualQueued": "Solicitud enviada. Te avisaremos cuando la transferencia esté hecha."
   },
   "history": {
     "title": "Historial",
@@ -305,7 +315,11 @@
     "linkBank": "Vincular / revisar banco",
     "donePending": "Solicitud enviada. Queda en revisión antes del pago.",
     "doneSuccess": "Retiro solicitado. El saldo se transferirá a tu cuenta vinculada.",
-    "sessionNote": "Sesión de recuperación · Gestión Quilax"
+    "sessionNote": "Sesión de recuperación · Gestión Quilax",
+    "manualHint": "Indica el IBAN donde quieres recibir el saldo. Un admin enviará la transferencia SEPA (1–3 días laborables).",
+    "doneManual": "Solicitud enviada. Te avisaremos cuando la transferencia esté hecha.",
+    "cannotWithdraw": "Ahora mismo no puedes retirar. Revisa identidad (KYC) y requisitos de la cuenta.",
+    "need2fa": "Activa Google Authenticator (2FA) antes de retirar."
   },
   "bank": {
     "title": "Cuenta bancaria",
@@ -365,5 +379,25 @@
     "hide": "Ocultar",
     "showAccessibility": "Mostrar contraseña",
     "hideAccessibility": "Ocultar contraseña"
+  },
+  "depositManual": {
+    "title": "Añadir créditos",
+    "subtitle": "Transferencia bancaria con concepto único",
+    "notConfigured": "Los depósitos manuales aún no están configurados en el servidor (IBAN de plataforma).",
+    "minCredits": "Mínimo {{n}} crédito",
+    "creditsLabel": "¿Cuántos créditos quieres?",
+    "rateHint": "1 crédito ≈ 1 EUR. Generaremos un concepto único (QLX-…) que debes poner exactamente en la transferencia.",
+    "generateInstructions": "Generar instrucciones de transferencia",
+    "backHome": "Volver",
+    "transferNow": "Haz la transferencia",
+    "transferHint": "Copia el IBAN y el concepto. Cuando recibamos el ingreso, un admin acreditará los créditos.",
+    "iban": "IBAN",
+    "accountName": "Titular",
+    "amount": "Importe",
+    "reference": "Concepto (obligatorio)",
+    "expires": "Caduca: {{date}}",
+    "done": "Hecho — volver al inicio",
+    "another": "Pedir otra cantidad",
+    "pendingTitle": "Pendientes de confirmación"
   }
 }

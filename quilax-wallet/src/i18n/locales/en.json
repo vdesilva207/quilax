@@ -194,8 +194,8 @@
   },
   "home": {
     "title": "Wallet",
-    "subtitleReady": "Account ready. Buy credits or withdraw to your bank.",
-    "subtitlePending": "You can buy credits now. To withdraw, link your bank (IBAN) with Stripe.",
+    "subtitleReady": "You can add credits by transfer and request withdrawals to your IBAN.",
+    "subtitlePending": "Add credits by bank transfer. Withdrawals are paid to your IBAN (manual, 1–3 business days).",
     "availableCredits": "Available credits",
     "identityVerified": "Identity verified on Quilax",
     "identityPending": "Identity pending",
@@ -208,7 +208,7 @@
     "bankMissingBody": "To withdraw you need to link your bank (IBAN) with Stripe Connect. The purchase card is entered only when adding credits.",
     "addCredits": "Add credits",
     "withdrawToBank": "Withdraw to bank account",
-    "lockWithdraw": "To withdraw you need your bank account (IBAN) verified with Stripe Connect. This is not your purchase card.",
+    "lockWithdraw": "You cannot withdraw right now. Check identity (KYC), age 18+, and account requirements.",
     "lockRequirements": "To {{action}}, check your account requirements",
     "lockDeposit2fa": "To add credits you need Google Authenticator (2FA). Tap the notice below or go to Set up 2FA.",
     "lockWithdraw2fa": "To withdraw you need Google Authenticator (2FA). Tap the notice below or go to Set up 2FA.",
@@ -221,7 +221,9 @@
     "continueVerification": "Continue verification",
     "linkStripe": "Link with Stripe",
     "actionAddCredits": "add credits",
-    "actionWithdraw": "withdraw to bank account"
+    "actionWithdraw": "withdraw to bank account",
+    "manualRailsTitle": "Bank transfer (soft-launch)",
+    "manualRailsBody": "Add credits with IBAN + QLX reference. Withdrawals are paid to your IBAN in 1–3 business days."
   },
   "deposit": {
     "title": "Add credits",
@@ -252,14 +254,22 @@
     "verifyWithStripe": "Verify with Stripe",
     "verificationCopy": "Withdrawals are only available when Stripe confirms your Connect account and IBAN (status: Ready for withdrawals).",
     "subtitleTotp": "Confirm with Google Authenticator",
-    "amountLabel": "Amount",
+    "amountLabel": "Credits to withdraw",
     "needBankVerification": "Complete bank verification with Stripe before withdrawing.",
     "minWithdraw": "Minimum withdrawal is {{min}} credits.",
     "need2fa": "You must set up Google Authenticator before withdrawing.",
     "confirmWithdraw": "Confirm withdrawal",
     "confirmWithdrawHint": "You are withdrawing {{credits}} credits ({{amount}}).",
     "withdrawAmount": "Withdraw {{amount}}",
-    "pendingReview": "Withdrawal received: pending manual review before bank payout."
+    "pendingReview": "Withdrawal received: pending manual review before bank payout.",
+    "manualSubtitle": "Minimum {{min}} credits. Paid by SEPA transfer.",
+    "manualCopy": "Enter the IBAN to receive funds. An admin will send the transfer (usually 1–3 business days).",
+    "needIban": "Enter a valid IBAN",
+    "needAccountName": "Enter the account holder name",
+    "ibanLabel": "Destination IBAN",
+    "accountNameLabel": "Account holder name",
+    "accountNamePlaceholder": "As shown on your bank account",
+    "manualQueued": "Request submitted. We will notify you when the transfer is sent."
   },
   "history": {
     "title": "History",
@@ -305,7 +315,11 @@
     "linkBank": "Link / review bank",
     "donePending": "Request sent. Pending review before payout.",
     "doneSuccess": "Withdrawal requested. Balance will be transferred to your linked account.",
-    "sessionNote": "Recovery session · Quilax Wallet"
+    "sessionNote": "Recovery session · Quilax Wallet",
+    "manualHint": "Enter the IBAN to receive your balance. An admin will send a SEPA transfer (1–3 business days).",
+    "doneManual": "Request submitted. We will notify you when the transfer is sent.",
+    "cannotWithdraw": "You cannot withdraw right now. Check identity (KYC) and account requirements.",
+    "need2fa": "Enable Google Authenticator (2FA) before withdrawing."
   },
   "bank": {
     "title": "Bank account",
@@ -365,5 +379,25 @@
     "hide": "Hide",
     "showAccessibility": "Show password",
     "hideAccessibility": "Hide password"
+  },
+  "depositManual": {
+    "title": "Add credits",
+    "subtitle": "Bank transfer with a unique reference",
+    "notConfigured": "Manual deposits are not configured on the server yet (platform IBAN).",
+    "minCredits": "Minimum {{n}} credit",
+    "creditsLabel": "How many credits?",
+    "rateHint": "1 credit ≈ 1 EUR. We generate a unique reference (QLX-…) you must put on the transfer.",
+    "generateInstructions": "Generate transfer instructions",
+    "backHome": "Back",
+    "transferNow": "Make the transfer",
+    "transferHint": "Copy the IBAN and reference. After we receive it, an admin will credit your balance.",
+    "iban": "IBAN",
+    "accountName": "Account holder",
+    "amount": "Amount",
+    "reference": "Reference (required)",
+    "expires": "Expires: {{date}}",
+    "done": "Done — back home",
+    "another": "Request another amount",
+    "pendingTitle": "Awaiting confirmation"
   }
 }

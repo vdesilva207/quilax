@@ -31,7 +31,17 @@ echo "▶ Build iOS profile=$PROFILE"
 echo "  (no interrumpe Stripe/Gestión — apunta a api.appquilax.com)"
 echo ""
 
-npx eas-cli@latest build --profile "$PROFILE" --platform ios --non-interactive
+# First-time Apple credentials need interactive prompts (Apple ID / 2FA).
+# For CI: NONINTERACTIVE=1 ./scripts/eas-ios-internal.sh testflight
+EAS_FLAGS=(--profile "$PROFILE" --platform ios)
+if [[ "${NONINTERACTIVE:-}" == "1" ]]; then
+  EAS_FLAGS+=(--non-interactive)
+  echo "  modo: non-interactive"
+else
+  echo "  modo: interactive (necesario la 1ª vez para certificados Apple)"
+fi
+
+npx eas-cli@latest build "${EAS_FLAGS[@]}"
 
 if [[ "$PROFILE" == "testflight" ]]; then
   echo ""

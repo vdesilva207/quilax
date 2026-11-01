@@ -256,7 +256,11 @@
       "linkError": "Didn't receive the Stripe link",
       "openError": "Couldn't open Stripe",
       "copy": "Stripe will ask for your identity and IBAN. Once withdrawals are confirmed possible, you'll be able to cash out credits from Wallet.",
-      "copySkip": "You can skip this step. You’ll only need a bank account when you want to deposit or withdraw credits (on the Wallet web)."
+      "copySkip": "You can skip this step. You’ll only need a bank account when you want to deposit or withdraw credits (on the Wallet web).",
+      "titleSoft": "Money on Quilax",
+      "subtitleSoft": "Credits in the app; withdrawals later in Wallet",
+      "copySoft": "You buy credits via the App Store / Google Play. Withdrawals are requested in Wallet with your IBAN (manual transfer for soft launch).",
+      "copySkipSoft": "You can continue. No need to link a bank now."
     },
     "idVerificationScreen": {
       "title": "Identity verification",
@@ -789,7 +793,7 @@
     "suggestedDifficulty": "Suggestion: {{difficulty}}",
     "suggestNeedQuestions": "Add questions before suggesting difficulty",
     "spellBannerTitle": "Spelling & wording",
-    "spellBannerBody": "Use the spell checker on each question and re-read your text. If the checker is wrong and you prefer your version, keep it — we respect that.",
+    "spellBannerBody": "Double-check spelling and wording on every question and answer before you submit. Clear text means fewer review rejections.",
     "spellChecking": "Checking…",
     "spellEmpty": "Write the question before checking.",
     "spellNoChanges": "No spelling or grammar changes found.",
@@ -817,7 +821,7 @@
     "questionIncompleteError": "Complete the text, all options (or T/F), and times before continuing.",
     "questionProgress": "Question {{current}}/{{total}} · {{complete}}/{{min}} ready to submit",
     "submittedTitle": "Submitted / in review",
-    "submittedEmpty": "You haven’t submitted any quiz for review yet.",
+    "submittedEmpty": "You haven't submitted any quiz for review yet.",
     "viewSubmitted": "View",
     "status": {
       "PENDING_REVIEW": "In review",
@@ -1297,20 +1301,22 @@
     }
   },
   "wallet": {
-    "badge": "Credits · withdrawals · bank",
+    "badge": "Credits · withdrawals",
     "title": "Your money,",
     "titleAccent": "under control.",
-    "subtitle": "Same session, same account. Open Wallet on the web to buy credits and cash out prizes.",
+    "subtitle": "Buy credits in the app (store). Web deposits/withdrawals by bank transfer.",
     "balanceLabel": "Balance in app",
     "creditsUnit": "credits",
-    "description": "We'll open Wallet already signed in. Manage balance, deposits, withdrawals, and your bank account there.",
-    "openWeb": "Open Wallet",
+    "description": "In the app you buy credits via the store. On Wallet (web) you can deposit or withdraw by IBAN until we automate payouts.",
+    "openWeb": "Open Wallet (withdrawals / IBAN)",
     "openSameTab": "Open in this tab",
-    "appOnlyHint": "For security, Wallet only opens from this app.",
+    "appOnlyHint": "Withdrawals are handled on the web. Credit purchases go through the app store.",
     "openErrorTitle": "Couldn't open",
     "openErrorBody": "Try again in a few seconds. If it keeps failing, sign out and sign back in.",
     "openErrorHint": "",
-    "emptyBalanceHint": "Balance is 0. Open Wallet to add credits and join paid quizzes."
+    "emptyBalanceHint": "Balance is 0. Buy credits here or deposit by transfer in Wallet.",
+    "buyCredits": "Buy credits",
+    "buyCreditsHint": "Secure payment via App Store / Google Play"
   },
   "notif": {
     "title": "Allow notifications?",
@@ -1395,5 +1401,21 @@
     "promoteBody": "Once it's live, share the quiz and get people to join. More sign-ups make a better quiz and community.",
     "goHome": "Go home",
     "viewQuiz": "View my quiz"
+  },
+  "buyCredits": {
+    "title": "Buy credits",
+    "subtitle": "Pay with the device store",
+    "loading": "Loading packs…",
+    "webBlocked": "In-app purchases are only on iOS/Android. On web use Wallet → bank transfer.",
+    "openWallet": "Open Wallet",
+    "storeUnavailable": "The store is unavailable right now. Try later or use a dev build with IAP.",
+    "buy": "Buy",
+    "bonus": "+{{n}} bonus",
+    "success": "Purchase credited: +{{n}} credits",
+    "error": "Could not complete the purchase",
+    "verifying": "Verifying purchase…",
+    "restore": "Restore purchases",
+    "needKyc": "Verify your identity before buying credits.",
+    "goVerify": "Verify identity"
   }
 }

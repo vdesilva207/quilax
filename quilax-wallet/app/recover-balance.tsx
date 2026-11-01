@@ -5,10 +5,11 @@ import {
   StyleSheet,
   ActivityIndicator,
   Pressable,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { WalletShell, PrimaryButton, SecondaryButton } from '@/components/WalletShell';
+import { WalletShell, PrimaryButton } from '@/components/WalletShell';
 import { TotpVerifyStep } from '@/components/TotpVerifyStep';
 import { apiFetch, getToken, logoutSession, clearToken } from '@/lib/api';
 import { Colors, Fonts, Spacing } from '@/constants/theme';
@@ -26,16 +27,12 @@ type Status = {
     canRecoverBalance?: boolean;
   } | null;
   eligibility?: { canWithdraw?: boolean; reasons?: string[] };
-  verification?: {
-    hasConnectAccount?: boolean;
-    bankVerificationStatus?: string;
-    isBankVerified?: boolean;
-  };
+  bankAccount?: { accountName?: string | null };
 };
 
 /**
- * Pantalla exclusiva para cuentas suspendidas por contenido (CONTENT):
- * muestra mensaje de ban + saldo y permite retirar el total restante.
+ * Soft-launch: banned CONTENT accounts recover balance via manual SEPA (IBAN on form).
+ * No Stripe Connect.
  */
 export default function RecoverBalanceScreen() {
   const router = useRouter();
@@ -43,6 +40,8 @@ export default function RecoverBalanceScreen() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<Status | null>(null);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [iban, setIban] = useState('');
+  const [accountName, setAccountName] = useState('');
   const [step, setStep] = useState<'info' | 'totp'>('info');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -73,8 +72,11 @@ export default function RecoverBalanceScreen() {
         banRecoveryOnly: true,
         ban: statusData.ban,
         eligibility: statusData.eligibility,
-        verification: statusData.verification,
+        bankAccount: statusData.bankAccount,
       });
+      if (statusData.bankAccount?.accountName) {
+        setAccountName(statusData.bankAccount.accountName);
+      }
       setTwoFactorEnabled(!!security?.security?.twoFactorEnabled);
     } catch (err: any) {
       setError(err?.message || t('errors.loadFailed'));
@@ -88,13 +90,10 @@ export default function RecoverBalanceScreen() {
   }, [router, t]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
-  const hasConnect =
-    !!status?.verification?.hasConnectAccount ||
-    status?.verification?.bankVerificationStatus === 'VERIFIED';
-  const canWithdraw = status?.eligibility?.canWithdraw === true;
+  const canWithdraw = status?.eligibility?.canWithdraw !== false;
   const balance = status?.balance ?? 0;
 
   const startWithdraw = () => {
@@ -103,31 +102,40 @@ export default function RecoverBalanceScreen() {
       setError(t('recover.noBalance'));
       return;
     }
-    if (!hasConnect || !canWithdraw) {
-      setError(t('recover.noConnect'));
+    if (!canWithdraw) {
+      setError(t('recover.cannotWithdraw'));
       return;
     }
-    if (twoFactorEnabled) {
-      setStep('totp');
+    const cleanIban = iban.replace(/\s+/g, '');
+    if (cleanIban.length < 15) {
+      setError(t('withdraw.needIban'));
       return;
     }
-    void doWithdraw('');
+    if (!accountName.trim()) {
+      setError(t('withdraw.needAccountName'));
+      return;
+    }
+    if (!twoFactorEnabled) {
+      setError(t('recover.need2fa'));
+      return;
+    }
+    setStep('totp');
   };
 
   const doWithdraw = async (totpCode: string) => {
     setSubmitting(true);
     setError('');
     try {
-      const data = await apiFetch('/withdraws/request', {
+      const data = await apiFetch('/withdraws/request-manual', {
         method: 'POST',
         body: JSON.stringify({
           amount: balance,
-          totpCode: totpCode || undefined,
+          iban: iban.replace(/\s+/g, ''),
+          accountName: accountName.trim(),
+          totpCode,
         }),
       });
-      setDoneMsg(
-        data?.pendingReview ? t('recover.donePending') : t('recover.doneSuccess')
-      );
+      setDoneMsg(data?.message || t('recover.doneManual'));
       setStep('info');
       await load();
     } catch (err: any) {
@@ -194,17 +202,26 @@ export default function RecoverBalanceScreen() {
         <Text style={styles.balanceFiat}>{fiat}</Text>
       </View>
 
-      {!hasConnect || !canWithdraw ? (
-        <View style={styles.warn}>
-          <Text style={styles.warnTitle}>{t('recover.noBankTitle')}</Text>
-          <Text style={styles.warnBody}>{t('recover.noBankBody')}</Text>
-          {status?.eligibility?.reasons?.length ? (
-            <Text style={styles.warnBody}>{status.eligibility.reasons.join(' · ')}</Text>
-          ) : null}
-        </View>
-      ) : (
-        <Text style={styles.hint}>{t('recover.canWithdrawHint')}</Text>
-      )}
+      <Text style={styles.hint}>{t('recover.manualHint')}</Text>
+
+      <Text style={styles.label}>{t('withdraw.ibanLabel')}</Text>
+      <TextInput
+        style={styles.input}
+        autoCapitalize="characters"
+        value={iban}
+        onChangeText={setIban}
+        placeholder="ES00 ACCT-000003 0000"
+        placeholderTextColor={Colors.textSecondary}
+      />
+
+      <Text style={styles.label}>{t('withdraw.accountNameLabel')}</Text>
+      <TextInput
+        style={styles.input}
+        value={accountName}
+        onChangeText={setAccountName}
+        placeholder={t('withdraw.accountNamePlaceholder')}
+        placeholderTextColor={Colors.textSecondary}
+      />
 
       {doneMsg ? <Text style={styles.done}>{doneMsg}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -220,10 +237,6 @@ export default function RecoverBalanceScreen() {
         onPress={startWithdraw}
         disabled={submitting || balance <= 0 || !canWithdraw}
       />
-
-      {hasConnect && !canWithdraw ? (
-        <SecondaryButton label={t('recover.linkBank')} onPress={() => router.push('/bank')} />
-      ) : null}
 
       <Pressable onPress={logout} style={styles.logout}>
         <Text style={styles.logoutText}>{t('common.logout')}</Text>
@@ -249,15 +262,15 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.body,
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
     color: Colors.error,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   bannerMsg: {
     fontFamily: Fonts.body,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
     color: Colors.text,
+    lineHeight: 22,
   },
   until: {
     fontFamily: Fonts.body,
@@ -265,79 +278,72 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   balanceBlock: {
-    alignItems: 'center',
-    paddingVertical: Spacing.lg,
-    gap: 4,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   balanceLabel: {
     fontFamily: Fonts.body,
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
     color: Colors.textSecondary,
+    textTransform: 'uppercase',
   },
   balanceValue: {
     fontFamily: Fonts.display,
-    fontSize: 36,
-    fontWeight: '700',
+    fontSize: 28,
+    fontWeight: '800',
     color: Colors.text,
   },
   balanceFiat: {
     fontFamily: Fonts.body,
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.textSecondary,
   },
   hint: {
     fontFamily: Fonts.body,
     fontSize: 14,
-    lineHeight: 21,
     color: Colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: Spacing.md,
   },
-  warn: {
-    backgroundColor: Colors.surfaceMuted,
-    borderRadius: 14,
-    padding: Spacing.md,
-    gap: 6,
-  },
-  warnTitle: {
-    fontFamily: Fonts.body,
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  warnBody: {
+  label: {
     fontFamily: Fonts.body,
     fontSize: 13,
-    lineHeight: 19,
+    fontWeight: '600',
     color: Colors.textSecondary,
+    marginBottom: Spacing.xs,
+    marginTop: Spacing.sm,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: Colors.surfaceMuted,
+    borderRadius: 12,
+    padding: Spacing.md,
+    fontSize: 16,
+    fontFamily: Fonts.body,
+    fontWeight: '600',
+    color: Colors.text,
+    backgroundColor: Colors.surface,
   },
   done: {
-    fontFamily: Fonts.body,
-    fontSize: 14,
-    color: Colors.success,
-    lineHeight: 20,
+    marginTop: Spacing.md,
+    color: Colors.primary,
+    fontWeight: '700',
   },
   error: {
-    fontFamily: Fonts.body,
-    fontSize: 14,
+    marginTop: Spacing.sm,
     color: Colors.error,
-    lineHeight: 20,
+    fontWeight: '700',
   },
-  logout: {
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-  },
+  logout: { marginTop: Spacing.lg, alignItems: 'center' },
   logoutText: {
     fontFamily: Fonts.body,
-    fontSize: 14,
     color: Colors.textSecondary,
-    textDecorationLine: 'underline',
+    fontWeight: '600',
   },
   footerNote: {
-    textAlign: 'center',
-    fontFamily: Fonts.body,
-    fontSize: 11,
+    marginTop: Spacing.md,
+    fontSize: 12,
     color: Colors.textSecondary,
+    textAlign: 'center',
   },
 });

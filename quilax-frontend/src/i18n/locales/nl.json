@@ -786,7 +786,7 @@
     "suggestedDifficulty": "Suggestie: {{difficulty}}",
     "suggestNeedQuestions": "Voeg vragen toe voordat u moeilijkheden suggereert",
     "spellBannerTitle": "Spelling en formulering",
-    "spellBannerBody": "Gebruik de spellingcontrole bij elke vraag en lees uw tekst opnieuw. Als de controle fout is en u de voorkeur geeft aan uw versie, bewaar deze dan; dat respecteren wij.",
+    "spellBannerBody": "Controleer spelling en formulering van elke vraag en antwoord goed voordat je indient. Duidelijke tekst vermindert afwijzingen bij review.",
     "spellChecking": "Controleren…",
     "spellEmpty": "Schrijf de vraag op voordat u deze controleert.",
     "spellNoChanges": "Geen spelling- of grammaticawijzigingen gevonden.",
@@ -816,17 +816,17 @@
     "continueToSchedule": "Volgende · quiz plannen",
     "questionIncompleteError": "Vul tekst, opties en tijden in voordat je verdergaat.",
     "questionProgress": "Vraag {{current}}/{{total}} · {{complete}}/{{min}} klaar",
-    "submittedTitle": "Submitted / in review",
-    "submittedEmpty": "You haven’t submitted any quiz for review yet.",
-    "viewSubmitted": "View",
+    "submittedTitle": "Ingediend / in beoordeling",
+    "submittedEmpty": "Je hebt nog geen quiz ter beoordeling ingediend.",
+    "viewSubmitted": "Bekijken",
     "status": {
-      "PENDING_REVIEW": "In review",
-      "PUBLISHED": "Published",
-      "REJECTED": "Rejected",
-      "APPROVED": "Approved",
-      "SCHEDULED": "Scheduled",
-      "FINISHED": "Finished",
-      "CANCELLED": "Cancelled"
+      "PENDING_REVIEW": "In beoordeling",
+      "PUBLISHED": "Gepubliceerd",
+      "REJECTED": "Afgewezen",
+      "APPROVED": "Goedgekeurd",
+      "SCHEDULED": "Gepland",
+      "FINISHED": "Afgerond",
+      "CANCELLED": "Geannuleerd"
     },
     "draftOpenedTitle": "Draft opened",
     "draftOpenedBody": "Draft loaded with {{n}} question(s). Review the info and tap Forward to see each question.",
@@ -1381,15 +1381,15 @@
     }
   },
   "quizSubmitted": {
-    "title": "Submitted for review",
-    "subtitle": "Thanks for creating on Quilax",
-    "sectionTitle": "What happens next",
-    "lead": "Your quiz was sent to the admin panel for review.",
-    "body": "We'll notify you when it's published (or if changes are needed). You don't need to manage the review status in the app.",
-    "scheduledLabel": "Requested date: {{date}}",
-    "promoteTitle": "Your next job: promote it",
-    "promoteBody": "Once it's live, share the quiz and get people to join. More sign-ups make a better quiz and community.",
-    "goHome": "Go home",
-    "viewQuiz": "View my quiz"
+    "title": "Ingediend ter beoordeling",
+    "subtitle": "Bedankt voor het maken op Quilax",
+    "sectionTitle": "Wat gebeurt er nu",
+    "lead": "Je quiz is naar het adminpanel gestuurd ter beoordeling.",
+    "body": "We laten het je weten wanneer hij is gepubliceerd (of als er wijzigingen nodig zijn). Je hoeft de reviewstatus niet in de app te beheren.",
+    "scheduledLabel": "Gevraagde datum: {{date}}",
+    "promoteTitle": "Jouw volgende taak: promoten",
+    "promoteBody": "Zodra hij live is, deel de quiz en laat mensen zich inschrijven. Meer inschrijvingen maken een betere quiz en community.",
+    "goHome": "Naar start",
+    "viewQuiz": "Mijn quiz bekijken"
   }
 }

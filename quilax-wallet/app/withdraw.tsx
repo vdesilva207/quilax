@@ -8,25 +8,27 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { WalletShell, PrimaryButton, SecondaryButton } from '@/components/WalletShell';
+import { WalletShell, PrimaryButton } from '@/components/WalletShell';
 import { TotpVerifyStep } from '@/components/TotpVerifyStep';
 import { apiFetch, getToken } from '@/lib/api';
 import { Colors, Fonts, Spacing } from '@/constants/theme';
-import { creditsToFiat, getBankStatusLabel } from '@/constants/money';
+import { creditsToFiat } from '@/constants/money';
 
 const MIN_WITHDRAW = 5;
 
+/**
+ * Soft-launch withdrawals: user provides IBAN; ops pays by SEPA (no Stripe payout).
+ */
 export default function WithdrawScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const [amount, setAmount] = useState('');
+  const [iban, setIban] = useState('');
+  const [accountName, setAccountName] = useState('');
   const [currency, setCurrency] = useState('EUR');
-  const [ibanMasked, setIbanMasked] = useState<string | null>(null);
-  const [bankStatus, setBankStatus] = useState<string>('NONE');
-  const [canWithdraw, setCanWithdraw] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<'amount' | 'totp'>('amount');
+  const [step, setStep] = useState<'form' | 'totp'>('form');
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -38,26 +40,18 @@ export default function WithdrawScreen() {
       return;
     }
     try {
-      const [status, security, connect] = await Promise.all([
+      const [status, security] = await Promise.all([
         apiFetch('/wallet-access/status'),
         apiFetch('/profile/security').catch(() => null),
-        apiFetch('/payments/connect/status').catch(() => null),
       ]);
+      if (status?.banRecoveryOnly) {
+        router.replace('/recover-balance');
+        return;
+      }
       setCurrency(status.currency || 'EUR');
-      setIbanMasked(
-        status.bankAccount?.ibanMasked ||
-          (connect?.bankLast4 ? `····${connect.bankLast4}` : null)
-      );
-      setBankStatus(
-        connect?.bankVerificationStatus ||
-          status.verification?.bankVerificationStatus ||
-          'NONE'
-      );
-      setCanWithdraw(
-        !!connect?.canWithdraw ||
-          (status.eligibility?.canWithdraw === true &&
-            status.verification?.bankVerificationStatus === 'VERIFIED')
-      );
+      if (status.bankAccount?.accountName) {
+        setAccountName(status.bankAccount.accountName);
+      }
       setTwoFactorEnabled(!!security?.security?.twoFactorEnabled);
     } catch (err: any) {
       setError(err?.message || t('errors.loadFailed'));
@@ -73,7 +67,7 @@ export default function WithdrawScreen() {
   useFocusEffect(
     useCallback(() => {
       void load();
-    }, [load])
+    }, [load]),
   );
 
   const value = Math.floor(Number(amount) || 0);
@@ -82,12 +76,17 @@ export default function WithdrawScreen() {
   const continueToTotp = () => {
     setError('');
     setInfo('');
-    if (!canWithdraw || bankStatus !== 'VERIFIED') {
-      setError(t('withdraw.needBankVerification'));
-      return;
-    }
     if (!Number.isFinite(value) || value < MIN_WITHDRAW) {
       setError(t('withdraw.minWithdraw', { min: MIN_WITHDRAW }));
+      return;
+    }
+    const cleanIban = iban.replace(/\s+/g, '');
+    if (cleanIban.length < 15) {
+      setError(t('withdraw.needIban'));
+      return;
+    }
+    if (!accountName.trim()) {
+      setError(t('withdraw.needAccountName'));
       return;
     }
     if (!twoFactorEnabled) {
@@ -102,17 +101,18 @@ export default function WithdrawScreen() {
     setError('');
     setInfo('');
     try {
-      const data = await apiFetch('/withdraws/request', {
+      const data = await apiFetch('/withdraws/request-manual', {
         method: 'POST',
-        body: JSON.stringify({ amount: value, totpCode }),
+        body: JSON.stringify({
+          amount: value,
+          iban: iban.replace(/\s+/g, ''),
+          accountName: accountName.trim(),
+          totpCode,
+        }),
       });
-      setStep('amount');
+      setInfo(data?.message || t('withdraw.manualQueued'));
+      setStep('form');
       setAmount('');
-      if (data?.pendingReview || data?.withdraw?.status === 'PENDING_REVIEW') {
-        setInfo(data?.estimatedTime || t('withdraw.pendingReview'));
-        return;
-      }
-      router.replace('/');
     } catch (err: any) {
       setError(err?.message || t('errors.withdrawCheckFailed'));
     } finally {
@@ -128,154 +128,110 @@ export default function WithdrawScreen() {
     );
   }
 
-  if (!canWithdraw || bankStatus !== 'VERIFIED') {
-    const statusLabel = getBankStatusLabel(
-      bankStatus === 'PENDING' ? 'PENDING' : undefined,
-      t
-    );
+  if (step === 'totp') {
     return (
-      <WalletShell
-        showBack
-        title={t('withdraw.titleBank')}
-        subtitle={t('withdraw.verificationRequired')}
-        footer={
-          <PrimaryButton
-            label={t('withdraw.verifyWithStripe')}
-            onPress={() => router.replace('/bank')}
-          />
-        }
-      >
-        <Text style={styles.copy}>{t('withdraw.verificationCopy')}</Text>
-        <Text style={styles.meta}>
-          {t('common.currentStatus', { status: statusLabel })}
-        </Text>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+      <WalletShell showBack title={t('withdraw.titleBank')} subtitle={t('withdraw.subtitleTotp')}>
+        <TotpVerifyStep
+          onSubmit={submitWithTotp}
+          submitting={submitting}
+          error={error}
+          onCancel={() => setStep('form')}
+        />
       </WalletShell>
     );
   }
-
-  const subtitle =
-    step === 'totp'
-      ? t('withdraw.subtitleTotp')
-      : ibanMasked
-        ? t('common.destination', { iban: ibanMasked, min: MIN_WITHDRAW })
-        : t('common.minimumCredits', { min: MIN_WITHDRAW });
 
   return (
     <WalletShell
       showBack
       title={t('withdraw.titleBank')}
-      subtitle={subtitle}
+      subtitle={t('withdraw.manualSubtitle', { min: MIN_WITHDRAW })}
       footer={
-        step === 'amount' ? (
-          submitting ? (
-            <ActivityIndicator color={Colors.primary} />
-          ) : (
-            <PrimaryButton
-              label={
-                value >= MIN_WITHDRAW
-                  ? t('common.continueWithAmount', { amount: formattedValue })
-                  : t('common.enterAmount')
-              }
-              onPress={continueToTotp}
-              disabled={value < MIN_WITHDRAW}
-            />
-          )
-        ) : null
+        submitting ? (
+          <ActivityIndicator color={Colors.primary} />
+        ) : (
+          <PrimaryButton
+            label={
+              value >= MIN_WITHDRAW
+                ? t('common.continueWithAmount', { amount: formattedValue })
+                : t('common.enterAmount')
+            }
+            onPress={continueToTotp}
+            disabled={value < MIN_WITHDRAW}
+          />
+        )
       }
     >
-      {step === 'totp' ? (
-        <View>
-          <TotpVerifyStep
-            title={t('withdraw.confirmWithdraw')}
-            hint={t('withdraw.confirmWithdrawHint', {
-              credits: value,
-              amount: formattedValue,
-            })}
-            submitting={submitting}
-            onConfirm={submitWithTotp}
-            onCancel={() => {
-              setError('');
-              setStep('amount');
-            }}
-            confirmLabel={t('withdraw.withdrawAmount', { amount: formattedValue })}
-          />
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-        </View>
-      ) : (
-        <View>
-          <Text style={styles.label}>{t('withdraw.amountLabel')}</Text>
-          <TextInput
-            style={styles.input}
-            value={amount}
-            onChangeText={(v) => {
-              setError('');
-              setAmount(v.replace(/[^\d]/g, ''));
-            }}
-            keyboardType="number-pad"
-            placeholder="0"
-            placeholderTextColor={Colors.textSecondary}
-          />
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          {info ? <Text style={styles.info}>{info}</Text> : null}
-          {!twoFactorEnabled ? (
-            <SecondaryButton
-              label={t('common.configure2fa')}
-              onPress={() => router.push('/security/2fa')}
-            />
-          ) : null}
-        </View>
-      )}
+      <Text style={styles.copy}>{t('withdraw.manualCopy')}</Text>
+
+      <Text style={styles.label}>{t('withdraw.amountLabel')}</Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="number-pad"
+        value={amount}
+        onChangeText={setAmount}
+        placeholder={String(MIN_WITHDRAW)}
+        placeholderTextColor={Colors.light.textSecondary}
+      />
+
+      <Text style={styles.label}>{t('withdraw.ibanLabel')}</Text>
+      <TextInput
+        style={styles.input}
+        autoCapitalize="characters"
+        value={iban}
+        onChangeText={setIban}
+        placeholder="ES00 ACCT-000003 0000"
+        placeholderTextColor={Colors.light.textSecondary}
+      />
+
+      <Text style={styles.label}>{t('withdraw.accountNameLabel')}</Text>
+      <TextInput
+        style={styles.input}
+        value={accountName}
+        onChangeText={setAccountName}
+        placeholder={t('withdraw.accountNamePlaceholder')}
+        placeholderTextColor={Colors.light.textSecondary}
+      />
+
+      {info ? <Text style={styles.info}>{info}</Text> : null}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <View style={{ height: Spacing.four }} />
     </WalletShell>
   );
 }
 
 const styles = StyleSheet.create({
   copy: {
-    fontFamily: Fonts.body,
-    fontSize: 16,
-    lineHeight: 24,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.md,
-  },
-  meta: {
-    fontFamily: Fonts.body,
     fontSize: 14,
-    color: Colors.text,
-    marginBottom: Spacing.sm,
+    color: Colors.light.textSecondary,
+    lineHeight: 20,
+    marginBottom: Spacing.three,
   },
   label: {
-    fontFamily: Fonts.body,
+    fontFamily: Fonts.sansSemiBold,
     fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
+    color: Colors.light.textSecondary,
+    marginBottom: Spacing.one,
+    marginTop: Spacing.two,
   },
   input: {
     borderWidth: 1,
-    borderColor: Colors.surfaceMuted,
-    backgroundColor: Colors.surface,
-    borderRadius: 10,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.text,
-    fontFamily: Fonts.display,
-    marginBottom: Spacing.sm,
-  },
-  error: {
-    fontFamily: Fonts.body,
-    fontSize: 14,
-    color: '#B91C1C',
-    marginTop: Spacing.sm,
-    lineHeight: 20,
+    borderColor: Colors.light.backgroundSelected,
+    borderRadius: 12,
+    padding: Spacing.three,
+    fontSize: 16,
+    fontFamily: Fonts.sansSemiBold,
+    color: Colors.light.text,
+    backgroundColor: Colors.light.backgroundElement,
   },
   info: {
-    fontFamily: Fonts.body,
-    fontSize: 14,
-    color: Colors.success,
-    marginTop: Spacing.sm,
-    lineHeight: 20,
+    marginTop: Spacing.three,
+    color: Colors.light.primary,
+    fontWeight: '600',
+  },
+  error: {
+    marginTop: Spacing.two,
+    color: Colors.light.error,
+    fontWeight: '600',
   },
 });

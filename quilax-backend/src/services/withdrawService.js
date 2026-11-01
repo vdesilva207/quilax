@@ -600,6 +600,165 @@ export async function getPendingWithdraws(page = 1, limit = 50) {
 
 /*
 ====================================
+RETIRO MANUAL (transferencia SEPA por ops)
+====================================
+*/
+export async function createManualWithdrawRequest(
+  userId,
+  amount,
+  { iban, accountName, ipAddress = null } = {},
+) {
+  const amountNum = Math.floor(Number(amount));
+  if (!Number.isFinite(amountNum) || amountNum < MIN_WITHDRAW_AMOUNT) {
+    throw new Error(`El monto mínimo de retiro es ${MIN_WITHDRAW_AMOUNT} EUR`);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: Number(userId) },
+    select: {
+      balance: true,
+      bankAccountIban: true,
+      bankAccountName: true,
+      isOver18: true,
+      idVerified: true,
+      isBanned: true,
+      email: true,
+      fullName: true,
+    },
+  });
+  if (!user) throw new Error("Usuario no encontrado");
+  if (user.isBanned) throw new Error("Tu cuenta está suspendida");
+  if (!user.isOver18) throw new Error("Debes ser mayor de 18 años para retirar fondos");
+
+  const kycRequired =
+    process.env.MONEY_REQUIRE_KYC !== "false" &&
+    !(
+      process.env.NODE_ENV !== "production" &&
+      (process.env.DEV_SKIP_KYC === "true" || process.env.DEV_SKIP_KYC === "1")
+    );
+  if (kycRequired && !user.idVerified) {
+    throw new Error("Debes verificar tu identidad (KYC) antes de retirar");
+  }
+
+  const rawIban = String(iban || user.bankAccountIban || "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+  if (rawIban.length < 15) {
+    throw new Error("Indica un IBAN válido para recibir la transferencia");
+  }
+  const name =
+    String(accountName || user.bankAccountName || user.fullName || user.email || "")
+      .trim()
+      .slice(0, 120) || "Titular";
+
+  if (user.balance < amountNum) throw new Error("Saldo insuficiente");
+
+  const existingWithdraw = await prisma.withdraw.findFirst({
+    where: {
+      userId: Number(userId),
+      status: { in: ["REQUESTED", "PROCESSING"] },
+    },
+  });
+  if (existingWithdraw) throw new Error("Ya tienes un retiro en proceso");
+
+  const processingFee = Math.max(
+    WITHDRAW_FEE_FIXED,
+    amountNum * WITHDRAW_FEE_PERCENTAGE,
+  );
+
+  const withdraw = await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: Number(userId) },
+      data: {
+        balance: { decrement: amountNum },
+        bankAccountIban: rawIban,
+        bankAccountName: name,
+      },
+    });
+
+    await tx.transaction.create({
+      data: {
+        userId: Number(userId),
+        type: "WITHDRAW",
+        amount: -amountNum,
+        currency: "EUR",
+        ipAddress: ipAddress || null,
+      },
+    });
+
+    return tx.withdraw.create({
+      data: {
+        userId: Number(userId),
+        amount: amountNum,
+        currency: "EUR",
+        status: "REQUESTED",
+        payoutMethod: "MANUAL",
+        bankAccountIban: rawIban,
+        bankAccountName: name,
+        processingFee: Math.round(processingFee * 100),
+      },
+    });
+  });
+
+  try {
+    const io = getIO();
+    io.to(`user:${userId}`).emit("withdraw:requested", {
+      amount: amountNum,
+      payoutMethod: "MANUAL",
+      message: `Solicitud de retiro manual de ${amountNum} EUR recibida. La procesaremos por transferencia.`,
+    });
+  } catch {
+    /* socket optional */
+  }
+
+  return {
+    withdraw,
+    message:
+      "Retiro solicitado. Te transferiremos a tu IBAN cuando un admin lo confirme (1–3 días laborables).",
+  };
+}
+
+/**
+ * Admin marks a MANUAL withdraw as paid (bank transfer already sent).
+ * Does NOT call Stripe.
+ */
+export async function completeManualWithdraw(withdrawId, adminNotes) {
+  const withdraw = await prisma.withdraw.findUnique({
+    where: { id: Number(withdrawId) },
+  });
+  if (!withdraw) throw new Error("Retiro no encontrado");
+  if (withdraw.payoutMethod !== "MANUAL") {
+    throw new Error("Este retiro no es manual");
+  }
+  if (withdraw.status !== "REQUESTED" && withdraw.status !== "PROCESSING") {
+    throw new Error("Retiro ya procesado");
+  }
+
+  const updated = await prisma.withdraw.update({
+    where: { id: withdraw.id },
+    data: {
+      status: "COMPLETED",
+      processedAt: new Date(),
+      adminNotes: adminNotes ? String(adminNotes).slice(0, 1000) : withdraw.adminNotes,
+      failureReason: null,
+    },
+  });
+
+  try {
+    const io = getIO();
+    io.to(`user:${withdraw.userId}`).emit("withdraw:completed", {
+      amount: withdraw.amount,
+      message: "Tu retiro se ha enviado por transferencia bancaria.",
+    });
+  } catch {
+    /* ignore */
+  }
+
+  return updated;
+}
+
+/*
+====================================
 APROBAR/RECHAZAR RETIRO (ADMIN)
 ====================================
 */

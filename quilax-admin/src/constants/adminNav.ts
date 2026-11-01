@@ -8,6 +8,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: '/panel/posts', label: 'Moderación', icon: 'list', roles: ['ADMIN', 'ADMIN_WORKER'] },
   { href: '/panel/kyc', label: 'KYC', icon: 'shield', roles: ['ADMIN'] },
   { href: '/panel/payments', label: 'Pagos', icon: 'card', roles: ['ADMIN'] },
+  { href: '/panel/manual-money', label: 'Dinero manual', icon: 'money', roles: ['ADMIN'] },
   { href: '/panel/financial', label: 'Finanzas', icon: 'money', roles: ['ADMIN'] },
   { href: '/panel/seasons', label: 'Temporadas', icon: 'trophy', roles: ['ADMIN', 'ADMIN_WORKER'] },
   { href: '/panel/quiz-distribution', label: 'Reparto Quiz', icon: 'chart', roles: ['ADMIN'] },

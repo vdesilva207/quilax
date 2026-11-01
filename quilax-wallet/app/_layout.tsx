@@ -29,6 +29,7 @@ export default function RootLayout() {
           <Stack.Screen name="sso" />
           <Stack.Screen name="recover-balance" />
           <Stack.Screen name="deposit" />
+          <Stack.Screen name="deposit-manual" />
           <Stack.Screen name="withdraw" />
           <Stack.Screen name="history" />
           <Stack.Screen name="bank/index" />

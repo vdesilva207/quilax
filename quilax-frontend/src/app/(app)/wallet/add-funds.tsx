@@ -1,6 +1,10 @@
+import { Platform } from 'react-native';
 import { Redirect } from 'expo-router';
 
-/** Depósitos solo en la web (quilax-wallet). */
+/** Native: IAP. Web: Gestión (manual bank). */
 export default function AddFundsRedirect() {
-  return <Redirect href="/(app)/wallet" />;
+  if (Platform.OS === 'web') {
+    return <Redirect href="/(app)/wallet" />;
+  }
+  return <Redirect href="/(app)/wallet/buy-credits" />;
 }

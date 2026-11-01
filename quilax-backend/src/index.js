@@ -41,6 +41,8 @@ import legalRouter from "./routes/legal.js";
 import reportsRouter from "./routes/reports.js";
 import walletAccessRouter from "./routes/walletAccess.js";
 import postsRouter from "./routes/posts.js";
+import manualDepositsRouter from "./routes/manualDeposits.js";
+import iapRouter from "./routes/iap.js";
 import redis from "./lib/redis.js";
 import prisma from "./lib/prisma.js";
 import { platformMiddleware } from "./middleware/platform.js";
@@ -181,6 +183,8 @@ app.use("/legal", legalRouter);
 app.use("/reports", reportsRouter);
 app.use("/wallet-access", walletAccessRouter);
 app.use("/posts", postsRouter);
+app.use("/manual-deposits", manualDepositsRouter);
+app.use("/iap", iapRouter);
 app.use("/admin", adminRoutes);
 
 await redis.set("test", "quilax");

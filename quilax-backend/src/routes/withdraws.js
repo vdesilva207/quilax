@@ -6,9 +6,11 @@ import { requireMoneyEligibility } from '../middleware/moneyEligibility.js';
 import { requireAllowedGeo } from '../middleware/geo.js';
 import {
   createWithdrawRequest,
+  createManualWithdrawRequest,
   getUserWithdrawHistory,
   getPendingWithdraws,
-  updateWithdrawStatus
+  updateWithdrawStatus,
+  completeManualWithdraw,
 } from '../services/withdrawService.js';
 
 const router = express.Router();
@@ -70,6 +72,72 @@ router.post(
     res.status(400).json({ error: error.message });
   }
 });
+
+/** Soft-launch: bank transfer by ops (no Stripe Connect payout). */
+router.post(
+  '/request-manual',
+  auth,
+  requireAllowedGeo(),
+  requireMoneyEligibility('WITHDRAW'),
+  async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { amount, iban, accountName, totpCode } = req.body;
+
+    if (req.user.twoFactorEnabled) {
+      if (!totpCode) {
+        return res.status(403).json({
+          requires2FA: true,
+          error: 'Se requiere código 2FA',
+        });
+      }
+      const ok = speakeasy.totp.verify({
+        secret: req.user.twoFactorSecret,
+        encoding: 'base32',
+        token: String(totpCode).trim(),
+        window: 1,
+      });
+      if (!ok) {
+        return res.status(401).json({ error: 'Código 2FA inválido' });
+      }
+    }
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Monto inválido' });
+    }
+
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || null;
+    const result = await createManualWithdrawRequest(userId, Number(amount), {
+      iban,
+      accountName,
+      ipAddress:
+        typeof ipAddress === 'string' ? ipAddress.split(',')[0].trim() : null,
+    });
+
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Error creating manual withdraw:', error);
+    res.status(400).json({ error: error.message });
+  }
+  },
+);
+
+router.post(
+  '/:withdrawId/complete-manual',
+  auth,
+  roleMiddleware(['ADMIN']),
+  async (req, res) => {
+    try {
+      const withdraw = await completeManualWithdraw(
+        req.params.withdrawId,
+        req.body?.adminNotes,
+      );
+      res.json({ success: true, withdraw });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+);
 
 // Obtener historial de retiros del usuario
 router.get('/history', auth, async (req, res) => {

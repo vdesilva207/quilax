@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, sora, titleTypeface } from '@/constants/theme';
 import { APP_GRADIENT, GRADIENT_DIAGONAL, brandGradientProps } from '@/constants/gradients';
+import { StatusBar } from 'expo-status-bar';
 import apiClient from '@/lib/api';
 import secureStorage from '@/lib/secureStorage';
 import { useAuth } from '@/context/AuthContext';
@@ -115,6 +116,7 @@ function HomeHero({
       {...brandGradientProps}
       style={[styles.hero, { paddingTop: chrome.headerPaddingTop }]}
     >
+      <StatusBar style="light" />
       <Text style={styles.heroBrand}>QUILAX</Text>
       <Text style={styles.heroScreen}>{t('home.title')}</Text>
 
@@ -518,6 +520,12 @@ export default function HomeScreen() {
   }
 
   return (
+    <>
+    <NotificationPermissionModal
+      visible={showNotifPrompt}
+      onAllow={onAllowNotifications}
+      onDeny={onDenyNotifications}
+    />
     <AppScreen
       testID="home-screen"
       refreshControl={
@@ -531,12 +539,6 @@ export default function HomeScreen() {
         />
       }
     >
-      <NotificationPermissionModal
-        visible={showNotifPrompt}
-        onAllow={onAllowNotifications}
-        onDeny={onDenyNotifications}
-      />
-
       <HomeHero upcomingCount={upcomingCount} seasonEndsLabel={seasonEndsLabel} />
 
       <EnrolledUpcomingList
@@ -702,6 +704,7 @@ export default function HomeScreen() {
         )}
       </AppSection>
     </AppScreen>
+    </>
   );
 }
 
@@ -719,12 +722,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     overflow: 'hidden',
     minHeight: 210,
+    // Bleed under the status bar: no top margin, full width
+    marginTop: 0,
   },
   heroBrand: {
     ...sora(800),
-    fontSize: 40,
+    fontSize: 42,
     color: '#FFFFFF',
-    letterSpacing: 2.4,
+    // Tight tracking — wide letterSpacing made ExtraBold look thin
+    letterSpacing: 0.8,
   },
   heroScreen: {
     ...sora(700),

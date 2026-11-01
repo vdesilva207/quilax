@@ -38,6 +38,12 @@ export default {
     version: '1.0.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
+    androidStatusBar: {
+      // Draw under the status bar so gradient heroes reach the top edge
+      translucent: true,
+      backgroundColor: '#00000000',
+      barStyle: 'light-content',
+    },
     icon: './assets/images/icon.png',
     splash: {
       image: './assets/images/splash-icon.png',
@@ -53,6 +59,7 @@ export default {
       'expo-router',
       'expo-localization',
       'expo-secure-store',
+      'expo-iap',
       [
         'expo-image-picker',
         {
@@ -165,6 +172,8 @@ export default {
     android: {
       package: 'com.quilax.app',
       versionCode: 1,
+      // Keep register/DOB+CTA above the soft keyboard on Android
+      softwareKeyboardLayoutMode: 'resize',
       // Preview/dev: allow http://LAN API. Production builds should use HTTPS.
       usesCleartextTraffic: !isProd,
       adaptiveIcon: {

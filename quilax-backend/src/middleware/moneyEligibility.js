@@ -75,7 +75,25 @@ function hasKyc(user) {
   return !isKycRequired();
 }
 
+/**
+ * Soft-launch: withdrawals are manual SEPA (IBAN on the withdraw form).
+ * Stripe Connect / isBankVerified is NOT required unless MANUAL_PAYOUTS=false.
+ */
+function manualPayoutsEnabled() {
+  if (
+    process.env.MANUAL_PAYOUTS === "false" ||
+    process.env.MANUAL_PAYOUTS === "0"
+  ) {
+    return false;
+  }
+  // Default on: soft-launch rails (IAP + manual bank). Opt out with MANUAL_PAYOUTS=false.
+  return true;
+}
+
 function hasPayoutMethod(user) {
+  if (manualPayoutsEnabled()) {
+    return true;
+  }
   const legacyBank = user.isBankVerified && !!user.bankAccountIban;
   const connectBank = user.isBankVerified && !!user.stripeConnectAccountId;
   return legacyBank || connectBank;

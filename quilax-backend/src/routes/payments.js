@@ -23,6 +23,21 @@ import {
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+/** Soft-launch: card deposits + Connect onboarding paused (IAP + manual IBAN). */
+function softLaunchMoneyPaused() {
+  return !(
+    process.env.STRIPE_CARD_DEPOSITS === "true" ||
+    process.env.STRIPE_CARD_DEPOSITS === "1"
+  );
+}
+
+function softLaunchConnectPaused() {
+  return !(
+    process.env.STRIPE_CONNECT_ONBOARD === "true" ||
+    process.env.STRIPE_CONNECT_ONBOARD === "1"
+  );
+}
+
 /** Publishable key for wallet Stripe.js (safe to expose). */
 router.get("/config", (_req, res) => {
   const publishableKey =
@@ -347,6 +362,13 @@ router.get("/connect/status", auth, async (req, res) => {
 
 router.post("/connect/onboard", auth, requireAllowedGeo(), requireMoneyEligibility("BANK_UPDATE"), async (req, res) => {
   try {
+    if (softLaunchConnectPaused()) {
+      return res.status(503).json({
+        error:
+          "Vinculación bancaria con Stripe pausada. Los retiros se solicitan en Gestión con tu IBAN (transferencia manual).",
+        code: "CONNECT_PAUSED",
+      });
+    }
     const userId = req.user.id;
     const { country } = req.body || {};
 
@@ -486,6 +508,13 @@ router.post(
   requireMoneyEligibility("DEPOSIT"),
   async (req, res) => {
   try {
+    if (softLaunchMoneyPaused()) {
+      return res.status(503).json({
+        error:
+          "Depósitos con tarjeta pausados. En la app compra créditos por IAP; en la web usa transferencia bancaria (Gestión).",
+        code: "CARD_DEPOSITS_PAUSED",
+      });
+    }
     const { credits, totpCode } = req.body;
     const userId = req.user.id;
 

@@ -10,7 +10,6 @@ const SORA_BY_WEIGHT: Record<string, string> = {
   '200': 'Sora_500Medium',
   '300': 'Sora_500Medium',
   '400': 'Sora_500Medium',
-  normal: 'Sora_500Medium',
   '500': 'Sora_500Medium',
   '600': 'Sora_600SemiBold',
   '700': 'Sora_700Bold',
@@ -36,10 +35,10 @@ export function sora(weight: SoraWeight = 500): TextStyle {
       fontWeight: String(weight) as TextStyle['fontWeight'],
     };
   }
+  // Never set fontWeight: 'normal' — resolveSoraStyle would remap it to Medium
+  // and wipe ExtraBold / Bold faces used for QUILAX titles.
   return {
     fontFamily: faceForWeight(weight),
-    // Explicitly neutralize — Android ignores custom faces when weight is set.
-    fontWeight: 'normal',
   };
 }
 
@@ -59,18 +58,26 @@ export function resolveSoraStyle(style: StyleProp<RNTextStyle>): StyleProp<RNTex
   if (!flat) return style;
   if (!looksLikeSora(flat.fontFamily as string | undefined)) return style;
 
+  const existingFamily = flat.fontFamily as string | undefined;
   const weightKey = flat.fontWeight != null ? String(flat.fontWeight) : null;
-  const mapped =
-    (weightKey && SORA_BY_WEIGHT[weightKey]) ||
-    (flat.fontFamily as string | undefined) ||
-    'Sora_500Medium';
+
+  // Prefer an explicit loaded face (Sora_700Bold / Sora_800ExtraBold, …).
+  // Do NOT treat fontWeight "normal" as Medium — that was making QUILAX look thin.
+  let mapped: string;
+  if (existingFamily && /^Sora_\d/.test(existingFamily)) {
+    mapped = existingFamily;
+  } else if (weightKey && weightKey !== 'normal' && SORA_BY_WEIGHT[weightKey]) {
+    mapped = SORA_BY_WEIGHT[weightKey];
+  } else {
+    mapped = existingFamily || 'Sora_500Medium';
+  }
 
   // Force face + kill weight/style that trigger Android system-font substitution.
   return [
     style,
     {
       fontFamily: mapped,
-      fontWeight: 'normal',
+      fontWeight: undefined,
       ...(Platform.OS === 'android'
         ? { includeFontPadding: false, fontStyle: 'normal' as const }
         : null),

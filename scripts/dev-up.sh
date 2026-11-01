@@ -84,6 +84,13 @@ else
     echo "❌ No hay redis-server en $REDIS_BIN"
     exit 1
   fi
+  # Bundled redis was linked against ephemeral /tmp Homebrew paths; recreate if missing
+  OPENSSL_PREFIX="$ROOT/.local-services/cellar/openssl@3/3.6.3"
+  if [[ -d "$OPENSSL_PREFIX/lib" ]]; then
+    mkdir -p /tmp/quilax-hbrewpx/opt /tmp/quilax-cellar1/openssl@3
+    ln -sfn "$OPENSSL_PREFIX" /tmp/quilax-hbrewpx/opt/openssl@3
+    ln -sfn "$OPENSSL_PREFIX" /tmp/quilax-cellar1/openssl@3/3.6.3
+  fi
   nohup "$REDIS_BIN/redis-server" --port 6379 --daemonize no >>"$LOG_DIR/redis.log" 2>&1 &
   echo $! >"$PID_DIR/redis.pid"
   for i in $(seq 1 30); do

@@ -1344,6 +1344,97 @@ GET /admin/refunds
 POST /admin/refunds/:withdrawId/process
 ====================================
 */
+router.get("/manual-deposits", async (req, res) => {
+  try {
+    const {
+      listAdminManualDeposits,
+    } = await import("../services/manualDepositService.js");
+    const status = req.query.status || "PENDING";
+    const deposits = await listAdminManualDeposits(status);
+    res.json({ success: true, deposits });
+  } catch (error) {
+    console.error("admin manual-deposits list:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/manual-deposits/:id/confirm", async (req, res) => {
+  try {
+    const { confirmManualDeposit } = await import(
+      "../services/manualDepositService.js"
+    );
+    const deposit = await confirmManualDeposit(
+      req.params.id,
+      req.user?.id,
+      req.body?.adminNotes,
+    );
+    res.json({ success: true, deposit });
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+router.post("/manual-deposits/:id/reject", async (req, res) => {
+  try {
+    const { rejectManualDeposit } = await import(
+      "../services/manualDepositService.js"
+    );
+    const deposit = await rejectManualDeposit(
+      req.params.id,
+      req.user?.id,
+      req.body?.adminNotes,
+    );
+    res.json({ success: true, deposit });
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
+/** Soft-launch: pending MANUAL SEPA withdraws (ops pays IBAN). */
+router.get("/manual-withdraws", async (req, res) => {
+  try {
+    const status = String(req.query.status || "REQUESTED").toUpperCase();
+    const where =
+      status === "ALL"
+        ? { payoutMethod: "MANUAL" }
+        : { payoutMethod: "MANUAL", status };
+    const withdraws = await prisma.withdraw.findMany({
+      where,
+      orderBy: { createdAt: "asc" },
+      take: 100,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            fullName: true,
+          },
+        },
+      },
+    });
+    res.json({ success: true, withdraws });
+  } catch (error) {
+    console.error("admin manual-withdraws list:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/manual-withdraws/:id/complete", async (req, res) => {
+  try {
+    const { completeManualWithdraw } = await import(
+      "../services/withdrawService.js"
+    );
+    const withdraw = await completeManualWithdraw(
+      req.params.id,
+      req.body?.adminNotes,
+    );
+    res.json({ success: true, withdraw });
+  } catch (error) {
+    res.status(error.status || 400).json({ error: error.message });
+  }
+});
+
 router.get("/refunds", async (req, res) => {
   try {
     const { status, startDate, endDate } = req.query;

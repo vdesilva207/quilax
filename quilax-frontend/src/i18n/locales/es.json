@@ -256,7 +256,11 @@
       "linkError": "No se recibió el enlace de Stripe",
       "openError": "No se pudo abrir Stripe",
       "copy": "Stripe te pedirá identidad e IBAN. Cuando confirme que los retiros están posibles, podrás sacar créditos desde Gestión.",
-      "copySkip": "Puedes saltarte este paso. Solo necesitarás el banco cuando quieras depositar o retirar créditos (en la web de Gestión)."
+      "copySkip": "Puedes saltarte este paso. Solo necesitarás el banco cuando quieras depositar o retirar créditos (en la web de Gestión).",
+      "titleSoft": "Dinero en Quilax",
+      "subtitleSoft": "Créditos en la app; retiros más adelante en Gestión",
+      "copySoft": "Compras créditos con la tienda de Apple/Google. Los retiros se piden en Gestión con tu IBAN (transferencia manual en soft-launch).",
+      "copySkipSoft": "Puedes continuar. No hace falta vincular banco ahora."
     },
     "idVerificationScreen": {
       "title": "Verificación de identidad",
@@ -789,7 +793,7 @@
     "suggestedDifficulty": "Sugerencia: {{difficulty}}",
     "suggestNeedQuestions": "Añade preguntas antes de sugerir la dificultad",
     "spellBannerTitle": "Ortografía y redacción",
-    "spellBannerBody": "Usa el corrector ortográfico en cada pregunta y vuelve a leer el texto. Si el corrector se equivoca y prefieres tu versión, déjala: la respetamos.",
+    "spellBannerBody": "Revisa bien la ortografía y la redacción de cada pregunta y respuesta antes de enviar. Un texto claro reduce rechazos en revisión.",
     "spellChecking": "Corrigiendo…",
     "spellEmpty": "Escribe la pregunta antes de corregir.",
     "spellNoChanges": "No hemos encontrado cambios de ortografía o gramática.",
@@ -1297,20 +1301,22 @@
     }
   },
   "wallet": {
-    "badge": "Créditos · retiros · banco",
+    "badge": "Créditos · retiros",
     "title": "Tu dinero,",
     "titleAccent": "bajo control.",
-    "subtitle": "Misma sesión, misma cuenta. Abre Gestión en la web para comprar créditos y retirar premios.",
+    "subtitle": "Compra créditos en la app (tienda). Retiros y depósitos web por transferencia.",
     "balanceLabel": "Saldo en app",
     "creditsUnit": "créditos",
-    "description": "Te llevamos a la web de Gestión ya identificado. Allí gestionas saldo, depósitos, retiros y la cuenta bancaria.",
-    "openWeb": "Abrir Gestión",
+    "description": "En la app compras créditos con la tienda. En Gestión (web) puedes depositar o retirar por IBAN hasta que automatizemos pagos.",
+    "openWeb": "Abrir Gestión (retiros / IBAN)",
     "openSameTab": "Abrir en esta pestaña",
-    "appOnlyHint": "Por seguridad, Gestión solo se abre desde esta app.",
+    "appOnlyHint": "Los retiros se gestionan en la web. Las compras de créditos van por la tienda de la app.",
     "openErrorTitle": "No se pudo abrir",
     "openErrorBody": "Inténtalo de nuevo en unos segundos. Si sigue fallando, cierra sesión y vuelve a entrar.",
     "openErrorHint": "",
-    "emptyBalanceHint": "Saldo a 0. Abre Gestión para añadir créditos y jugar quizzes de pago."
+    "emptyBalanceHint": "Saldo a 0. Compra créditos aquí o deposita por transferencia en Gestión.",
+    "buyCredits": "Comprar créditos",
+    "buyCreditsHint": "Pago seguro con App Store / Google Play"
   },
   "notif": {
     "title": "¿Permitir notificaciones?",
@@ -1395,5 +1401,21 @@
     "promoteBody": "Cuando se publique, comparte el quiz y anima a gente a apuntarse. Cuantos más apuntados, mejor para el quiz y para la comunidad.",
     "goHome": "Ir al inicio",
     "viewQuiz": "Ver mi quiz"
+  },
+  "buyCredits": {
+    "title": "Comprar créditos",
+    "subtitle": "Pago con la tienda del dispositivo",
+    "loading": "Cargando paquetes…",
+    "webBlocked": "Las compras in-app solo están en iOS/Android. En la web usa Gestión → transferencia.",
+    "openWallet": "Ir a Gestión",
+    "storeUnavailable": "La tienda no está disponible ahora. Prueba más tarde o usa un build de desarrollo con IAP.",
+    "buy": "Comprar",
+    "bonus": "+{{n}} bonus",
+    "success": "Compra acreditada: +{{n}} créditos",
+    "error": "No se pudo completar la compra",
+    "verifying": "Verificando compra…",
+    "restore": "Restaurar compras",
+    "needKyc": "Verifica tu identidad antes de comprar créditos.",
+    "goVerify": "Verificar identidad"
   }
 }

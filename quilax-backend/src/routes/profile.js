@@ -230,7 +230,8 @@ router.get('/me', auth, async (req, res) => {
     const [
       totalWinnings,
       recentActivity,
-      bestScores
+      bestScores,
+      finishedPlaysForCreateGate,
     ] = await Promise.all([
       // Total de premios ganados
       prisma.quizWinner.aggregate({
@@ -263,7 +264,14 @@ router.get('/me', auth, async (req, res) => {
             }
           }
         }
-      })
+      }),
+      // Same metric as quizCreationService create-gate (FINISHED runs only)
+      prisma.quizParticipant.count({
+        where: {
+          userId,
+          quizRun: { phase: 'FINISHED' },
+        },
+      }),
     ]);
 
     const profile = {
@@ -271,7 +279,8 @@ router.get('/me', auth, async (req, res) => {
       statistics: {
         quizzesCreated: user._count.createdQuizzes,
         quizzesParticipated: user._count.quizParticipants,
-        quizzesCompleted: user._count.quizScores,
+        // Align with create-gate: finished participants, not quizScores rows
+        quizzesCompleted: finishedPlaysForCreateGate,
         quizzesWon: user._count.quizWinners,
         totalPayments: 0,
         totalWithdrawals: user._count.withdrawals,

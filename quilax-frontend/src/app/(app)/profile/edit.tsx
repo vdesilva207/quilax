@@ -39,8 +39,8 @@ export default function EditProfileScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
+      // Avoid native circular crop UI that can clip the avatar to a semicircle
+      allowsEditing: false,
       quality: 0.4,
       base64: true,
     });

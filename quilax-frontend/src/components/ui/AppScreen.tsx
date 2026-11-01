@@ -16,12 +16,14 @@ import {
   SCREEN_BACKGROUND,
   SECTION_ACCENTS,
   brandGradientProps,
+  APP_GRADIENT,
 } from '@/constants/gradients';
 import CustomIcon from '@/components/CustomIcon';
 import { goToParent } from '@/lib/navigation';
 import { FadeBlock, HeroEnter, PressScale, ScreenEnter } from '@/components/motion';
 import { useChromeInsets } from '@/hooks/useChromeInsets';
 import { BrandGradientBar } from '@/components/ui/BrandGradientBar';
+import { StatusBar } from 'expo-status-bar';
 
 type AppScreenProps = ScrollViewProps & {
   children: React.ReactNode;
@@ -100,6 +102,7 @@ export function AppHeader({
 
   return (
     <HeroEnter>
+      <StatusBar style="light" />
       <LinearGradient
         {...brandGradientProps}
         style={[styles.header, { paddingTop: chrome.headerPaddingTop }]}
@@ -199,9 +202,12 @@ const styles = StyleSheet.create({
   },
   pinnedHeader: {
     width: '100%',
+    alignSelf: 'stretch',
     alignItems: 'center',
     zIndex: 2,
-    overflow: 'visible',
+    overflow: 'hidden',
+    // Match gradient start so any status-bar / layout seam isn't cream
+    backgroundColor: APP_GRADIENT[0],
   },
   screen: {
     flex: 1,
@@ -213,10 +219,13 @@ const styles = StyleSheet.create({
   },
   phoneColumn: {
     width: '100%',
+    alignSelf: 'stretch',
     // Desktop web only — on real phones a 480 cap made heroes/modals look inset & off-center.
     maxWidth: Platform.OS === 'web' ? MaxContentWidth : undefined,
   },
   header: {
+    width: '100%',
+    alignSelf: 'stretch',
     paddingBottom: Spacing.four,
     paddingHorizontal: Spacing.four,
   },
@@ -235,7 +244,7 @@ const styles = StyleSheet.create({
     ...sora(800),
     fontSize: 28,
     color: '#FFFFFF',
-    letterSpacing: 2.2,
+    letterSpacing: 0.8,
   },
   headerTitle: {
     ...sora(800),

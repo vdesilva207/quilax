@@ -255,7 +255,17 @@ export default function QuizDetailScreen() {
       <AppHeader
         title={quiz.title}
         subtitle={quiz.category ? getCategoryLabel(quiz.category, t) : t('quizDetail.liveQuizSubtitle')}
-        badge={t('quizDetail.questionsBadge', { n: quiz._count?.questions || quiz.questions?.length || '?' })}
+        badge={(() => {
+          const qn = quiz._count?.questions || quiz.questions?.length || '?';
+          const qBadge = t('quizDetail.questionsBadge', { n: qn });
+          if (quiz.status === 'PENDING_REVIEW') {
+            return `${t('createQuiz.status.PENDING_REVIEW')} · ${qBadge}`;
+          }
+          if (quiz.status === 'REJECTED') {
+            return `${t('createQuiz.status.REJECTED')} · ${qBadge}`;
+          }
+          return qBadge;
+        })()}
         showBack
       />
 

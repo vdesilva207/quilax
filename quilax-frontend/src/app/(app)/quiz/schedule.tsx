@@ -23,12 +23,14 @@ function ChipRow({
   selected,
   onSelect,
   formatLabel,
+  isDisabled,
   testID,
 }: {
   values: number[];
   selected: number;
   onSelect: (v: number) => void;
   formatLabel?: (v: number) => string;
+  isDisabled?: (v: number) => boolean;
   testID?: string;
 }) {
   return (
@@ -40,13 +42,25 @@ function ChipRow({
     >
       {values.map((v) => {
         const active = v === selected;
+        const disabled = isDisabled?.(v) ?? false;
         return (
           <Pressable
             key={v}
+            disabled={disabled}
             onPress={() => onSelect(v)}
-            style={[styles.chip, active && styles.chipActive]}
+            style={[
+              styles.chip,
+              active && styles.chipActive,
+              disabled && styles.chipDisabled,
+            ]}
           >
-            <Text style={[styles.chipText, active && styles.chipTextActive]}>
+            <Text
+              style={[
+                styles.chipText,
+                active && styles.chipTextActive,
+                disabled && styles.chipTextDisabled,
+              ]}
+            >
               {formatLabel ? formatLabel(v) : String(v)}
             </Text>
           </Pressable>
@@ -99,10 +113,51 @@ export default function QuizScheduleScreen() {
     return Array.from({ length: max }, (_, i) => i + 1);
   }, [year, month]);
 
+  const isDayTooSoon = (d: number) => {
+    // Day is selectable if the latest slot that day still meets the 14-day lead
+    const latestThatDay = buildScheduleDate(year, month, d, 23, 55);
+    return latestThatDay.getTime() < minAt.getTime();
+  };
+
+  const isMonthTooSoon = (m: number) => {
+    const lastDay = daysInMonth(year, m);
+    const latest = buildScheduleDate(year, m, lastDay, 23, 55);
+    return latest.getTime() < minAt.getTime();
+  };
+
+  const isYearTooSoon = (y: number) => {
+    const latest = buildScheduleDate(y, 12, 31, 23, 55);
+    return latest.getTime() < minAt.getTime();
+  };
+
+  useEffect(() => {
+    if (isYearTooSoon(year)) {
+      const firstOk = years.find((y) => !isYearTooSoon(y));
+      if (firstOk != null) setYear(firstOk);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [years, minAt]);
+
+  useEffect(() => {
+    if (isMonthTooSoon(month)) {
+      const firstOk = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].find((m) => !isMonthTooSoon(m));
+      if (firstOk != null) setMonth(firstOk);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, minAt]);
+
   useEffect(() => {
     const max = daysInMonth(year, month);
-    if (day > max) setDay(max);
-  }, [year, month, day]);
+    if (day > max) {
+      setDay(max);
+      return;
+    }
+    if (isDayTooSoon(day)) {
+      const firstOk = dayOptions.find((d) => !isDayTooSoon(d));
+      if (firstOk != null) setDay(firstOk);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-clamp when calendar month/min lead changes
+  }, [year, month, dayOptions, minAt]);
 
   const previewDate = useMemo(
     () => buildScheduleDate(year, month, day, hour, minute),
@@ -168,6 +223,7 @@ export default function QuizScheduleScreen() {
             values={years}
             selected={year}
             onSelect={setYear}
+            isDisabled={isYearTooSoon}
             testID="date-picker"
           />
 
@@ -177,10 +233,16 @@ export default function QuizScheduleScreen() {
             selected={month}
             onSelect={setMonth}
             formatLabel={(v) => monthLabels.find((m) => m.value === v)?.label || String(v)}
+            isDisabled={isMonthTooSoon}
           />
 
           <FieldLabel>{t('schedule.dayLabel')}</FieldLabel>
-          <ChipRow values={dayOptions} selected={day} onSelect={setDay} />
+          <ChipRow
+            values={dayOptions}
+            selected={day}
+            onSelect={setDay}
+            isDisabled={isDayTooSoon}
+          />
 
           <FieldLabel>{t('schedule.hourLabel')}</FieldLabel>
           <ChipRow
@@ -241,12 +303,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.primary,
     borderColor: Colors.light.primary,
   },
+  chipDisabled: {
+    opacity: 0.35,
+  },
   chipText: {
     fontSize: 14,
     fontWeight: '700',
     color: Colors.light.text,
   },
   chipTextActive: { color: '#FFFFFF' },
+  chipTextDisabled: {
+    color: Colors.light.textSecondary,
+  },
   previewBox: {
     marginTop: Spacing.two,
     padding: Spacing.three,

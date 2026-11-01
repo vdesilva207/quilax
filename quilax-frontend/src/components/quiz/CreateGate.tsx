@@ -61,11 +61,10 @@ export default function CreateGate({ children }: CreateGateProps) {
           return;
         }
 
+        // Must match backend create-gate: FINISHED quizParticipant count
+        // (exposed as statistics.quizzesCompleted from /profile/me).
         const playedCount = Number(
-          profile?.statistics?.quizzesCompleted ??
-            profile?.statistics?.quizzesParticipated ??
-            profile?.quizzesPlayed ??
-            0,
+          profile?.statistics?.quizzesCompleted ?? profile?.quizzesPlayed ?? 0,
         );
         const createdCount = Number(
           profile?.statistics?.quizzesCreated ?? profile?._count?.createdQuizzes ?? 0,

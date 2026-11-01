@@ -786,7 +786,7 @@
     "suggestedDifficulty": "Sugestão: {{difficulty}}",
     "suggestNeedQuestions": "Adicione perguntas antes de sugerir dificuldade",
     "spellBannerTitle": "Ortografia e redação",
-    "spellBannerBody": "Use o corretor ortográfico em cada pergunta e releia seu texto. Se o verificador estiver errado e você preferir sua versão, guarde-a – nós respeitamos isso.",
+    "spellBannerBody": "Revê bem a ortografia e a redação de cada pergunta e resposta antes de enviar. Um texto claro reduz rejeições na revisão.",
     "spellChecking": "Verificando…",
     "spellEmpty": "Escreva a pergunta antes de verificar.",
     "spellNoChanges": "Nenhuma alteração ortográfica ou gramatical encontrada.",
@@ -816,17 +816,17 @@
     "continueToSchedule": "Seguinte · agendar quiz",
     "questionIncompleteError": "Completa o texto, as opções e os tempos antes de avançar.",
     "questionProgress": "Pergunta {{current}}/{{total}} · {{complete}}/{{min}} prontas",
-    "submittedTitle": "Submitted / in review",
-    "submittedEmpty": "You haven’t submitted any quiz for review yet.",
-    "viewSubmitted": "View",
+    "submittedTitle": "Enviados / em revisão",
+    "submittedEmpty": "Ainda não enviaste nenhum quiz para revisão.",
+    "viewSubmitted": "Ver",
     "status": {
-      "PENDING_REVIEW": "In review",
-      "PUBLISHED": "Published",
-      "REJECTED": "Rejected",
-      "APPROVED": "Approved",
-      "SCHEDULED": "Scheduled",
-      "FINISHED": "Finished",
-      "CANCELLED": "Cancelled"
+      "PENDING_REVIEW": "Em revisão",
+      "PUBLISHED": "Publicado",
+      "REJECTED": "Rejeitado",
+      "APPROVED": "Aprovado",
+      "SCHEDULED": "Agendado",
+      "FINISHED": "Terminado",
+      "CANCELLED": "Cancelado"
     },
     "draftOpenedTitle": "Draft opened",
     "draftOpenedBody": "Draft loaded with {{n}} question(s). Review the info and tap Forward to see each question.",
@@ -1381,15 +1381,15 @@
     }
   },
   "quizSubmitted": {
-    "title": "Submitted for review",
-    "subtitle": "Thanks for creating on Quilax",
-    "sectionTitle": "What happens next",
-    "lead": "Your quiz was sent to the admin panel for review.",
-    "body": "We'll notify you when it's published (or if changes are needed). You don't need to manage the review status in the app.",
-    "scheduledLabel": "Requested date: {{date}}",
-    "promoteTitle": "Your next job: promote it",
-    "promoteBody": "Once it's live, share the quiz and get people to join. More sign-ups make a better quiz and community.",
-    "goHome": "Go home",
-    "viewQuiz": "View my quiz"
+    "title": "Enviado para revisão",
+    "subtitle": "Obrigado por criares no Quilax",
+    "sectionTitle": "O que acontece agora",
+    "lead": "O teu quiz foi enviado ao painel de admin para revisão.",
+    "body": "Avisamos-te quando estiver publicado (ou se forem precisas alterações). Não precisas de gerir o estado de revisão na app.",
+    "scheduledLabel": "Data pedida: {{date}}",
+    "promoteTitle": "A tua próxima tarefa: promover",
+    "promoteBody": "Quando estiver online, partilha o quiz e convida pessoas a inscreverem-se. Mais inscritos, melhor para o quiz e a comunidade.",
+    "goHome": "Ir ao início",
+    "viewQuiz": "Ver o meu quiz"
   }
 }

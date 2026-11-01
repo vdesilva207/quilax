@@ -252,7 +252,8 @@ router.get("/my-quizzes", auth, async (req, res) => {
         schedules: { orderBy: { scheduledAt: "desc" }, take: 1 },
         _count: {
           select: {
-            quizRuns: true
+            quizRuns: true,
+            questions: true,
           }
         }
       },
