@@ -76,7 +76,7 @@
   "submit": {
     "testflight": {
       "ios": {
-        "ascAppId": "6812836055"
+        "ascAppId": "6832335518"
       }
     },
     "play": {
@@ -87,7 +87,7 @@
     },
     "production": {
       "ios": {
-        "ascAppId": "6812836055"
+        "ascAppId": "6832335518"
       },
       "android": {
         "track": "internal",

@@ -4,10 +4,22 @@
  */
 export const IAP_CREDIT_PACKS = [
   {
+    productId: "credits_5",
+    credits: 5,
+    bonus: 0,
+    label: "5 créditos",
+  },
+  {
     productId: "credits_10",
     credits: 10,
     bonus: 0,
     label: "10 créditos",
+  },
+  {
+    productId: "credits_20",
+    credits: 20,
+    bonus: 0,
+    label: "20 créditos",
   },
   {
     productId: "credits_50",

@@ -24,7 +24,14 @@ type Pack = {
   label: string;
 };
 
-const PRODUCT_IDS = ['credits_10', 'credits_50', 'credits_100', 'credits_250'];
+const PRODUCT_IDS = [
+  'credits_5',
+  'credits_10',
+  'credits_20',
+  'credits_50',
+  'credits_100',
+  'credits_250',
+];
 
 export default function BuyCreditsScreen() {
   const { t } = useTranslation();

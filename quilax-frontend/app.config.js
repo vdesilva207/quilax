@@ -94,7 +94,7 @@ export default {
     ],
     ios: {
       supportsTablet: false,
-      bundleIdentifier: 'com.quilax.app',
+      bundleIdentifier: 'com.quilax.ios',
       buildNumber: '1',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
