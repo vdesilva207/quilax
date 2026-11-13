@@ -60,8 +60,6 @@ export default {
       'expo-localization',
       'expo-secure-store',
       'expo-iap',
-      // iOS 27 / Xcode 27: UIKit requires UIScene or the binary aborts before JS.
-      './plugins/with-scene-lifecycle',
       [
         'expo-image-picker',
         {
