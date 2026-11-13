@@ -60,6 +60,16 @@ export default {
       'expo-localization',
       'expo-secure-store',
       'expo-iap',
+      // Xcode 27: pods below iOS 15 fail the build (SDWebImage, RNSVG, …).
+      './plugins/withPodDeploymentTarget',
+      [
+        'expo-build-properties',
+        {
+          ios: {
+            deploymentTarget: '15.1',
+          },
+        },
+      ],
       [
         'expo-image-picker',
         {
