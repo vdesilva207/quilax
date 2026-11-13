@@ -32,7 +32,8 @@
       "distribution": "store",
       "autoIncrement": true,
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "image": "sdk-54"
       },
       "env": {
         "APP_ENV": "production",
@@ -60,6 +61,9 @@
     },
     "production": {
       "autoIncrement": true,
+      "ios": {
+        "image": "sdk-54"
+      },
       "android": {
         "buildType": "app-bundle"
       },

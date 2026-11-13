@@ -55,11 +55,15 @@ export default {
       output: 'single',
       favicon: './assets/images/favicon.png',
     },
+    // SDK 54 + New Arch has caused instant launch crashes on recent iOS; keep off until stable.
+    newArchEnabled: false,
     plugins: [
       'expo-router',
       'expo-localization',
       'expo-secure-store',
       'expo-iap',
+      // iOS 27 / Xcode 27: UIKit requires UIScene or the binary aborts before JS.
+      './plugins/with-scene-lifecycle',
       [
         'expo-image-picker',
         {
