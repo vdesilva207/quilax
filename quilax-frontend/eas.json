@@ -15,7 +15,7 @@
       "distribution": "internal",
       "ios": {
         "resourceClass": "m-medium",
-        "image": "sdk-54"
+        "image": "macos-tahoe-26.6-xcode-27.1"
       },
       "android": {
         "buildType": "apk"
@@ -34,7 +34,7 @@
       "autoIncrement": true,
       "ios": {
         "resourceClass": "m-medium",
-        "image": "sdk-54"
+        "image": "macos-tahoe-26.6-xcode-27.1"
       },
       "env": {
         "APP_ENV": "production",
@@ -63,7 +63,7 @@
     "production": {
       "autoIncrement": true,
       "ios": {
-        "image": "sdk-54"
+        "image": "macos-tahoe-26.6-xcode-27.1"
       },
       "android": {
         "buildType": "app-bundle"
