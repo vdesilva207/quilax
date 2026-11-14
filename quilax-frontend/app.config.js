@@ -60,6 +60,10 @@ export default {
       'expo-localization',
       'expo-secure-store',
       'expo-iap',
+      // iOS 27 / Xcode 27: full UIScene adoption (Info.plist + SceneDelegate).
+      // Do not combine with expo-dev-client — launcher fatals without a key window
+      // in didFinishLaunching.
+      './plugins/with-scene-lifecycle',
       // Xcode 27: pods below iOS 15 fail the build (SDWebImage, RNSVG, …).
       './plugins/withPodDeploymentTarget',
       [
