@@ -174,7 +174,7 @@
       "nationalitySearch": "Buscar país…",
       "nationalityRequired": "Elige tu nacionalidad (debe coincidir con tu documento de identidad)",
       "nationalityHint": "Obligatoria: la usamos para verificar tu documento de identidad. Tiene que coincidir con el país del DNI/pasaporte.",
-      "webOnlyNote": "Recuerda: comprar créditos y retirar dinero solo se hace en la web de Gestión.",
+      "webOnlyNote": "En iOS compras créditos en la app (App Store). Depósitos y retiros por transferencia IBAN se hacen en Gestión (web).",
       "mustBe18": "Debes tener 18 años o más para registrarte",
       "dobInvalid": "Fecha de nacimiento no válida",
       "networkError": "No se pudo conectar con el servidor. Comprueba que el móvil esté en el mismo Wi‑Fi que el Mac y que la API esté encendida."
@@ -479,13 +479,13 @@
       "loadError": "No se pudo cargar la moneda",
       "saveError": "No se pudo guardar la moneda",
       "lockedBadge": "Bloqueada (cuenta bancaria vinculada)",
-      "lockedBody": "Tras vincular Stripe Connect no puedes cambiar la moneda. Contacta soporte si necesitas otra región.",
-      "noteBody": "Elige la moneda de depósitos y retiros. Los quizzes siempre usan créditos (1 ≈ 1 EUR). Al vincular el banco, moneda y país quedan fijados."
+      "lockedBody": "Si ya operaste con dinero, la moneda puede quedar fijada. Contacta soporte si necesitas otra región.",
+      "noteBody": "Elige la moneda de depósitos y retiros. Los quizzes siempre usan créditos (1 ≈ 1 EUR)."
     },
     "bank": {
       "title": "Cuenta bancaria",
       "verifiedInfo": "Tu cuenta está verificada para retiros.",
-      "chooseCountryInfo": "Elige país y completa Stripe Connect (IBAN / cuenta local).",
+      "chooseCountryInfo": "Elige país. Los retiros se hacen por transferencia IBAN en Gestión.",
       "statusVerified": "Lista para retiros",
       "statusPending": "Pendiente",
       "statusRestricted": "Restringida",
@@ -610,11 +610,11 @@
         },
         {
           "q": "¿Dónde deposito dinero?",
-          "a": "Solo en la web de Gestión (Wallet). La app móvil no procesa tarjetas: es intencional por seguridad."
+          "a": "En iOS: compra créditos en la app (App Store). También puedes depositar por transferencia IBAN en Gestión (web). No usamos tarjeta en la app."
         },
         {
           "q": "¿Por qué me piden DNI y selfie?",
-          "a": "Para verificar identidad antes de operar con dinero y cumplir normas anti-fraude. El equipo revisa los documentos; no se publican en tu perfil."
+          "a": "En soft launch pedimos mayoría de edad al registrarte. Si hace falta más verificación para un retiro, te lo pediremos. Los documentos no se publican en tu perfil."
         },
         {
           "q": "¿Puedo crear quizzes?",
@@ -866,6 +866,12 @@
     "enterLiveButton": "Entrar a la partida",
     "notAvailableYet": "Este quiz aún no está disponible para unirse.",
     "cannotJoinRightNow": "Ahora mismo no puedes unirte a este quiz.",
+    "alreadyPlayed": "Ya jugaste este quiz.",
+    "quizEnded": "Este quiz ya finalizó.",
+    "alreadyEnrolled": "Ya estás apuntado. Te avisaremos antes del inicio.",
+    "needCreditsTitle": "Necesitas créditos",
+    "needCreditsBody": "Para apuntarte hace falta 1 crédito. Puedes comprarlos en la app (iOS) o ingresar por transferencia en Gestión.",
+    "needCreditsCta": "Conseguir créditos",
     "prizesSection": "Premios",
     "prizesNeedEntries": "Aún no hay bote: las cantidades aparecerán cuando haya inscripciones.",
     "prizesLockedUntil": "El bote y el reparto solo saldrán cuando se hayan inscrito {{n}} personas.",
@@ -1288,11 +1294,11 @@
       },
       "secureApp": {
         "title": "App segura",
-        "body": "Autenticación protegida, verificación de identidad cuando hace falta, controles anti-trampas en las respuestas y cuentas bancarias verificadas para retiros. Jugamos limpio."
+        "body": "Autenticación protegida, mayoría de edad en el registro, controles anti-trampas y retiros revisados por el equipo. Jugamos limpio."
       },
       "moneyOnlyOnWeb": {
-        "title": "Dinero solo en la web",
-        "body": "Comprar créditos y retirar premios se hace únicamente en la versión web de Quilax. En la app móvil juegas, buscas, creas y chateas; el dinero entra y sale desde la web por seguridad y cumplimiento."
+        "title": "Créditos y retiros",
+        "body": "En iOS compras créditos en la app (App Store). Depósitos y retiros por IBAN se gestionan en la web de Gestión. En la app juegas, creas y chateas."
       },
       "readyToStart": {
         "title": "Listo para empezar",

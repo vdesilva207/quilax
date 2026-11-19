@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, bodyTypeface } from '@/constants/theme';
-import { COUNTRY_CODES, countryNameKey } from '@/constants/countries';
+import { COUNTRY_CODES, countryDisplayName } from '@/constants/countries';
 import CustomIcon from '@/components/CustomIcon';
 
 type Props = {
@@ -27,7 +27,7 @@ export default function CountryPicker({ value, onChange, required = true }: Prop
     const lang = i18n.language || 'es';
     const q = query.trim().toLowerCase();
     return COUNTRY_CODES.map((code) => {
-      const label = t(countryNameKey(code), { defaultValue: code });
+      const label = countryDisplayName(code, lang, t);
       return { code, label };
     })
       .filter((item) => !q || item.label.toLowerCase().includes(q) || item.code.toLowerCase().includes(q))
@@ -35,7 +35,7 @@ export default function CountryPicker({ value, onChange, required = true }: Prop
   }, [t, i18n.language, query]);
 
   const selectedLabel = value
-    ? t(countryNameKey(value), { defaultValue: value })
+    ? countryDisplayName(value, i18n.language || 'es', t)
     : null;
 
   return (

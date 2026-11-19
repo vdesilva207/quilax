@@ -217,6 +217,12 @@ export default {
       // Explicit so runtime gate can read them from Constants; prod/preview forced false
       EXPO_PUBLIC_DEV_SKIP_ONBOARDING: envSkipOnboarding,
       EXPO_PUBLIC_SKIP_EMAIL_VERIFICATION: envSkipEmail,
+      // Soft-launch: skip Stripe Identity in onboarding (opt out with EXPO_PUBLIC_SOFT_LAUNCH=false)
+      EXPO_PUBLIC_SOFT_LAUNCH:
+        process.env.EXPO_PUBLIC_SOFT_LAUNCH === 'false' ||
+        process.env.EXPO_PUBLIC_SOFT_LAUNCH === '0'
+          ? 'false'
+          : 'true',
       eas: {
         // Expo project @vdesilvaaa/quilax-frontend
         projectId:

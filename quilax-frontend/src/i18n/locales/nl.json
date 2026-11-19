@@ -173,7 +173,7 @@
       "nationalitySearch": "Land zoeken…",
       "nationalityRequired": "Kies uw nationaliteit (deze moet overeenkomen met uw identiteitsbewijs)",
       "nationalityHint": "Verplicht: wij gebruiken het om uw identiteitsbewijs te verifiëren. Het moet overeenkomen met het land op uw identiteitsbewijs/paspoort.",
-      "webOnlyNote": "Let op: het kopen van credits en het opnemen van geld kan alleen op de Wallet-website.",
+      "webOnlyNote": "Op iOS koop je credits in de app (App Store). IBAN-stortingen en -opnames via Gestión (web).",
       "mustBe18": "Om u te kunnen registreren, moet u 18 jaar of ouder zijn",
       "dobInvalid": "Ongeldige geboortedatum",
       "networkError": "Kan de server niet bereiken. Zorg ervoor dat de telefoon verbinding heeft met hetzelfde wifi-netwerk als uw Mac en dat de API actief is.",
@@ -475,13 +475,13 @@
       "loadError": "Kan valuta niet laden",
       "saveError": "Kan valuta niet opslaan",
       "lockedBadge": "Vergrendeld (bankrekening gekoppeld)",
-      "lockedBody": "Na het koppelen van Stripe Connect kun je geen valuta meer wijzigen. Neem contact op met de ondersteuning als u een andere regio nodig heeft.",
+      "lockedBody": "Na het koppelen van IBAN kun je geen valuta meer wijzigen. Neem contact op met de ondersteuning als u een andere regio nodig heeft.",
       "noteBody": "Kies de valuta voor stortingen en opnames. Bij quizzen worden altijd credits gebruikt (1 ≈ 1 EUR). Nadat u uw bank heeft gekoppeld, blijven de valuta en het land vast."
     },
     "bank": {
       "title": "Bankrekening",
       "verifiedInfo": "Uw account is geverifieerd voor opnames.",
-      "chooseCountryInfo": "Kies een land en vul Stripe Connect in (IBAN/lokaal account).",
+      "chooseCountryInfo": "Kies een land en vul IBAN in (IBAN/lokaal account).",
       "statusVerified": "Klaar voor opnames",
       "statusPending": "In behandeling",
       "statusRestricted": "Beperkt",
@@ -1283,8 +1283,8 @@
         "body": "Beschermde authenticatie, identiteitsverificatie indien nodig, anti-cheatcontroles op antwoorden en geverifieerde bankrekeningen voor opnames. Wij spelen eerlijk."
       },
       "moneyOnlyOnWeb": {
-        "title": "Geld alleen op internet",
-        "body": "Het kopen van credits en het opnemen van prijzen gebeurt alleen op de Quilax-website. In de mobiele app speel, zoek, creëer en chat je; geld beweegt in en uit via de website voor veiligheid en compliance."
+        "title": "Credits & withdrawals",
+        "body": "On iOS buy credits in the app (App Store). IBAN deposits/withdrawals are on Gestión (web)."
       },
       "readyToStart": {
         "title": "Klaar om te beginnen",

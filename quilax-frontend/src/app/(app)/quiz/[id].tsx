@@ -8,6 +8,7 @@ import {
   Image,
   ScrollView,
   Pressable,
+  Platform,
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +39,30 @@ import CustomIcon from '@/components/CustomIcon';
 
 /** Prize pool / payout breakdown is hidden until this many players have joined. */
 const PRIZE_POOL_REVEAL_AT = 20;
+
+function joinBlockedMessage(
+  t: (key: string, opts?: object) => string,
+  reason?: string | null,
+  status?: string
+) {
+  switch (reason) {
+    case 'finished':
+      return t('quizDetail.alreadyPlayed');
+    case 'past':
+      return t('quizDetail.quizEnded');
+    case 'enrolled':
+      return t('quizDetail.alreadyEnrolled');
+    case 'no_questions':
+      return t('quizDetail.notAvailableYet');
+    case 'unpublished':
+      return t('quizDetail.notAvailableYet');
+    default:
+      if (['PENDING_REVIEW', 'DRAFT', 'REJECTED'].includes(String(status || ''))) {
+        return t('quizDetail.notAvailableYet');
+      }
+      return t('quizDetail.cannotJoinRightNow');
+  }
+}
 
 function formatCredits(n: number, lang?: string) {
   return new Intl.NumberFormat(getDateLocale(lang)).format(
@@ -160,7 +185,35 @@ export default function QuizDetailScreen() {
       }
 
       if (joinResult.data?.canJoin === false) {
-        setJoinError(joinResult.data.reason || t('quizDetail.cannotJoinNow'));
+        const code = joinResult.data?.code || joinResult.data?.joinBlockedReason;
+        if (code === 'INSUFFICIENT_BALANCE' || code === 'insufficient_balance') {
+          setSheetVisible(false);
+          Alert.alert(
+            t('quizDetail.needCreditsTitle'),
+            t('quizDetail.needCreditsBody'),
+            [
+              { text: t('common.cancel'), style: 'cancel' },
+              {
+                text: t('quizDetail.needCreditsCta'),
+                onPress: () => {
+                  if (Platform.OS === 'web') {
+                    router.push('/(app)/wallet' as any);
+                  } else {
+                    router.push('/(app)/wallet/buy-credits' as any);
+                  }
+                },
+              },
+            ]
+          );
+          return;
+        }
+        setJoinError(
+          joinBlockedMessage(
+            t,
+            joinResult.data?.joinBlockedReason,
+            quiz?.status
+          ) || joinResult.data.reason || t('quizDetail.cannotJoinNow')
+        );
         return;
       }
     } catch {
@@ -177,8 +230,29 @@ export default function QuizDetailScreen() {
     try {
       const enroll = await quizRunService.enrollQuiz(id);
       if (!enroll.success) {
-        setJoinError(enroll.error || t('quizDetail.joinError'));
-        Alert.alert(t('common.error'), enroll.error || t('quizDetail.joinError'));
+        const errText = enroll.error || t('quizDetail.joinError');
+        const insufficient =
+          /crédito|credit|balance|saldo/i.test(String(errText)) ||
+          enroll.code === 'INSUFFICIENT_BALANCE';
+        setJoinError(errText);
+        if (insufficient) {
+          Alert.alert(t('quizDetail.needCreditsTitle'), t('quizDetail.needCreditsBody'), [
+            { text: t('common.cancel'), style: 'cancel' },
+            {
+              text: t('quizDetail.needCreditsCta'),
+              onPress: () => {
+                setSheetVisible(false);
+                if (Platform.OS === 'web') {
+                  router.push('/(app)/wallet' as any);
+                } else {
+                  router.push('/(app)/wallet/buy-credits' as any);
+                }
+              },
+            },
+          ]);
+        } else {
+          Alert.alert(t('common.error'), errText);
+        }
         return;
       }
 
@@ -384,9 +458,7 @@ export default function QuizDetailScreen() {
           ) : (
             <InfoBar>
               <Text style={styles.info}>
-                {['PENDING_REVIEW', 'DRAFT', 'REJECTED'].includes(quiz.status)
-                  ? t('quizDetail.notAvailableYet')
-                  : t('quizDetail.cannotJoinRightNow')}
+                {joinBlockedMessage(t, quiz.joinBlockedReason, quiz.status)}
               </Text>
             </InfoBar>
           )}

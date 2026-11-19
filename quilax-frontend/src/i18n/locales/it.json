@@ -173,7 +173,7 @@
       "nationalitySearch": "Cerca paese…",
       "nationalityRequired": "Scegli la tua nazionalità (deve corrispondere al tuo documento d'identità)",
       "nationalityHint": "Obbligatorio: lo usiamo per verificare il tuo documento d'identità. Deve corrispondere al Paese indicato sul tuo documento d'identità/passaporto.",
-      "webOnlyNote": "Ricorda: acquistare crediti e prelevare denaro è possibile solo sul sito Web Wallet.",
+      "webOnlyNote": "Su iOS acquisti crediti nell'app (App Store). Depositi e prelievi IBAN sono su Gestión (web).",
       "mustBe18": "Devi avere almeno 18 anni per registrarti",
       "dobInvalid": "Data di nascita non valida",
       "networkError": "Impossibile raggiungere il server. Assicurati che il telefono sia connesso alla stessa rete Wi‑Fi del Mac e che l'API sia in esecuzione.",
@@ -475,13 +475,13 @@
       "loadError": "Impossibile caricare la valuta",
       "saveError": "Impossibile salvare la valuta",
       "lockedBadge": "Bloccato (conto bancario collegato)",
-      "lockedBody": "Dopo aver collegato Stripe Connect non puoi cambiare valuta. Contatta l'assistenza se hai bisogno di un'altra regione.",
+      "lockedBody": "Dopo aver collegato IBAN non puoi cambiare valuta. Contatta l'assistenza se hai bisogno di un'altra regione.",
       "noteBody": "Scegli la valuta per depositi e prelievi. I quiz utilizzano sempre crediti (1 ≈ 1 EUR). Dopo aver collegato la tua banca, valuta e paese rimangono fissi."
     },
     "bank": {
       "title": "Conto bancario",
       "verifiedInfo": "Il tuo account è verificato per i prelievi.",
-      "chooseCountryInfo": "Scegli un Paese e completa Stripe Connect (IBAN/conto locale).",
+      "chooseCountryInfo": "Scegli un Paese e completa IBAN (IBAN/conto locale).",
       "statusVerified": "Pronti per i prelievi",
       "statusPending": "In attesa di",
       "statusRestricted": "Limitato",
@@ -1283,8 +1283,8 @@
         "body": "Autenticazione protetta, verifica dell'identità quando necessario, controlli anti-cheat sulle risposte e conti bancari verificati per i prelievi. Giochiamo lealmente."
       },
       "moneyOnlyOnWeb": {
-        "title": "Soldi solo sul web",
-        "body": "L'acquisto di crediti e il ritiro dei premi vengono effettuati solo sul sito web di Quilax. Nell'app mobile giochi, cerchi, crei e chatti; il denaro entra e esce attraverso il sito Web per motivi di sicurezza e conformità."
+        "title": "Credits & withdrawals",
+        "body": "On iOS buy credits in the app (App Store). IBAN deposits/withdrawals are on Gestión (web)."
       },
       "readyToStart": {
         "title": "Pronto per iniziare",

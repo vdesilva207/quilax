@@ -35,6 +35,19 @@ export function isDevSkipOnboarding() {
   );
 }
 
+/**
+ * Soft-launch: skip Stripe Identity in registration.
+ * Opt out with EXPO_PUBLIC_SOFT_LAUNCH=false (or MONEY_REQUIRE_KYC path later).
+ */
+export function isSoftLaunchSkipIdentity() {
+  const extra = Constants.expoConfig?.extra || {};
+  const raw =
+    process.env.EXPO_PUBLIC_SOFT_LAUNCH ??
+    extra.EXPO_PUBLIC_SOFT_LAUNCH ??
+    'true';
+  return raw !== 'false' && raw !== '0';
+}
+
 export async function startRegistrationOnboarding() {
   await secureStorage.setItem(ONBOARDING_FLAG, '1');
 }
@@ -67,8 +80,8 @@ export function getOnboardingHref(user) {
     return '/(auth)/currency-selection';
   }
 
-  // Stripe Identity verifies document + selfie/liveness. No separate face-scan step.
-  if (!user.idVerified) {
+  // Soft-launch: no Stripe Identity gate — go straight to profile / app.
+  if (!isSoftLaunchSkipIdentity() && !user.idVerified) {
     return '/(auth)/id-verification';
   }
 

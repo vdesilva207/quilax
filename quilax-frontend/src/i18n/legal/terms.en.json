@@ -41,7 +41,7 @@
   },
   {
     "title": "11. Deposits (Wallet)",
-    "body": "Only on the Wallet website. The mobile app doesn't process cards (for security).\nUsual processor: Stripe. You also accept its terms."
+    "body": "Credits: on iOS via the App Store; deposits/withdrawals by IBAN transfer on Gestión (web). The team confirms deposits and withdrawals during soft launch."
   },
   {
     "title": "12. Withdrawals",

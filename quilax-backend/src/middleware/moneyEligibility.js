@@ -58,13 +58,36 @@ async function resolveIsOver18(user) {
   return false;
 }
 
-/** KYC obligatorio salvo bypass explícito de desarrollo. */
+/**
+ * Soft-launch: no Stripe Identity gate for play / IAP / deposits.
+ * Opt in to hard KYC with MONEY_REQUIRE_KYC=true (or SOFT_LAUNCH=false).
+ */
+function isSoftLaunchMoney() {
+  if (process.env.SOFT_LAUNCH === "false" || process.env.SOFT_LAUNCH === "0") {
+    return false;
+  }
+  if (process.env.SOFT_LAUNCH === "true" || process.env.SOFT_LAUNCH === "1") {
+    return true;
+  }
+  // Default on while manual payouts rails are active
+  return manualPayoutsEnabled();
+}
+
+/** KYC (Identity) obligatorio solo fuera de soft-launch / bypass. */
 function isKycRequired() {
-  if (process.env.MONEY_REQUIRE_KYC === "false") return false;
+  if (process.env.MONEY_REQUIRE_KYC === "false" || process.env.MONEY_REQUIRE_KYC === "0") {
+    return false;
+  }
+  if (process.env.MONEY_REQUIRE_KYC === "true" || process.env.MONEY_REQUIRE_KYC === "1") {
+    return true;
+  }
   if (
     process.env.NODE_ENV !== "production" &&
     (process.env.DEV_SKIP_KYC === "true" || process.env.DEV_SKIP_KYC === "1")
   ) {
+    return false;
+  }
+  if (isSoftLaunchMoney()) {
     return false;
   }
   return true;

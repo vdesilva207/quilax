@@ -24,8 +24,8 @@ export function describeMoneyGateError(error) {
       return {
         code,
         title: 'Cuenta bancaria',
-        body: message || 'Conecta tu cuenta bancaria para continuar.',
-        action: 'bank',
+        body: message || 'Indica tu IBAN en Gestión (web) para retirar.',
+        action: 'wallet',
       };
     case 'GEO_BLOCKED':
       return {

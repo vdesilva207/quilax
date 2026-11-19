@@ -114,6 +114,62 @@ export const CURRENCY_BY_COUNTRY = {
   TR: "TRY",
   RU: "RUB",
   UA: "UAH",
+  // Soft-launch: broader defaults for world registration
+  IS: "ISK",
+  AL: "ALL",
+  RS: "RSD",
+  BA: "BAM",
+  MK: "MKD",
+  MD: "MDL",
+  GE: "GEL",
+  AM: "AMD",
+  AZ: "AZN",
+  BY: "BYN",
+  KZ: "KZT",
+  UZ: "UZS",
+  TW: "TWD",
+  HK: "HKD",
+  SG: "SGD",
+  MY: "MYR",
+  TH: "THB",
+  ID: "IDR",
+  PH: "PHP",
+  VN: "VND",
+  PK: "PKR",
+  BD: "BDT",
+  LK: "LKR",
+  NP: "NPR",
+  AE: "AED",
+  SA: "SAR",
+  QA: "QAR",
+  KW: "KWD",
+  BH: "BHD",
+  OM: "OMR",
+  JO: "JOD",
+  IL: "ILS",
+  NG: "NGN",
+  KE: "KES",
+  GH: "GHS",
+  TZ: "TZS",
+  UG: "UGX",
+  RW: "RWF",
+  ET: "ETB",
+  AO: "AOA",
+  MZ: "MZN",
+  NA: "NAD",
+  BW: "BWP",
+  SN: "XOF",
+  CI: "XOF",
+  CM: "XAF",
+  CD: "CDF",
+  JM: "JMD",
+  TT: "TTD",
+  BB: "BBD",
+  BS: "BSD",
+  PR: "USD",
+  GU: "USD",
+  ME: "EUR",
+  XK: "EUR",
 };
 
 /** Nombre ES de respaldo (los clientes pueden traducir por código). */
@@ -207,7 +263,8 @@ export function isKnownPaymentCountry(code) {
     .trim()
     .toUpperCase()
     .slice(0, 2);
-  return PAYMENT_REGIONS.some((r) => r.country === c);
+  // Soft-launch: any ISO alpha-2 is accepted for nationality/currency sync.
+  return /^[A-Z]{2}$/.test(c);
 }
 
 export function isActivePaymentCountry(code) {

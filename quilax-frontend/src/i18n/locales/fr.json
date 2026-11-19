@@ -173,7 +173,7 @@
       "nationalitySearch": "Rechercher le pays…",
       "nationalityRequired": "Choisissez votre nationalité (elle doit correspondre à votre pièce d'identité)",
       "nationalityHint": "Obligatoire : nous l'utilisons pour vérifier votre pièce d'identité. Il doit correspondre au pays indiqué sur votre pièce d'identité/passeport.",
-      "webOnlyNote": "N'oubliez pas : l'achat de crédits et le retrait d'argent se font uniquement sur le site Gestion.",
+      "webOnlyNote": "Sur iOS tu achètes des crédits dans l'app (App Store). Dépôts et retraits IBAN se font sur Gestion (web).",
       "mustBe18": "Vous devez avoir 18 ans ou plus pour vous inscrire",
       "dobInvalid": "Date de naissance invalide",
       "networkError": "Impossible d'atteindre le serveur. Assurez-vous que le téléphone est sur le même réseau Wi-Fi que votre Mac et que l'API est en cours d'exécution.",
@@ -475,13 +475,13 @@
       "loadError": "Impossible de charger la devise",
       "saveError": "Impossible d'enregistrer la devise",
       "lockedBadge": "Verrouillé (compte bancaire lié)",
-      "lockedBody": "Après avoir lié Stripe Connect, vous ne pouvez pas changer de devise. Contactez le support si vous avez besoin d’une autre région.",
+      "lockedBody": "Après avoir lié IBAN, vous ne pouvez pas changer de devise. Contactez le support si vous avez besoin d’une autre région.",
       "noteBody": "Choisissez la devise pour les dépôts et les retraits. Les quiz utilisent toujours des crédits (1 ≈ 1 EUR). Après avoir lié votre banque, la devise et le pays restent fixes."
     },
     "bank": {
       "title": "Compte bancaire",
       "verifiedInfo": "Votre compte est vérifié pour les retraits.",
-      "chooseCountryInfo": "Choisissez un pays et complétez Stripe Connect (IBAN / compte local).",
+      "chooseCountryInfo": "Choisissez un pays et complétez IBAN (IBAN / compte local).",
       "statusVerified": "Prêt pour les retraits",
       "statusPending": "En attente",
       "statusRestricted": "restreint",
@@ -1283,8 +1283,8 @@
         "body": "Authentification protégée, vérification d'identité si nécessaire, contrôles anti-triche sur les réponses et comptes bancaires vérifiés pour les retraits. Le fair-play avant tout."
       },
       "moneyOnlyOnWeb": {
-        "title": "Argent uniquement sur le web",
-        "body": "L'achat de crédits et le retrait de prix se font uniquement sur le site Quilax. Dans l'application mobile, vous jouez, recherchez, créez et discutez ; l'argent entre et sort via le site Web pour des raisons de sécurité et de conformité."
+        "title": "Credits & withdrawals",
+        "body": "On iOS buy credits in the app (App Store). IBAN deposits/withdrawals are on Gestión (web)."
       },
       "readyToStart": {
         "title": "Prêt à démarrer",

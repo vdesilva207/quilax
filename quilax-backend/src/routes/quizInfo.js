@@ -5,6 +5,61 @@ import { buildPrizePreview } from '../utils/quizCredits.js';
 
 const router = express.Router();
 
+const LIVE_PHASES = [
+  'PRE_START',
+  'QUESTION_READ',
+  'QUESTION_ANSWER',
+  'QUESTION_CORRECTION',
+  'QUESTION_RANKING',
+];
+
+/**
+ * Soft-launch join rules for published quizzes:
+ * - Need questions
+ * - Need a future schedule OR a live run (past-only schedules → blocked)
+ * - Finished participation → blocked
+ * - Already enrolled without live re-entry → blocked from new enroll CTA
+ */
+function resolveJoinEligibility({
+  status,
+  questionCount,
+  schedules = [],
+  activeRun = null,
+  alreadyEnrolled = false,
+  userParticipation = null,
+  now = new Date(),
+}) {
+  if (status !== 'PUBLISHED') {
+    return { canJoin: false, joinBlockedReason: 'unpublished' };
+  }
+  if ((questionCount || 0) < 1) {
+    return { canJoin: false, joinBlockedReason: 'no_questions' };
+  }
+
+  const finished =
+    userParticipation?.quizRun?.phase === 'FINISHED' ||
+    !!userParticipation?.quizRun?.finishedAt;
+  if (finished && !activeRun) {
+    return { canJoin: false, joinBlockedReason: 'finished' };
+  }
+
+  const hasFutureSchedule = (schedules || []).some(
+    (s) => s?.scheduledAt && new Date(s.scheduledAt) >= now
+  );
+  const hasLiveRun = !!activeRun?.id;
+
+  if (!hasFutureSchedule && !hasLiveRun) {
+    return { canJoin: false, joinBlockedReason: 'past' };
+  }
+
+  // Enrolled for an upcoming/live quiz: CTA is "already in" — not a fresh join.
+  if (alreadyEnrolled && !hasLiveRun) {
+    return { canJoin: false, joinBlockedReason: 'enrolled' };
+  }
+
+  return { canJoin: true, joinBlockedReason: null };
+}
+
 // ============================
 // INFORMACIÓN DE QUIZ (PÚBLICA)
 // ============================
@@ -190,8 +245,21 @@ router.get('/:quizId', auth, async (req, res, next) => {
           totalPrizeDistributed: stats._sum.totalPrizeCredits || 0,
         },
         userParticipation,
-        // Allow join CTA when published; re-entry handled by can-join / openJoinSheet.
-        canJoin: quiz.status === 'PUBLISHED' && quiz._count.questions > 0,
+        ...(() => {
+          const join = resolveJoinEligibility({
+            status: quiz.status,
+            questionCount: quiz._count.questions,
+            schedules: quiz.schedules,
+            activeRun,
+            alreadyEnrolled,
+            userParticipation,
+            now,
+          });
+          return {
+            canJoin: join.canJoin,
+            joinBlockedReason: join.joinBlockedReason,
+          };
+        })(),
         isAgeRestricted: false,
         hasCapacityLimit: false,
       },
@@ -379,28 +447,13 @@ router.get('/:quizId/can-join', auth, async (req, res) => {
         id: true,
         status: true,
         credits: true,
+        schedules: { orderBy: { scheduledAt: 'asc' }, take: 10 },
         _count: { select: { questions: true } },
       },
     });
 
     if (!quiz) {
       return res.status(404).json({ error: 'Quiz no encontrado' });
-    }
-
-    if (quiz.status !== 'PUBLISHED') {
-      return res.json({
-        success: true,
-        canJoin: false,
-        reason: 'El quiz no está publicado',
-      });
-    }
-
-    if ((quiz._count?.questions || 0) < 1) {
-      return res.json({
-        success: true,
-        canJoin: false,
-        reason: 'Este quiz aún no tiene preguntas',
-      });
     }
 
     const user = await prisma.user.findUnique({
@@ -418,23 +471,22 @@ router.get('/:quizId/can-join', auth, async (req, res) => {
         canJoin: false,
         reason: 'Debes ser mayor de 18 años para participar',
         code: 'UNDERAGE',
+        joinBlockedReason: 'underage',
       });
     }
+
+    const activeRun = await prisma.quizRun.findFirst({
+      where: { quizId, phase: { in: LIVE_PHASES } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, phase: true },
+    });
 
     const liveParticipation = await prisma.quizParticipant.findFirst({
       where: {
         userId,
         quizRun: {
           quizId,
-          phase: {
-            in: [
-              'PRE_START',
-              'QUESTION_READ',
-              'QUESTION_ANSWER',
-              'QUESTION_CORRECTION',
-              'QUESTION_RANKING',
-            ],
-          },
+          phase: { in: LIVE_PHASES },
         },
       },
       include: {
@@ -460,6 +512,44 @@ router.get('/:quizId/can-join', auth, async (req, res) => {
       where: { quizId_userId: { quizId, userId } },
     });
 
+    const finishedParticipation = await prisma.quizParticipant.findFirst({
+      where: {
+        userId,
+        quizRun: { quizId, phase: 'FINISHED' },
+      },
+      include: {
+        quizRun: { select: { id: true, phase: true, finishedAt: true } },
+      },
+      orderBy: { joinedAt: 'desc' },
+    });
+
+    const join = resolveJoinEligibility({
+      status: quiz.status,
+      questionCount: quiz._count?.questions || 0,
+      schedules: quiz.schedules,
+      activeRun,
+      alreadyEnrolled: !!enrollment,
+      userParticipation: finishedParticipation,
+    });
+
+    if (!join.canJoin) {
+      const reasonByCode = {
+        unpublished: 'El quiz no está publicado',
+        no_questions: 'Este quiz aún no tiene preguntas',
+        finished: 'Ya jugaste este quiz',
+        past: 'Este quiz ya finalizó',
+        enrolled: 'Ya estás apuntado a este quiz',
+      };
+      return res.json({
+        success: true,
+        canJoin: false,
+        joinBlockedReason: join.joinBlockedReason,
+        reason: reasonByCode[join.joinBlockedReason] || 'No puedes unirte ahora',
+        alreadyEnrolled: !!enrollment,
+        currentBalance: user.balance,
+      });
+    }
+
     if (!enrollment && (user.balance ?? 0) < ENTRY_COST) {
       return res.json({
         success: true,
@@ -468,10 +558,10 @@ router.get('/:quizId/can-join', auth, async (req, res) => {
         requiredCredits: ENTRY_COST,
         currentBalance: user.balance,
         code: 'INSUFFICIENT_BALANCE',
+        joinBlockedReason: 'insufficient_balance',
       });
     }
 
-    // No hard player cap — product allows unbounded participation.
     return res.json({
       success: true,
       canJoin: true,

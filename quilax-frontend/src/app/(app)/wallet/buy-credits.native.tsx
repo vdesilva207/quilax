@@ -15,6 +15,7 @@ import { Colors, Spacing, bodyTypeface, titleTypeface } from '@/constants/theme'
 import { SCREEN_BACKGROUND } from '@/constants/gradients';
 import apiClient from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { isSoftLaunchSkipIdentity } from '@/utils/onboardingGate';
 
 type Pack = {
   productId: string;
@@ -116,6 +117,7 @@ export default function BuyCreditsScreen() {
         if (!cancelled) {
           setPacks(data?.packages || []);
           const verified =
+            isSoftLaunchSkipIdentity() ||
             !!identity?.idVerified ||
             identity?.status === 'verified' ||
             !!user?.idVerified;
@@ -132,7 +134,7 @@ export default function BuyCreditsScreen() {
               label: id,
             })),
           );
-          setKycOk(!!user?.idVerified);
+          setKycOk(isSoftLaunchSkipIdentity() || !!user?.idVerified);
         }
       } finally {
         if (!cancelled) setLoading(false);

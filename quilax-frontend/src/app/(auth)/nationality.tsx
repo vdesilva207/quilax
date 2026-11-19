@@ -12,15 +12,18 @@ import {
   AuthProgressDots,
 } from '@/components/ui/AuthFlowLayout';
 import CountryPicker from '@/components/ui/CountryPicker';
-import { countryNameKey } from '@/constants/countries';
+import { countryDisplayName } from '@/constants/countries';
 import {
   RegistrationOnboardingGate,
   useRequireRegistrationOnboarding,
 } from '@/hooks/useRequireRegistrationOnboarding';
+import { getOnboardingHref, isSoftLaunchSkipIdentity } from '@/utils/onboardingGate';
+import { useAuth } from '@/context/AuthContext';
 
 export default function NationalityScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { user, refreshProfile } = useAuth() as any;
   const gate = useRequireRegistrationOnboarding({ exitIfAlreadyVerified: true });
   const [selected, setSelected] = useState('');
 
@@ -28,14 +31,24 @@ export default function NationalityScreen() {
     if (!selected) return;
     await AsyncStorage.setItem(
       'selectedCountry',
-      JSON.stringify({ code: selected, name: t(countryNameKey(selected)) })
+      JSON.stringify({
+        code: selected,
+        name: countryDisplayName(selected, i18n.language || 'es', t),
+      })
     );
     try {
       await apiClient.put('/profile/me', { country: selected });
+      await refreshProfile?.({ full: false }).catch(() => null);
     } catch {
       // Si aún no hay sesión completa, se sincroniza más adelante en complete-profile
     }
-    router.push('/(auth)/id-verification');
+    const nextUser = { ...(user || {}), country: selected };
+    const href =
+      getOnboardingHref(nextUser) ||
+      (isSoftLaunchSkipIdentity()
+        ? '/(auth)/complete-profile'
+        : '/(auth)/id-verification');
+    router.push(href as any);
   };
 
   const fallback = (

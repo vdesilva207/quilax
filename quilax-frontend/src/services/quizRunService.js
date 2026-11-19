@@ -7,7 +7,11 @@ export const quizRunService = {
       const data = await apiClient.post(`/quiz-play/enroll/${quizId}`);
       return { success: true, data };
     } catch (error) {
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error.message,
+        code: error.code || error.payload?.code,
+      };
     }
   },
 

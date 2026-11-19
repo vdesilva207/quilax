@@ -41,7 +41,7 @@
   },
   {
     "title": "11. Depósitos (Gestión / Wallet)",
-    "body": "Solo en la web de Gestión. La app móvil no procesa tarjetas (seguridad).\nProcesador habitual: Stripe. Aceptas también sus condiciones."
+    "body": "Créditos: en iOS vía App Store; depósitos/retiros por transferencia IBAN en Gestión (web). El equipo confirma ingresos y retiros en soft launch."
   },
   {
     "title": "12. Retiros",

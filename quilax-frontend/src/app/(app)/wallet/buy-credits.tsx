@@ -5,8 +5,8 @@ import { AppScreen, AppHeader } from '@/components/ui/AppScreen';
 import { Colors, Spacing, bodyTypeface } from '@/constants/theme';
 import { SCREEN_BACKGROUND } from '@/constants/gradients';
 
-/** Web: IAP not available — point users to Gestión (manual IBAN). */
-export default function BuyCreditsWebScreen() {
+/** Fallback / web: IAP not available — point users to Gestión (manual IBAN). */
+export default function BuyCreditsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
 

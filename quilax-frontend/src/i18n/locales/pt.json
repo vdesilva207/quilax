@@ -173,7 +173,7 @@
       "nationalitySearch": "Pesquisar país…",
       "nationalityRequired": "Escolha a sua nacionalidade (deve corresponder ao seu documento de identificação)",
       "nationalityHint": "Obrigatório: utilizamos para verificar seu documento de identidade. Deve corresponder ao país do seu documento de identidade/passaporte.",
-      "webOnlyNote": "Lembra-te: comprar créditos e levantar dinheiro só é possível no site Gestão.",
+      "webOnlyNote": "No iOS compras créditos na app (App Store). Depósitos e levantamentos IBAN são na Gestão (web).",
       "mustBe18": "Você deve ter 18 anos ou mais para se registrar",
       "dobInvalid": "Data de nascimento inválida",
       "networkError": "Não foi possível acessar o servidor. Certifique-se de que o telefone esteja no mesmo Wi-Fi do seu Mac e que a API esteja em execução.",
@@ -475,13 +475,13 @@
       "loadError": "Não foi possível carregar a moeda",
       "saveError": "Não foi possível salvar a moeda",
       "lockedBadge": "Bloqueado (conta bancária vinculada)",
-      "lockedBody": "Depois de vincular o Stripe Connect, você não poderá alterar a moeda. Entre em contato com o suporte se precisar de outra região.",
+      "lockedBody": "Depois de vincular o IBAN, você não poderá alterar a moeda. Entre em contato com o suporte se precisar de outra região.",
       "noteBody": "Escolha a moeda para depósitos e saques. Os questionários sempre usam créditos (1 ≈ 1 EUR). Depois de vincular seu banco, a moeda e o país permanecem fixos."
     },
     "bank": {
       "title": "Conta bancária",
       "verifiedInfo": "Sua conta foi verificada para saques.",
-      "chooseCountryInfo": "Escolha um país e preencha o Stripe Connect (IBAN / conta local).",
+      "chooseCountryInfo": "Escolha um país e preencha o IBAN (IBAN / conta local).",
       "statusVerified": "Pronto para saques",
       "statusPending": "Pendente",
       "statusRestricted": "Restrito",
@@ -1283,8 +1283,8 @@
         "body": "Autenticação protegida, verificação de identidade quando necessário, verificações anti-fraude nas respostas e contas bancárias verificadas para saques. Jogamos limpo."
       },
       "moneyOnlyOnWeb": {
-        "title": "Dinheiro apenas na web",
-        "body": "A compra de créditos e retirada de prêmios é feita somente no site da Quilax. No aplicativo móvel você joga, pesquisa, cria e conversa; o dinheiro entra e sai do site para segurança e conformidade."
+        "title": "Credits & withdrawals",
+        "body": "On iOS buy credits in the app (App Store). IBAN deposits/withdrawals are on Gestión (web)."
       },
       "readyToStart": {
         "title": "Pronto para começar",

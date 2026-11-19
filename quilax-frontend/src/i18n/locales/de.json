@@ -173,7 +173,7 @@
       "nationalitySearch": "Land suchen…",
       "nationalityRequired": "Wählen Sie Ihre Nationalität (sie muss mit Ihrem Ausweisdokument übereinstimmen)",
       "nationalityHint": "Erforderlich: Wir verwenden es zur Überprüfung Ihres Ausweisdokuments. Es muss mit dem Land auf Ihrem Personalausweis/Reisepass übereinstimmen.",
-      "webOnlyNote": "Denk daran: Credits kaufen und Geld abheben geht nur auf der Verwaltungs-Website.",
+      "webOnlyNote": "Unter iOS kaufst du Credits in der App (App Store). IBAN-Ein-/Auszahlungen laufen über Gestión (Web).",
       "mustBe18": "Sie müssen mindestens 18 Jahre alt sein, um sich registrieren zu können",
       "dobInvalid": "Ungültiges Geburtsdatum",
       "networkError": "Der Server konnte nicht erreicht werden. Stellen Sie sicher, dass das Telefon mit demselben WLAN wie Ihr Mac verbunden ist und die API ausgeführt wird.",
@@ -475,13 +475,13 @@
       "loadError": "Währung konnte nicht geladen werden",
       "saveError": "Währung konnte nicht gespeichert werden",
       "lockedBadge": "Gesperrt (Bankkonto verknüpft)",
-      "lockedBody": "Nachdem Sie Stripe Connect verknüpft haben, können Sie die Währung nicht mehr ändern. Wenden Sie sich an den Support, wenn Sie eine andere Region benötigen.",
+      "lockedBody": "Nachdem Sie IBAN verknüpft haben, können Sie die Währung nicht mehr ändern. Wenden Sie sich an den Support, wenn Sie eine andere Region benötigen.",
       "noteBody": "Wählen Sie die Währung für Ein- und Auszahlungen. Für Quizze werden immer Credits benötigt (1 ≈ 1 EUR). Nach der Verknüpfung Ihrer Bank bleiben Währung und Land unverändert."
     },
     "bank": {
       "title": "Bankkonto",
       "verifiedInfo": "Ihr Konto ist für Auszahlungen verifiziert.",
-      "chooseCountryInfo": "Wählen Sie ein Land und schließen Sie Stripe Connect ab (IBAN / lokales Konto).",
+      "chooseCountryInfo": "Wählen Sie ein Land und schließen Sie IBAN ab (IBAN / lokales Konto).",
       "statusVerified": "Bereit für Abhebungen",
       "statusPending": "Ausstehend",
       "statusRestricted": "Eingeschränkt",
@@ -1283,8 +1283,8 @@
         "body": "Geschützte Authentifizierung, Identitätsüberprüfung bei Bedarf, Anti-Cheat-Prüfungen bei Antworten und verifizierte Bankkonten für Abhebungen. Wir spielen fair."
       },
       "moneyOnlyOnWeb": {
-        "title": "Geld nur im Internet",
-        "body": "Der Kauf von Credits und die Auszahlung von Preisen erfolgt nur auf der Quilax-Website. In der mobilen App können Sie spielen, suchen, erstellen und chatten. Aus Sicherheits- und Compliance-Gründen fließt Geld über die Website ein und aus."
+        "title": "Credits & withdrawals",
+        "body": "On iOS buy credits in the app (App Store). IBAN deposits/withdrawals are on Gestión (web)."
       },
       "readyToStart": {
         "title": "Bereit zum Start",

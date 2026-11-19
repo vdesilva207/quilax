@@ -5,7 +5,7 @@
   },
   {
     "title": "2. Data we process",
-    "body": "Identity and contact (name, email), game data, KYC (ID and selfie), banking/payments via Stripe, messages/support, and technical security data."
+    "body": "Identity and contact (name, email), game data, KYC (ID and selfie), banking/payments (manual IBAN and store IAP), messages/support, and technical security data."
   },
   {
     "title": "3. Purposes",

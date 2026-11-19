@@ -174,7 +174,7 @@
       "nationalitySearch": "Search country…",
       "nationalityRequired": "Choose your nationality (it must match your ID document)",
       "nationalityHint": "Required: we use it to verify your ID document. It must match the country on your ID/passport.",
-      "webOnlyNote": "Remember: buying credits and withdrawing money is only on the Wallet website.",
+      "webOnlyNote": "On iOS you buy credits in the app (App Store). IBAN deposits and withdrawals are on Gestión (web).",
       "mustBe18": "You must be 18 or older to register",
       "dobInvalid": "Invalid date of birth",
       "networkError": "Couldn't reach the server. Make sure the phone is on the same Wi‑Fi as your Mac and the API is running."
@@ -479,13 +479,13 @@
       "loadError": "Couldn't load currency",
       "saveError": "Couldn't save currency",
       "lockedBadge": "Locked (bank account linked)",
-      "lockedBody": "After linking Stripe Connect you can't change currency. Contact support if you need another region.",
+      "lockedBody": "After money activity, currency may be locked. Contact support if you need another region.",
       "noteBody": "Choose the currency for deposits and withdrawals. Quizzes always use credits (1 ≈ 1 EUR). After linking your bank, currency and country stay fixed."
     },
     "bank": {
       "title": "Bank account",
       "verifiedInfo": "Your account is verified for withdrawals.",
-      "chooseCountryInfo": "Choose a country and complete Stripe Connect (IBAN / local account).",
+      "chooseCountryInfo": "Choose a country. Withdrawals use IBAN transfer in Gestión.",
       "statusVerified": "Ready for withdrawals",
       "statusPending": "Pending",
       "statusRestricted": "Restricted",
@@ -866,6 +866,12 @@
     "enterLiveButton": "Enter live quiz",
     "notAvailableYet": "This quiz isn't available to join yet.",
     "cannotJoinRightNow": "You can't join this quiz right now.",
+    "alreadyPlayed": "You already played this quiz.",
+    "quizEnded": "This quiz has ended.",
+    "alreadyEnrolled": "You're already signed up. We'll notify you before it starts.",
+    "needCreditsTitle": "You need credits",
+    "needCreditsBody": "Joining costs 1 credit. Buy them in the app (iOS) or deposit by bank transfer in Gestión.",
+    "needCreditsCta": "Get credits",
     "prizesSection": "Prizes",
     "prizesNeedEntries": "No pool yet — amounts appear once there are entries.",
     "prizesLockedUntil": "The prize pool and payouts appear once {{n}} people have joined.",
@@ -1291,8 +1297,8 @@
         "body": "Protected authentication, identity verification when needed, anti-cheat checks on answers, and verified bank accounts for withdrawals. We play fair."
       },
       "moneyOnlyOnWeb": {
-        "title": "Money only on the web",
-        "body": "Buying credits and withdrawing prizes is only done on the Quilax website. In the mobile app you play, search, create, and chat; money moves in and out through the website for security and compliance."
+        "title": "Credits and withdrawals",
+        "body": "On iOS you buy credits in the app (App Store). IBAN deposits and withdrawals are handled on the Gestión website. In the app you play, create, and chat."
       },
       "readyToStart": {
         "title": "Ready to start",

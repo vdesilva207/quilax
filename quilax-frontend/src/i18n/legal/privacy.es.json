@@ -5,7 +5,7 @@
   },
   {
     "title": "2. Datos que tratamos",
-    "body": "Identidad y contacto (nombre, email), datos de juego (partidas, puntuaciones), verificación KYC (documento y selfie), datos bancarios/pagos vía Stripe, mensajes/soporte y datos técnicos de uso y seguridad."
+    "body": "Identidad y contacto (nombre, email), datos de juego (partidas, puntuaciones), verificación KYC (documento y selfie), datos bancarios/pagos (IBAN manual e IAP de tiendas), mensajes/soporte y datos técnicos de uso y seguridad."
   },
   {
     "title": "3. Finalidades",
