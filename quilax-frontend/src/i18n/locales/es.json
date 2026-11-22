@@ -1422,6 +1422,8 @@
     "verifying": "Verificando compra…",
     "restore": "Restaurar compras",
     "needKyc": "Verifica tu identidad antes de comprar créditos.",
-    "goVerify": "Verificar identidad"
+    "goVerify": "Verificar identidad",
+    "skuUnavailable": "Este paquete ({{sku}}) no está disponible en la tienda. Créalo en App Store Connect o prueba más tarde.",
+    "missingPacksHint": "Packs no activos en la tienda (revisa ASC): {{skus}}"
   }
 }

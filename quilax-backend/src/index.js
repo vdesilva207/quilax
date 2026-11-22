@@ -429,9 +429,25 @@ if (process.env.NODE_ENV === 'production' && process.env.ENABLE_CLUSTERING === '
               stdio: "inherit",
               env: process.env,
             });
-            child.on("exit", (code) =>
-              console.log(`[bg] prisma migrate deploy exit=${code}`)
-            );
+            child.on("exit", (code) => {
+              console.log(`[bg] prisma migrate deploy exit=${code}`);
+              // Soft-launch: if DB has no published quizzes, seed 2–3 playable ones.
+              import("./services/softlaunchSeedService.js")
+                .then(({ seedSoftlaunchQuizzes }) => seedSoftlaunchQuizzes())
+                .then((result) => {
+                  if (result?.skipped) {
+                    console.log(`[bg] softlaunch seed skipped: ${result.reason}`);
+                  } else {
+                    console.log(
+                      `[bg] softlaunch seed created ${result?.created?.length || 0} quizzes`,
+                      result?.created?.map((q) => q.id)
+                    );
+                  }
+                })
+                .catch((err) =>
+                  console.error("[bg] softlaunch seed:", err?.message || err)
+                );
+            });
           })
           .catch(() => {});
       }

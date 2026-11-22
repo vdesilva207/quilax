@@ -178,6 +178,7 @@ export default function WalletHome() {
 
   return (
     <WalletShell
+      brand
       title={t('home.title')}
       subtitle={t('home.subtitleReady')}
     >
@@ -282,7 +283,16 @@ export default function WalletHome() {
 }
 
 const styles = StyleSheet.create({
-  balanceBlock: { alignItems: 'flex-start', marginBottom: Spacing.sm },
+  balanceBlock: {
+    alignItems: 'flex-start',
+    marginBottom: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: 16,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(28,25,23,0.08)',
+    width: '100%',
+  },
   balanceLabel: {
     fontFamily: Fonts.body,
     fontSize: 12,

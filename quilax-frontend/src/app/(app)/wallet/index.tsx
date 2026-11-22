@@ -6,15 +6,14 @@ import {
   Pressable,
   ActivityIndicator,
   Platform,
-  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Colors, Spacing, MaxContentWidth, titleTypeface, bodyTypeface } from '@/constants/theme';
+import { Colors, Spacing, titleTypeface, bodyTypeface } from '@/constants/theme';
 import { brandGradientProps, SCREEN_BACKGROUND } from '@/constants/gradients';
-import { BrandGradientBar } from '@/components/ui/BrandGradientBar';
+import { AppScreen, AppHeader, AppSection, AppCard } from '@/components/ui/AppScreen';
 import { useAuth } from '@/context/AuthContext';
 import apiClient from '@/lib/api';
 import { getWalletAppUrl } from '@/lib/walletAppUrl';
@@ -68,173 +67,92 @@ export default function WalletGateScreen() {
   };
 
   return (
-    <View style={styles.screen}>
-      <BrandGradientBar />
+    <AppScreen>
+      <AppHeader
+        title={t('wallet.title')}
+        subtitle={t('wallet.subtitle')}
+        badge={t('wallet.badge')}
+      />
 
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.column}>
-          <Text style={styles.brand}>QUILAX</Text>
-          <Text style={styles.badge}>{t('wallet.badge')}</Text>
+      <AppSection title={t('wallet.balanceLabel')} accentIndex={0}>
+        <AppCard>
+          <Text style={styles.balance}>{balance}</Text>
+          <Text style={styles.balanceUnit}>{t('wallet.creditsUnit')}</Text>
+          {balance <= 0 ? (
+            <Text style={styles.emptyBalance}>{t('wallet.emptyBalanceHint')}</Text>
+          ) : null}
+        </AppCard>
+        <Text style={styles.copy}>{t('wallet.description')}</Text>
+      </AppSection>
 
-          <Text style={styles.heroTitle}>
-            {t('wallet.title')}
-            {'\n'}
-            <Text style={styles.heroAccent}>{t('wallet.titleAccent')}</Text>
-          </Text>
-          <Text style={styles.heroSub}>{t('wallet.subtitle')}</Text>
-
-          <View style={styles.balanceBlock}>
-            <Text style={styles.balanceHint}>{t('wallet.balanceLabel')}</Text>
-            <Text style={styles.balance}>{balance}</Text>
-            <Text style={styles.balanceUnit}>{t('wallet.creditsUnit')}</Text>
-            {balance <= 0 ? (
-              <Text style={styles.emptyBalance}>{t('wallet.emptyBalanceHint')}</Text>
-            ) : null}
+      <View style={styles.actions}>
+        {openError ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorTitle}>{t('wallet.openErrorTitle')}</Text>
+            <Text style={styles.errorBody}>{openError}</Text>
           </View>
+        ) : null}
 
-          <Text style={styles.copy}>{t('wallet.description')}</Text>
-
-          {openError ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorTitle}>{t('wallet.openErrorTitle')}</Text>
-              <Text style={styles.errorBody}>{openError}</Text>
-            </View>
-          ) : null}
-
-          {isNative ? (
-            <>
-              <Pressable
-                style={({ pressed }) => [styles.ctaWrap, pressed && styles.ctaPressed]}
-                onPress={() => router.push('/(app)/wallet/buy-credits')}
-                testID="buy-credits-iap"
-              >
-                <LinearGradient {...brandGradientProps} style={styles.cta}>
-                  <Text style={styles.ctaText}>{t('wallet.buyCredits')}</Text>
-                </LinearGradient>
-              </Pressable>
-              <Text style={styles.buyHint}>{t('wallet.buyCreditsHint')}</Text>
-            </>
-          ) : null}
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.ctaWrap,
-              isNative && styles.ctaSecondary,
-              pressed && styles.ctaPressed,
-            ]}
-            onPress={openWebGestion}
-            disabled={loading}
-            testID="open-web-wallet"
-          >
-            {isNative ? (
-              <View style={styles.ctaOutline}>
-                {loading ? (
-                  <ActivityIndicator color={Colors.light.primary} />
-                ) : (
-                  <Text style={styles.ctaOutlineText}>
-                    {openError ? t('common.retry') : t('wallet.openWeb')}
-                  </Text>
-                )}
-              </View>
-            ) : (
+        {isNative ? (
+          <>
+            <Pressable
+              style={({ pressed }) => [styles.ctaWrap, pressed && styles.ctaPressed]}
+              onPress={() => router.push('/(app)/wallet/buy-credits')}
+              testID="buy-credits-iap"
+            >
               <LinearGradient {...brandGradientProps} style={styles.cta}>
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.ctaText}>
-                    {openError ? t('common.retry') : t('wallet.openWeb')}
-                  </Text>
-                )}
+                <Text style={styles.ctaText}>{t('wallet.buyCredits')}</Text>
               </LinearGradient>
-            )}
-          </Pressable>
+            </Pressable>
+            <Text style={styles.buyHint}>{t('wallet.buyCreditsHint')}</Text>
+          </>
+        ) : null}
 
-          <Text style={styles.appOnly}>{t('wallet.appOnlyHint')}</Text>
-        </View>
-      </ScrollView>
-    </View>
+        <Pressable
+          style={({ pressed }) => [
+            styles.ctaWrap,
+            isNative && styles.ctaSecondary,
+            pressed && styles.ctaPressed,
+          ]}
+          onPress={openWebGestion}
+          disabled={loading}
+          testID="open-web-wallet"
+        >
+          {isNative ? (
+            <View style={styles.ctaOutline}>
+              {loading ? (
+                <ActivityIndicator color={Colors.light.primary} />
+              ) : (
+                <Text style={styles.ctaOutlineText}>
+                  {openError ? t('common.retry') : t('wallet.openWeb')}
+                </Text>
+              )}
+            </View>
+          ) : (
+            <LinearGradient {...brandGradientProps} style={styles.cta}>
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.ctaText}>
+                  {openError ? t('common.retry') : t('wallet.openWeb')}
+                </Text>
+              )}
+            </LinearGradient>
+          )}
+        </Pressable>
+
+        <Text style={styles.appOnly}>{t('wallet.appOnlyHint')}</Text>
+      </View>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: SCREEN_BACKGROUND,
-  },
-  scroll: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingBottom: Spacing.six,
-  },
-  column: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.five,
-  },
-  brand: {
-    ...titleTypeface,
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: 2.5,
-    color: Colors.light.text,
-    marginBottom: Spacing.three,
-  },
-  badge: {
-    ...bodyTypeface,
-    alignSelf: 'flex-start',
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.light.primary,
-    backgroundColor: 'rgba(59,130,246,0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    overflow: 'hidden',
-    marginBottom: Spacing.three,
-  },
-  heroTitle: {
-    ...titleTypeface,
-    fontSize: 32,
-    fontWeight: '800',
-    lineHeight: 38,
-    color: Colors.light.text,
-    marginBottom: Spacing.two,
-  },
-  heroAccent: {
-    color: Colors.light.gradientEnd,
-  },
-  heroSub: {
-    ...bodyTypeface,
-    fontSize: 16,
-    lineHeight: 24,
-    color: Colors.light.textSecondary,
-    marginBottom: Spacing.five,
-    maxWidth: 340,
-  },
-  balanceBlock: {
-    marginBottom: Spacing.four,
-    paddingBottom: Spacing.four,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(28,25,23,0.1)',
-  },
-  balanceHint: {
-    ...titleTypeface,
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.light.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
   balance: {
     ...titleTypeface,
-    fontSize: 52,
+    fontSize: 48,
     fontWeight: '800',
     color: Colors.light.text,
-    marginTop: 4,
   },
   balanceUnit: {
     ...bodyTypeface,
@@ -254,11 +172,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
     color: Colors.light.textSecondary,
-    marginBottom: Spacing.four,
+    marginTop: Spacing.two,
+  },
+  actions: {
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.six,
+    gap: Spacing.three,
+    backgroundColor: SCREEN_BACKGROUND,
   },
   errorBox: {
     width: '100%',
-    marginBottom: Spacing.four,
     padding: Spacing.four,
     borderRadius: 12,
     backgroundColor: 'rgba(239,68,68,0.08)',
@@ -290,7 +213,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   ctaSecondary: {
-    marginTop: Spacing.three,
+    marginTop: Spacing.two,
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -309,7 +232,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: Colors.light.primary,
-    backgroundColor: 'transparent',
+    backgroundColor: Colors.light.backgroundElement,
   },
   ctaText: {
     ...titleTypeface,
@@ -325,14 +248,13 @@ const styles = StyleSheet.create({
   },
   buyHint: {
     ...bodyTypeface,
-    marginTop: Spacing.two,
     fontSize: 12,
     color: Colors.light.textSecondary,
     textAlign: 'center',
   },
   appOnly: {
     ...bodyTypeface,
-    marginTop: Spacing.four,
+    marginTop: Spacing.two,
     fontSize: 12,
     lineHeight: 18,
     color: Colors.light.textSecondary,

@@ -656,6 +656,7 @@ const styles = StyleSheet.create({
   bannerTop: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   brand: {
     ...sora(800),

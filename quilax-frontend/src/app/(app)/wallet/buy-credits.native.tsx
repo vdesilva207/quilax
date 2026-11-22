@@ -44,6 +44,7 @@ export default function BuyCreditsScreen() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [kycOk, setKycOk] = useState(!!user?.idVerified);
+  const [storeProductsReady, setStoreProductsReady] = useState(false);
   const verifyingRef = useRef(false);
 
   const verifyOnServer = useCallback(
@@ -147,21 +148,47 @@ export default function BuyCreditsScreen() {
 
   useEffect(() => {
     if (!connected) return;
-    void fetchProducts({ skus: PRODUCT_IDS, type: 'in-app' }).catch(() => {
-      setError(t('buyCredits.storeUnavailable'));
-    });
+    setStoreProductsReady(false);
+    void fetchProducts({ skus: PRODUCT_IDS, type: 'in-app' })
+      .then(() => {
+        setStoreProductsReady(true);
+      })
+      .catch(() => {
+        setStoreProductsReady(true);
+        setError(t('buyCredits.storeUnavailable'));
+      });
   }, [connected, fetchProducts, t]);
+
+  const storeProductIds = new Set(
+    (products || [])
+      .map((x) => String((x as any)?.id || (x as any)?.productId || ''))
+      .filter(Boolean),
+  );
 
   const priceFor = (productId: string) => {
     const p = products?.find((x) => x.id === productId || (x as any).productId === productId);
     return (p as any)?.displayPrice || (p as any)?.localizedPrice || null;
   };
 
+  const visiblePacks =
+    connected && storeProductsReady
+      ? packs.filter((p) => storeProductIds.has(p.productId))
+      : packs;
+
+  const missingStorePacks =
+    connected && storeProductsReady
+      ? packs.filter((p) => !storeProductIds.has(p.productId))
+      : [];
+
   const onBuy = async (productId: string) => {
     setError('');
     setMessage('');
     if (!kycOk) {
       setError(t('buyCredits.needKyc'));
+      return;
+    }
+    if (connected && storeProductsReady && !storeProductIds.has(productId)) {
+      setError(t('buyCredits.skuUnavailable', { sku: productId }));
       return;
     }
     setBusySku(productId);
@@ -197,7 +224,7 @@ export default function BuyCreditsScreen() {
         {loading ? (
           <ActivityIndicator color={Colors.light.primary} />
         ) : (
-          packs.map((pack) => {
+          visiblePacks.map((pack) => {
             const price = priceFor(pack.productId);
             const busy = busySku === pack.productId;
             return (
@@ -223,6 +250,14 @@ export default function BuyCreditsScreen() {
             );
           })
         )}
+
+        {!loading && missingStorePacks.length > 0 ? (
+          <Text style={styles.warn}>
+            {t('buyCredits.missingPacksHint', {
+              skus: missingStorePacks.map((p) => p.productId).join(', '),
+            })}
+          </Text>
+        ) : null}
 
         {!connected && !loading ? (
           <Text style={styles.warn}>{t('buyCredits.storeUnavailable')}</Text>

@@ -15,6 +15,27 @@ router.use(roleMiddleware(["ADMIN"]));
 
 /*
 ====================================
+SOFT-LAUNCH: seed playable quizzes (non-destructive)
+POST /admin/softlaunch/seed-quizzes
+Body: { force?: boolean }
+====================================
+*/
+router.post("/softlaunch/seed-quizzes", async (req, res) => {
+  try {
+    const { seedSoftlaunchQuizzes } = await import(
+      "../services/softlaunchSeedService.js"
+    );
+    const force = !!req.body?.force;
+    const result = await seedSoftlaunchQuizzes({ force });
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("softlaunch seed:", error);
+    res.status(500).json({ error: error?.message || "Seed failed" });
+  }
+});
+
+/*
+====================================
 ADMIN QUIZZES OCCUPIED DATES
 GET /admin/quizzes/occupied-dates
 ====================================
