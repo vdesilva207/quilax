@@ -188,6 +188,11 @@ export default function WalletHome() {
         <Text style={styles.fiat}>{creditsToFiat(balance, currency)}</Text>
       </View>
 
+      <View style={styles.howBox}>
+        <Text style={styles.howTitle}>{t('home.howItWorksTitle')}</Text>
+        <Text style={styles.howBody}>{t('home.howItWorksBody')}</Text>
+      </View>
+
       {idVerified ? (
         <View style={styles.kycOk}>
           <Text style={styles.kycOkText}>{t('home.identityVerified')}</Text>
@@ -292,6 +297,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(28,25,23,0.08)',
     width: '100%',
+  },
+  howBox: {
+    width: '100%',
+    padding: Spacing.md,
+    borderRadius: 16,
+    backgroundColor: Colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: 'rgba(28,25,23,0.06)',
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  howTitle: {
+    fontFamily: Fonts.display,
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  howBody: {
+    fontFamily: Fonts.body,
+    fontSize: 13,
+    lineHeight: 20,
+    color: Colors.textSecondary,
   },
   balanceLabel: {
     fontFamily: Fonts.body,

@@ -82,6 +82,14 @@ export default function WalletGateScreen() {
             <Text style={styles.emptyBalance}>{t('wallet.emptyBalanceHint')}</Text>
           ) : null}
         </AppCard>
+      </AppSection>
+
+      <AppSection title={t('wallet.howItWorksTitle')} accentIndex={1}>
+        <AppCard>
+          <Text style={styles.step}>{t('wallet.howItWorksStep1')}</Text>
+          <Text style={styles.step}>{t('wallet.howItWorksStep2')}</Text>
+          <Text style={styles.step}>{t('wallet.howItWorksStep3')}</Text>
+        </AppCard>
         <Text style={styles.copy}>{t('wallet.description')}</Text>
       </AppSection>
 
@@ -174,8 +182,16 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
     marginTop: Spacing.two,
   },
+  step: {
+    ...bodyTypeface,
+    fontSize: 14,
+    lineHeight: 21,
+    color: Colors.light.text,
+    marginBottom: Spacing.two,
+  },
   actions: {
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.five,
     paddingBottom: Spacing.six,
     gap: Spacing.three,
     backgroundColor: SCREEN_BACKGROUND,

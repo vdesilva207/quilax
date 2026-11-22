@@ -1,3 +1,4 @@
+import { importX509, compactVerify, decodeProtectedHeader } from "jose";
 import prisma from "../lib/prisma.js";
 import { creditBalance } from "./balanceService.js";
 import {
@@ -5,6 +6,20 @@ import {
   totalCreditsForPack,
   IAP_CREDIT_PACKS,
 } from "../constants/iapProducts.js";
+
+const APPLE_BUNDLE_IDS = new Set(
+  [
+    process.env.APPLE_BUNDLE_ID,
+    "com.quilax.ios",
+    "com.quilax.app",
+  ].filter(Boolean),
+);
+
+function looksLikeJws(value) {
+  if (typeof value !== "string") return false;
+  const parts = value.split(".");
+  return parts.length === 3 && parts.every((p) => p.length > 8) && value.length > 80;
+}
 
 /**
  * Verify store purchase and credit user (idempotent on storeTransactionId).
@@ -153,19 +168,75 @@ async function verifyWithStore({
 }
 
 /**
- * Apple verifyReceipt (legacy shared secret). Prefer App Store Server API later.
+ * StoreKit 2 JWS (expo-iap purchaseToken). verifyReceipt returns 21002 for these.
+ */
+async function verifyAppleStoreKit2Jws({ productId, storeTransactionId, jws }) {
+  try {
+    const header = decodeProtectedHeader(jws);
+    const x5c = header.x5c;
+    if (!Array.isArray(x5c) || !x5c[0]) {
+      return { ok: false, reason: "apple_jws_missing_x5c" };
+    }
+    const leafPem = `-----BEGIN CERTIFICATE-----\n${String(x5c[0])
+      .match(/.{1,64}/g)
+      .join("\n")}\n-----END CERTIFICATE-----`;
+    const key = await importX509(leafPem, header.alg || "ES256");
+    const { payload } = await compactVerify(jws, key);
+    const claims = JSON.parse(new TextDecoder().decode(payload));
+
+    const bundleId = String(claims.bundleId || "");
+    if (bundleId && !APPLE_BUNDLE_IDS.has(bundleId)) {
+      return { ok: false, reason: `apple_bundle_mismatch:${bundleId}` };
+    }
+    if (String(claims.productId) !== String(productId)) {
+      return { ok: false, reason: "apple_jws_product_mismatch" };
+    }
+    const tx = String(claims.transactionId || "");
+    const original = String(claims.originalTransactionId || "");
+    const want = String(storeTransactionId);
+    if (tx !== want && original !== want) {
+      return { ok: false, reason: "apple_jws_transaction_mismatch" };
+    }
+    // Optional: reject revoked / expired consumables if Apple sends revocationDate
+    if (claims.revocationDate) {
+      return { ok: false, reason: "apple_jws_revoked" };
+    }
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      reason: `apple_jws_invalid:${e?.message || "verify_failed"}`,
+    };
+  }
+}
+
+/**
+ * Apple: StoreKit 2 JWS first; legacy verifyReceipt as fallback.
  */
 async function verifyApple({ productId, storeTransactionId, receiptData }) {
+  if (!receiptData) {
+    return { ok: false, reason: "Falta receiptData de Apple" };
+  }
+
+  if (looksLikeJws(receiptData)) {
+    const jwsResult = await verifyAppleStoreKit2Jws({
+      productId,
+      storeTransactionId,
+      jws: String(receiptData).trim(),
+    });
+    if (jwsResult.ok) return jwsResult;
+    // Fall through to legacy only if it might be a weird false-positive JWS shape
+    // (almost never). Prefer returning the JWS error — 21002 is worse for UX.
+    return jwsResult;
+  }
+
   const secret = process.env.APPLE_IAP_SHARED_SECRET;
   if (!secret) {
     return {
       ok: false,
       reason:
-        "APPLE_IAP_SHARED_SECRET no configurado. Configura IAP en App Store Connect o usa IAP_DEV_ACCEPT en desarrollo.",
+        "APPLE_IAP_SHARED_SECRET no configurado y el recibo no es JWS StoreKit 2.",
     };
-  }
-  if (!receiptData) {
-    return { ok: false, reason: "Falta receiptData de Apple" };
   }
 
   const endpoints = [

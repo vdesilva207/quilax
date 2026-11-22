@@ -248,9 +248,9 @@ const styles = StyleSheet.create({
   },
   body: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingTop: Spacing.xl,
     paddingBottom: Spacing.lg,
-    gap: Spacing.md,
+    gap: Spacing.lg,
     backgroundColor: Colors.background,
   },
   footer: {

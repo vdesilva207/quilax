@@ -223,7 +223,9 @@
     "actionAddCredits": "añadir créditos",
     "actionWithdraw": "retirar a cuenta bancaria",
     "manualRailsTitle": "Transferencia bancaria (soft-launch)",
-    "manualRailsBody": "Añade créditos con IBAN + concepto QLX. Los retiros se pagan a tu IBAN en 1–3 días laborables."
+    "manualRailsBody": "Añade créditos con IBAN + concepto QLX. Los retiros se pagan a tu IBAN en 1–3 días laborables.",
+    "howItWorksTitle": "Cómo va el dinero",
+    "howItWorksBody": "1) Añadir créditos: transferencia IBAN con el concepto que te indiquemos.\n2) El equipo confirma el ingreso (1–3 días laborables) y acredita el saldo.\n3) Retirar: indica importe + IBAN; pago manual en 1–3 días.\n4) En la app iOS también puedes comprar créditos por App Store (otra vía)."
   },
   "deposit": {
     "title": "Añadir créditos",

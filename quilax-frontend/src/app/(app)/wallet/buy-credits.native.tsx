@@ -56,8 +56,12 @@ export default function BuyCreditsScreen() {
       try {
         if (token) apiClient.setToken(token);
         const store = Platform.OS === 'ios' ? 'APPLE' : 'GOOGLE';
+        // StoreKit 2 / expo-iap: purchaseToken is a JWS. Prefer it over legacy
+        // app receipt — verifyReceipt returns 21002 for JWS payloads.
         let receiptData = purchase.purchaseToken || null;
-        if (Platform.OS === 'ios') {
+        const tokenIsJws =
+          typeof receiptData === 'string' && receiptData.split('.').length === 3;
+        if (Platform.OS === 'ios' && !tokenIsJws) {
           try {
             receiptData = (await getReceiptDataIOS()) || receiptData;
           } catch {
@@ -74,6 +78,7 @@ export default function BuyCreditsScreen() {
         setMessage(t('buyCredits.success', { n: granted }));
         await refreshProfile?.({ full: false }).catch(() => null);
       } catch (e: any) {
+        setMessage('');
         setError(e?.message || t('buyCredits.error'));
       } finally {
         verifyingRef.current = false;
