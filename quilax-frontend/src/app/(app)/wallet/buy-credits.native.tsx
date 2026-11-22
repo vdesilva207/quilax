@@ -27,7 +27,7 @@ type Pack = {
 
 const PRODUCT_IDS = [
   'credits_5',
-  'credits_10',
+  'credits_10b', // Apple: credits_10 reserved after delete; recreate as credits_10b in ASC
   'credits_20',
   'credits_50',
   'credits_100',

@@ -13,13 +13,13 @@ const STRIPE_FEE_FIXED = 0.30;
 const MIN_DEPOSIT_CREDITS = 1;
 const MAX_DEPOSIT_CREDITS = 10000;
 
-// Paquetes opcionales (bonus si el usuario elige exactamente esos importes)
+// Paquetes opcionales — sin créditos gratis (seguridad económica soft-launch)
 const CREDIT_PACKAGES = [
   { credits: 10, bonus: 0, label: "10 Créditos" },
-  { credits: 25, bonus: 2, label: "25 Créditos (+2 gratis)" },
-  { credits: 50, bonus: 5, label: "50 Créditos (+5 gratis)" },
-  { credits: 100, bonus: 15, label: "100 Créditos (+15 gratis)" },
-  { credits: 200, bonus: 40, label: "200 Créditos (+40 gratis)" },
+  { credits: 25, bonus: 0, label: "25 Créditos" },
+  { credits: 50, bonus: 0, label: "50 Créditos" },
+  { credits: 100, bonus: 0, label: "100 Créditos" },
+  { credits: 200, bonus: 0, label: "200 Créditos" },
 ];
 
 function zeroDecimalCurrency(code) {
