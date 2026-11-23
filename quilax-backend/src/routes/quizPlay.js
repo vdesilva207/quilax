@@ -10,9 +10,12 @@ import {
   getEarlyJoinBonus,
   buildEarlyJoinPreview,
 } from "../constants/earlyJoinBonus.js";
+import { isJoinStartQuiz } from "../services/softlaunchSeedService.js";
 
 const router = express.Router();
 const ENTRY_COST = 1;
+/** Soft-launch TF: seconds from first join until questions start. */
+const JOIN_START_LOBBY_SECONDS = 90;
 
 // --------------------
 // 📝 Inscribirse en un quiz (antes del run)
@@ -78,7 +81,46 @@ router.post("/enroll/:quizId", auth, requireMoneyEligibility("QUIZ_ENTRY"), asyn
       balance = result.balance;
     }
 
-    // Enroll only — do NOT open lobby. Lobby opens T−1min via scheduler.
+    // Soft-launch TF: join-start quizzes open lobby on first enroll (~90s countdown).
+    if (isJoinStartQuiz(quiz)) {
+      let run = await prisma.quizRun.findFirst({
+        where: { quizId, phase: { not: "FINISHED" } },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (!run || run.phase !== "PRE_START") {
+        const startsAt = new Date(Date.now() + JOIN_START_LOBBY_SECONDS * 1000);
+        const existingSched = await prisma.quizSchedule.findFirst({
+          where: { quizId },
+          orderBy: { scheduledAt: "desc" },
+        });
+        if (existingSched) {
+          await prisma.quizSchedule.update({
+            where: { id: existingSched.id },
+            data: { scheduledAt: startsAt, status: "RESERVED" },
+          });
+        } else {
+          await prisma.quizSchedule.create({
+            data: { quizId, scheduledAt: startsAt, status: "RESERVED" },
+          });
+        }
+        run = await ensureActiveQuizRun(quizId, userId, { force: true });
+      }
+
+      return res.json({
+        success: true,
+        enrollment,
+        balance,
+        alreadyEnrolled,
+        lobbyOpen: true,
+        joinStart: true,
+        runId: run?.id || null,
+        phase: run?.phase || "PRE_START",
+        startsAt: run?.phaseEndsAt || null,
+      });
+    }
+
+    // Normal quizzes: enroll only — lobby opens T−1min via scheduler.
     const run = await prisma.quizRun.findFirst({
       where: { quizId, phase: { not: "FINISHED" } },
       orderBy: { createdAt: "desc" },

@@ -20,6 +20,13 @@ const LIVE_PHASES = [
  * - Finished participation → blocked
  * - Already enrolled without live re-entry → blocked from new enroll CTA
  */
+function isJoinStartQuiz(quizLike) {
+  return (
+    quizLike?.tips === 'join-start' ||
+    String(quizLike?.description || '').includes('[join-start]')
+  );
+}
+
 function resolveJoinEligibility({
   status,
   questionCount,
@@ -27,6 +34,7 @@ function resolveJoinEligibility({
   activeRun = null,
   alreadyEnrolled = false,
   userParticipation = null,
+  joinStart = false,
   now = new Date(),
 }) {
   if (status !== 'PUBLISHED') {
@@ -48,12 +56,14 @@ function resolveJoinEligibility({
   );
   const hasLiveRun = !!activeRun?.id;
 
-  if (!hasFutureSchedule && !hasLiveRun) {
+  // Soft-launch TF: join-start quizzes open lobby on enroll even without a near schedule.
+  if (!hasFutureSchedule && !hasLiveRun && !joinStart) {
     return { canJoin: false, joinBlockedReason: 'past' };
   }
 
   // Enrolled for an upcoming/live quiz: CTA is "already in" — not a fresh join.
-  if (alreadyEnrolled && !hasLiveRun) {
+  // join-start with live PRE_START still allows returning to lobby via other CTAs.
+  if (alreadyEnrolled && !hasLiveRun && !joinStart) {
     return { canJoin: false, joinBlockedReason: 'enrolled' };
   }
 
@@ -253,6 +263,7 @@ router.get('/:quizId', auth, async (req, res, next) => {
             activeRun,
             alreadyEnrolled,
             userParticipation,
+            joinStart: isJoinStartQuiz(quiz),
             now,
           });
           return {
@@ -530,6 +541,7 @@ router.get('/:quizId/can-join', auth, async (req, res) => {
       activeRun,
       alreadyEnrolled: !!enrollment,
       userParticipation: finishedParticipation,
+      joinStart: isJoinStartQuiz(quiz),
     });
 
     if (!join.canJoin) {

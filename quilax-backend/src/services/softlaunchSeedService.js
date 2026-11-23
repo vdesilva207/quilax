@@ -100,6 +100,15 @@ async function ensureHostUser() {
  * @param {{ force?: boolean }} [opts]
  * @returns {Promise<{ created: object[], skipped: boolean, hostEmail: string }>}
  */
+/** Soft-launch TF quizzes: lobby starts ~90s after first join (tips=join-start). */
+export function isJoinStartQuiz(quiz) {
+  if (!quiz) return false;
+  return (
+    quiz.tips === 'join-start' ||
+    String(quiz.description || '').includes('[join-start]')
+  );
+}
+
 export async function seedSoftlaunchQuizzes(opts = {}) {
   const force = !!opts.force;
   const existing = await prisma.quiz.count({ where: { status: 'PUBLISHED' } });
@@ -113,20 +122,43 @@ export async function seedSoftlaunchQuizzes(opts = {}) {
   }
 
   const host = await ensureHostUser();
+
+  // Retire previous smoke quizzes so home only shows fresh join-start ones.
+  if (force) {
+    await prisma.quiz.updateMany({
+      where: {
+        status: 'PUBLISHED',
+        OR: [
+          { tips: 'join-start' },
+          { title: { startsWith: 'Smoke TF' } },
+          { description: { contains: '[join-start]' } },
+        ],
+      },
+      data: { status: 'FINISHED' },
+    });
+    await prisma.quizRun.updateMany({
+      where: {
+        phase: { not: 'FINISHED' },
+        quiz: { title: { startsWith: 'Smoke TF' } },
+      },
+      data: { phase: 'FINISHED', phaseEndsAt: new Date() },
+    });
+  }
+
   const now = Date.now();
+  // Placeholder schedule far ahead — first enroll rewrites to now+90s.
+  const placeholderMs = 30 * 24 * 60 * 60 * 1000;
   const schedules = [
     {
       title: 'Smoke TF · Cultura rápida',
       category: 'Cultura',
       credits: 5,
-      inMs: 12 * 60 * 1000,
       questions: DEFAULT_QUESTIONS.slice(0, 5),
     },
     {
       title: 'Smoke TF · Números y lógica',
       category: 'Matemáticas',
       credits: 5,
-      inMs: 60 * 60 * 1000,
       questions: [
         DEFAULT_QUESTIONS[1],
         {
@@ -151,14 +183,14 @@ export async function seedSoftlaunchQuizzes(opts = {}) {
       title: 'Smoke TF · Mundo y ciencia',
       category: 'Ciencias',
       credits: 10,
-      inMs: 24 * 60 * 60 * 1000,
       questions: DEFAULT_QUESTIONS,
     },
   ];
 
   const created = [];
-  for (const spec of schedules) {
-    const scheduledAt = new Date(now + spec.inMs);
+  for (let i = 0; i < schedules.length; i++) {
+    const spec = schedules[i];
+    const scheduledAt = new Date(now + placeholderMs + i * 60_000);
     const quiz = await prisma.quiz.create({
       data: {
         title: spec.title,
@@ -168,7 +200,9 @@ export async function seedSoftlaunchQuizzes(opts = {}) {
         creatorId: host.id,
         category: spec.category,
         language: 'es',
-        description: 'Quiz de prueba soft-launch (TestFlight).',
+        tips: 'join-start',
+        description:
+          '[join-start] Quiz de prueba soft-launch. Empieza ~90s después de que alguien se una.',
         schedules: { create: { scheduledAt, status: 'RESERVED' } },
         rewardRules: {
           create: [
@@ -183,6 +217,7 @@ export async function seedSoftlaunchQuizzes(opts = {}) {
         id: true,
         title: true,
         credits: true,
+        tips: true,
         schedules: { select: { scheduledAt: true } },
       },
     });
@@ -190,6 +225,7 @@ export async function seedSoftlaunchQuizzes(opts = {}) {
       id: quiz.id,
       title: quiz.title,
       credits: quiz.credits,
+      joinStart: true,
       scheduledAt: quiz.schedules[0]?.scheduledAt,
     });
   }
