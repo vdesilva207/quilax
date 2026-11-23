@@ -180,7 +180,13 @@ export default function QuizDetailScreen() {
 
       if (joinResult.data?.alreadyInRun && joinResult.data?.runId) {
         setSheetVisible(false);
-        router.replace(`/(app)/quiz/run/${joinResult.data.runId}`);
+        const existingRunId = Number(joinResult.data.runId);
+        try {
+          await quizRunService.joinQuiz(existingRunId);
+        } catch {
+          /* already joined */
+        }
+        router.replace(`/(app)/quiz/run/${existingRunId}`);
         return;
       }
 
@@ -260,13 +266,25 @@ export default function QuizDetailScreen() {
 
       let lobbyOpen = !!enroll.data?.lobbyOpen;
       let nextRunId = enroll.data?.runId ? Number(enroll.data.runId) : null;
+      const joinStart = !!enroll.data?.joinStart;
 
-      // Stay on quiz info after enroll. Countdown is only for T−1min (lobbyOpen)
-      // and auto-entry happens globally at T−30s — never trap the user here.
+      // Soft-launch join-start / T−1min lobby: enter the run immediately.
+      if (lobbyOpen && nextRunId) {
+        setSheetVisible(false);
+        setRunId(nextRunId);
+        try {
+          await quizRunService.joinQuiz(nextRunId);
+        } catch {
+          /* join may already exist; run screen will retry */
+        }
+        router.replace(`/(app)/quiz/run/${nextRunId}`);
+        return;
+      }
+
+      // Far-future enroll: stay on quiz info; countdown / auto-entry later.
       setSheetVisible(false);
       setJoinedSuccess(true);
-      if (lobbyOpen && nextRunId) {
-        // Soft hint only: user can open lobby, or keep browsing
+      if (joinStart && nextRunId) {
         setRunId(nextRunId);
       }
     } catch (err: any) {
@@ -314,9 +332,15 @@ export default function QuizDetailScreen() {
       : buildEarlyJoinPreview((Number(quiz.enrollmentCount) || 0) + 1);
   const showEarlyJoin = earlyJoinRaw?.stillAvailable === true;
   const earlyJoinTiers =
-    (Array.isArray(earlyJoinRaw?.tiers) && earlyJoinRaw.tiers.length
+    ((Array.isArray(earlyJoinRaw?.tiers) && earlyJoinRaw.tiers.length
       ? earlyJoinRaw.tiers
-      : EARLY_JOIN_BONUS_RANGES) as Array<{ from: number; to: number; bonus: number }>;
+      : EARLY_JOIN_BONUS_RANGES) || []) as Array<{
+      from: number;
+      to: number;
+      bonus: number;
+    }>;
+  const showCreatorTips =
+    !!quiz.tips && quiz.tips !== 'join-start' && !String(quiz.tips).startsWith('join-start');
   const earlyJoinNowLabel =
     showEarlyJoin && earlyJoinRaw?.bonus > 0
       ? getEarlyJoinBonusDescription(earlyJoinRaw.nextJoinPosition)
@@ -545,7 +569,7 @@ export default function QuizDetailScreen() {
             ) : (
               <Text style={styles.emptyCreator}>{t('quizDetail.noDescriptionYet')}</Text>
             )}
-            {quiz.tips ? (
+            {showCreatorTips ? (
               <>
                 <Text style={[styles.blockTitle, { marginTop: Spacing.three }]}>
                   {t('quizDetail.creatorNotes')}
@@ -604,7 +628,11 @@ export default function QuizDetailScreen() {
               label={t('quizDetail.joinedSuccessCta')}
               onPress={() => {
                 setJoinedSuccess(false);
-                router.replace('/(app)');
+                if (runId) {
+                  router.replace(`/(app)/quiz/run/${runId}`);
+                } else {
+                  router.replace('/(app)');
+                }
               }}
             />
           </View>

@@ -107,6 +107,43 @@ router.post("/enroll/:quizId", auth, requireMoneyEligibility("QUIZ_ENTRY"), asyn
         run = await ensureActiveQuizRun(quizId, userId, { force: true });
       }
 
+      // Ensure the enrollee is also a participant so re-entry / play work.
+      if (run?.id) {
+        try {
+          const existingParticipant = await prisma.quizParticipant.findFirst({
+            where: { quizRunId: run.id, userId },
+            select: { id: true },
+          });
+          if (!existingParticipant) {
+            const { getEarlyJoinBonus } = await import(
+              "../constants/earlyJoinBonus.js"
+            );
+            const count = await prisma.quizParticipant.count({
+              where: { quizRunId: run.id },
+            });
+            const pos = count + 1;
+            const bonus = getEarlyJoinBonus(pos);
+            await prisma.quizParticipant.create({
+              data: {
+                quizRunId: run.id,
+                userId,
+                status: "ACTIVE",
+                score: bonus,
+              },
+            });
+            await prisma.quizScore.upsert({
+              where: {
+                quizRunId_userId: { quizRunId: run.id, userId },
+              },
+              create: { quizRunId: run.id, userId, score: bonus },
+              update: {},
+            });
+          }
+        } catch (partErr) {
+          console.warn("join-start participant:", partErr?.message || partErr);
+        }
+      }
+
       return res.json({
         success: true,
         enrollment,

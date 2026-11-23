@@ -458,6 +458,8 @@ router.get('/:quizId/can-join', auth, async (req, res) => {
         id: true,
         status: true,
         credits: true,
+        tips: true,
+        description: true,
         schedules: { orderBy: { scheduledAt: 'asc' }, take: 10 },
         _count: { select: { questions: true } },
       },
@@ -522,6 +524,20 @@ router.get('/:quizId/can-join', auth, async (req, res) => {
     const enrollment = await prisma.quizEnrollment.findUnique({
       where: { quizId_userId: { quizId, userId } },
     });
+
+    // Enrolled + lobby/live run open, but not yet a participant (e.g. join-start).
+    if (enrollment && activeRun?.id) {
+      return res.json({
+        success: true,
+        canJoin: true,
+        alreadyInRun: true,
+        runId: activeRun.id,
+        phase: activeRun.phase,
+        entryCost: ENTRY_COST,
+        currentBalance: user.balance,
+        message: 'Lobby abierto — entra a la partida',
+      });
+    }
 
     const finishedParticipation = await prisma.quizParticipant.findFirst({
       where: {
