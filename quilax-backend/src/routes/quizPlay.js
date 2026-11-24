@@ -138,6 +138,12 @@ router.post("/enroll/:quizId", auth, requireMoneyEligibility("QUIZ_ENTRY"), asyn
               create: { quizRunId: run.id, userId, score: bonus },
               update: {},
             });
+            // Enroll already charged ENTRY_COST; credit the pool here because
+            // a later /join will see alreadyJoined and skip the increment.
+            await prisma.quizRun.update({
+              where: { id: run.id },
+              data: { totalPrizeCredits: { increment: ENTRY_COST } },
+            });
           }
         } catch (partErr) {
           console.warn("join-start participant:", partErr?.message || partErr);
@@ -272,7 +278,9 @@ router.post("/:quizRunId/disconnect", auth, async (req, res) => {
 // --------------------
 // ⬆️ Unirse a un quiz en curso
 // --------------------
-router.post("/:quizRunId/join", auth, requireMoneyEligibility("QUIZ_ENTRY"), async (req, res) => {
+// No requireMoneyEligibility(QUIZ_ENTRY) here: that middleware always requires
+// balance ≥ 1, but enroll already debited — re-entry / join-start must work at 0.
+router.post("/:quizRunId/join", auth, async (req, res) => {
   try {
     const quizRunId = Number(req.params.quizRunId);
 
@@ -291,6 +299,9 @@ router.post("/:quizRunId/join", auth, requireMoneyEligibility("QUIZ_ENTRY"), asy
     });
 
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    if (user.isBanned) {
+      return res.status(403).json({ error: "Cuenta suspendida", code: "ACCOUNT_BANNED" });
+    }
 
     const enrollment = await prisma.quizEnrollment.findUnique({
       where: {
@@ -302,6 +313,7 @@ router.post("/:quizRunId/join", auth, requireMoneyEligibility("QUIZ_ENTRY"), asy
     if (!alreadyPaid && user.balance < ENTRY_COST) {
       return res.status(400).json({
         error: "Saldo insuficiente",
+        code: "INSUFFICIENT_BALANCE",
       });
     }
 

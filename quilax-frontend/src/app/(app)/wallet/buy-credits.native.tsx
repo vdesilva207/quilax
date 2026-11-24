@@ -34,6 +34,12 @@ const PRODUCT_IDS = [
   'credits_250',
 ];
 
+/** Parse credits from productId (`credits_10b` → 10). */
+function creditsFromProductId(id: string): number {
+  const m = String(id).match(/credits_(\d+)/i);
+  return m ? Number(m[1]) || 0 : 0;
+}
+
 export default function BuyCreditsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -132,13 +138,16 @@ export default function BuyCreditsScreen() {
       } catch {
         if (!cancelled) {
           setPacks(
-            PRODUCT_IDS.map((id) => ({
-              productId: id,
-              credits: Number(id.split('_')[1]) || 0,
-              bonus: 0,
-              totalCredits: Number(id.split('_')[1]) || 0,
-              label: id,
-            })),
+            PRODUCT_IDS.map((id) => {
+              const credits = creditsFromProductId(id);
+              return {
+                productId: id,
+                credits,
+                bonus: 0,
+                totalCredits: credits,
+                label: id,
+              };
+            }),
           );
           setKycOk(isSoftLaunchSkipIdentity() || !!user?.idVerified);
         }

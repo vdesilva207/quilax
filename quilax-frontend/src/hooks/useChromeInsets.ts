@@ -1,5 +1,6 @@
+import { useContext } from 'react';
 import { Platform, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 export type ChromeInsets = {
@@ -18,7 +19,12 @@ export type ChromeInsets = {
  * (no fake notch / double padding inside the phone shell).
  */
 export function useChromeInsets(contentGap: number = Spacing.three): ChromeInsets {
-  const insets = useSafeAreaInsets();
+  const insets = useContext(SafeAreaInsetsContext) ?? {
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  };
   const { width } = useWindowDimensions();
   const webDesktop = Platform.OS === 'web' && width > MaxContentWidth + 48;
 

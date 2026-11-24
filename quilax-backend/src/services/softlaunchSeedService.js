@@ -202,7 +202,7 @@ export async function seedSoftlaunchQuizzes(opts = {}) {
         language: 'es',
         tips: 'join-start',
         description:
-          '[join-start] Quiz de prueba soft-launch. Empieza ~90s después de que alguien se una.',
+          'Quiz de prueba soft-launch. Empieza ~90s después de que alguien se una.',
         schedules: { create: { scheduledAt, status: 'RESERVED' } },
         rewardRules: {
           create: [

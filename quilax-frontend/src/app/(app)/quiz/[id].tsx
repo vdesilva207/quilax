@@ -341,6 +341,9 @@ export default function QuizDetailScreen() {
     }>;
   const showCreatorTips =
     !!quiz.tips && quiz.tips !== 'join-start' && !String(quiz.tips).startsWith('join-start');
+  const publicDescription = String(quiz.description || '')
+    .replace(/\[join-start\]\s*/gi, '')
+    .trim();
   const earlyJoinNowLabel =
     showEarlyJoin && earlyJoinRaw?.bonus > 0
       ? getEarlyJoinBonusDescription(earlyJoinRaw.nextJoinPosition)
@@ -561,10 +564,10 @@ export default function QuizDetailScreen() {
 
         <AppSection title={t('quizDetail.creatorSection')} accentIndex={2}>
           <AppCard>
-            {quiz.description ? (
+            {publicDescription ? (
               <>
                 <Text style={styles.blockTitle}>{t('quizDetail.aboutQuiz')}</Text>
-                <Text style={styles.description}>{quiz.description}</Text>
+                <Text style={styles.description}>{publicDescription}</Text>
               </>
             ) : (
               <Text style={styles.emptyCreator}>{t('quizDetail.noDescriptionYet')}</Text>

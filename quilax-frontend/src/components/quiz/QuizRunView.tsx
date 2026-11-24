@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, MaxContentWidth, titleTypeface } from '@/constants/theme';
@@ -43,8 +43,16 @@ const OPTION_ACCENTS = [
 ];
 
 function officialOptions(question: any) {
-  const raw = question?.answers || question?.options || [];
-  return (raw as any[]).filter((a) => a == null || a.userId == null);
+  const raw = question?.answers ?? question?.options;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((a) => a == null || a.userId == null);
+}
+
+const ZERO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
+
+/** Never throw — RN Modal portals can sit outside SafeAreaProvider. */
+function useSafeInsets() {
+  return useContext(SafeAreaInsetsContext) ?? ZERO_INSETS;
 }
 
 function BreathDot() {
@@ -119,7 +127,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
   const { user, refreshProfile } = useAuth() as any;
   const { setHideTabBar } = useQuizPlayUi();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const insets = useSafeInsets();
   const [loading, setLoading] = useState(true);
   const [state, setState] = useState<any>(null);
   const [playState, setPlayState] = useState<any>(null);
@@ -148,8 +156,13 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
   const [showIntro, setShowIntro] = useState(false);
   const introShownFor = useRef<string | null>(null);
 
-  const numericRunId = useMemo(() => Number(runId), [runId]);
-  const dismissKey = `quizPrizeDismissed:${numericRunId}`;
+  const numericRunId = useMemo(() => {
+    const raw = Array.isArray(runId) ? runId[0] : runId;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : NaN;
+  }, [runId]);
+  const runIdValid = Number.isFinite(numericRunId);
+  const dismissKey = `quizPrizeDismissed:${runIdValid ? numericRunId : 'invalid'}`;
 
   useEffect(() => {
     const tick = setInterval(() => setNow(Date.now()), 200);
@@ -157,6 +170,11 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
   }, []);
 
   const refresh = useCallback(async () => {
+    if (!runIdValid) {
+      setLoading(false);
+      setError(t('quizPlay.loadError'));
+      return;
+    }
     if (refreshInFlight.current) return refreshInFlight.current;
     refreshAbort.current?.abort();
     const ac = new AbortController();
@@ -197,7 +215,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
     })();
     refreshInFlight.current = run;
     return run;
-  }, [numericRunId, t]);
+  }, [numericRunId, runIdValid, t]);
 
   // Initial fetch + socket-driven updates (HTTP only on reconnect / fallback)
   useEffect(() => {
@@ -216,6 +234,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
   }, [refresh]);
 
   useEffect(() => {
+    if (!runIdValid) return undefined;
     let fallbackTimer: ReturnType<typeof setInterval> | null = null;
     let socketOk = false;
     let lastPhase: string | null = null;
@@ -293,7 +312,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
       clearTimeout(adjust);
       if (fallbackTimer) clearInterval(fallbackTimer);
     };
-  }, [numericRunId, refresh, refreshProfile]);
+  }, [numericRunId, runIdValid, refresh, refreshProfile]);
 
   const phase = state?.phase || playState?.phase || 'PRE_START';
   const currentIndex = state?.currentIndex ?? playState?.currentQuestionIndex ?? 0;
@@ -302,7 +321,9 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
   const phaseEndsAt = state?.phaseEndsAt || playState?.phaseEndsAt;
   const secondsRemaining = useMemo(() => {
     if (!phaseEndsAt) return null;
-    return Math.max(0, Math.ceil((new Date(phaseEndsAt).getTime() - now) / 1000));
+    const endMs = new Date(phaseEndsAt).getTime();
+    if (!Number.isFinite(endMs)) return null;
+    return Math.max(0, Math.ceil((endMs - now) / 1000));
   }, [phaseEndsAt, now]);
 
   const isLivePlay =
@@ -536,7 +557,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
   }, [ranking, user, myRank]);
 
   const myWinnerEntry = useMemo(() => {
-    if (!user || !results?.winners) return null;
+    if (!user || !Array.isArray(results?.winners)) return null;
     return results.winners.find((w: any) => w.userId === user.id) || null;
   }, [results, user]);
 
@@ -600,6 +621,26 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
               : phase === 'FINISHED'
                 ? t('quizPlay.phase.finished')
                 : phase;
+
+  if (!runIdValid) {
+    return (
+      <View style={styles.shell}>
+        <View style={[styles.phone, styles.centered, { paddingHorizontal: Spacing.four }]}>
+          <Text style={[styles.heroTitle, styles.badText]}>{t('common.error')}</Text>
+          <Text style={styles.heroSub}>{t('quizPlay.loadError')}</Text>
+          <Pressable
+            style={styles.exitBtn}
+            onPress={() => {
+              setHideTabBar(false);
+              router.replace('/(app)');
+            }}
+          >
+            <Text style={styles.exitBtnText}>{t('quizPlay.backToHome')}</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   if (loading && !state) {
     return (
@@ -693,9 +734,9 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
             </Animated.View>
           ) : null}
 
-          {/* PRE_START: entrada cerrada — Ya casi + cuenta atrás hasta el inicio */}
+          {/* PRE_START: plain View — avoid Reanimated entering crash on first lobby paint */}
           {!connectionLost && phase === 'PRE_START' ? (
-            <Animated.View entering={FadeIn} style={styles.centerBlock}>
+            <View style={styles.centerBlock}>
               <BreathDot />
               <Text style={styles.heroTitle}>{t('quizPlay.almostThere')}</Text>
               <Text style={styles.heroSub}>{t('quizPlay.keepAppOpen')}</Text>
@@ -716,7 +757,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
               >
                 <Text style={styles.exitBtnText}>{t('quizPlay.leaveCountdown')}</Text>
               </Pressable>
-            </Animated.View>
+            </View>
           ) : null}
 
           {/* Intro corta entre preguntas */}

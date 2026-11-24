@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import {
   Modal,
   View,
@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { Colors, Spacing, titleTypeface } from '@/constants/theme';
 import { brandGradientProps } from '@/constants/gradients';
 import { MobileModalFrame } from '@/components/ui/MobileModalFrame';
@@ -45,7 +45,12 @@ export default function QuizEnrollModal({
   onConfirm,
 }: QuizEnrollModalProps) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
+  const insets = useContext(SafeAreaInsetsContext) ?? {
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  };
   const busy = preparing || loading;
   const confirmDisabled = busy || !canConfirm;
   const creditLabel =
