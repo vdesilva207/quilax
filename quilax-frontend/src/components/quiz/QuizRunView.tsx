@@ -31,6 +31,7 @@ import quizRunService from '@/services/quizRunService';
 import apiClient from '@/lib/api';
 import secureStorage from '@/lib/secureStorage';
 import { subscribeQuizRun } from '@/lib/quizSocket';
+import { snoozeLobbyReentry } from '@/lib/lobbyLeaveSnooze';
 import { useAuth } from '@/context/AuthContext';
 import { useQuizPlayUi } from '@/context/QuizPlayUiContext';
 
@@ -750,6 +751,13 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
               <Pressable
                 style={[styles.exitBtn, { marginTop: Spacing.three }]}
                 onPress={() => {
+                  const until =
+                    phaseEndsAt != null
+                      ? new Date(phaseEndsAt).getTime()
+                      : Date.now() + 90_000;
+                  if (Number.isFinite(until)) {
+                    snoozeLobbyReentry(numericRunId, until);
+                  }
                   setHideTabBar(false);
                   router.replace('/(app)');
                 }}

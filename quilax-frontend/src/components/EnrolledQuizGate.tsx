@@ -3,6 +3,10 @@ import { usePathname, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import apiClient from '@/lib/api';
 import { quizRunService } from '@/services/quizRunService';
+import {
+  clearLobbyReentrySnooze,
+  isLobbyReentrySnoozed,
+} from '@/lib/lobbyLeaveSnooze';
 
 /** Auto-enter countdown for enrolled quizzes at T−30s, wherever the user is. */
 const AUTO_ENTER_MS = 30_000;
@@ -48,7 +52,11 @@ export default function EnrolledQuizGate() {
             pathname.endsWith(`/run/${runId}`));
         if (onThisRun) continue;
 
-        // Auto-enter at T−30s (and keep pulling back until questions if they left)
+        // User left PRE_START lobby on purpose — stay out until start.
+        if (msUntil > 0 && isLobbyReentrySnoozed(runId, now)) continue;
+        if (msUntil <= 0) clearLobbyReentrySnooze(runId);
+
+        // Auto-enter at T−30s (and pull back once questions start if they left)
         if (msUntil > AUTO_ENTER_MS) continue;
 
         enteringRef.current = true;

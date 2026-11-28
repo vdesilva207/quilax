@@ -40,6 +40,7 @@
         "APP_ENV": "production",
         "EXPO_PUBLIC_DEV_SKIP_ONBOARDING": "false",
         "EXPO_PUBLIC_SKIP_EMAIL_VERIFICATION": "false",
+        "EXPO_PUBLIC_SOFT_LAUNCH": "true",
         "EXPO_PUBLIC_API_URL": "https://api.appquilax.com",
         "EXPO_PUBLIC_WALLET_URL": "https://gestion.appquilax.com",
         "EXPO_PUBLIC_SOCKET_URL": "https://api.appquilax.com"
