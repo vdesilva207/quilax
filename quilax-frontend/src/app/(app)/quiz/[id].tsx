@@ -262,7 +262,11 @@ export default function QuizDetailScreen() {
         return;
       }
 
-      await refreshProfile?.({ full: false }).catch(() => null);
+      try {
+        await refreshProfile?.({ full: false });
+      } catch {
+        /* ignore */
+      }
 
       let lobbyOpen = !!enroll.data?.lobbyOpen;
       let nextRunId = enroll.data?.runId ? Number(enroll.data.runId) : null;

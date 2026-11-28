@@ -10,15 +10,9 @@ import {
   Modal,
 } from 'react-native';
 import Animated, {
-  Easing,
   FadeIn,
   FadeInDown,
   FadeInUp,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
@@ -56,23 +50,12 @@ function useSafeInsets() {
   return useContext(SafeAreaInsetsContext) ?? ZERO_INSETS;
 }
 
+/** Static lobby marker — avoid Reanimated custom easing on Hermes (undefined is not a function). */
 function BreathDot() {
-  const scale = useSharedValue(1);
-  useEffect(() => {
-    scale.value = withRepeat(
-      withSequence(
-        withTiming(1.25, { duration: 900, easing: Easing.inOut(Easing.quad) }),
-        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }),
-      ),
-      -1,
-      false,
-    );
-  }, [scale]);
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
-    <Animated.View style={[styles.breathOuter, style]}>
+    <View style={styles.breathOuter}>
       <LinearGradient {...brandGradientProps} style={styles.breathInner} />
-    </Animated.View>
+    </View>
   );
 }
 
@@ -85,24 +68,9 @@ function formatLobbyCountdown(totalSeconds: number) {
 }
 
 function AnswerTimer({ secondsRemaining }: { secondsRemaining: number | null }) {
-  const pop = useSharedValue(1);
-
-  useEffect(() => {
-    pop.value = withSequence(
-      withTiming(1.06, { duration: 120, easing: Easing.out(Easing.cubic) }),
-      withTiming(1, { duration: 120, easing: Easing.inOut(Easing.quad) }),
-    );
-  }, [secondsRemaining, pop]);
-
-  const numStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pop.value }],
-  }));
-
   return (
     <View style={styles.answerTimerWrap}>
-      <Animated.Text style={[styles.answerTimerNum, numStyle]}>
-        {secondsRemaining ?? '—'}
-      </Animated.Text>
+      <Text style={styles.answerTimerNum}>{secondsRemaining ?? '—'}</Text>
     </View>
   );
 }
@@ -111,7 +79,7 @@ function RankGainBadge({ gain }: { gain: number }) {
   if (!gain || gain <= 0) return null;
   return (
     <Animated.Text
-      entering={FadeInUp.duration(260).easing(Easing.out(Easing.cubic))}
+      entering={FadeInUp.duration(260)}
       style={styles.rankGain}
     >
       +{gain}
@@ -283,7 +251,11 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
       },
       onPrizeDistributed: () => {
         setResultsReady(true);
-        refreshProfile?.({ full: false }).catch(() => {});
+        try {
+          void refreshProfile?.({ full: false });
+        } catch {
+          /* ignore */
+        }
       },
     });
 
@@ -409,7 +381,11 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
 
   useEffect(() => {
     if (phase !== 'FINISHED') return;
-    refreshProfile?.({ full: false }).catch(() => {});
+    try {
+      void refreshProfile?.({ full: false });
+    } catch {
+      /* ignore */
+    }
     let cancelled = false;
     (async () => {
       const dismissed = await secureStorage.getItem(dismissKey);
@@ -770,7 +746,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
 
           {/* Intro corta entre preguntas */}
           {showIntro && !connectionLost && phase === 'QUESTION_READ' ? (
-            <Animated.View entering={FadeIn.duration(240).easing(Easing.out(Easing.cubic))} style={styles.centerBlock}>
+            <Animated.View entering={FadeIn.duration(240)} style={styles.centerBlock}>
               <LinearGradient {...brandGradientProps} style={styles.introChip}>
                 <Text style={styles.introChipText}>{t('quizPlay.questionLabel', { n: Number(currentIndex) + 1 })}</Text>
               </LinearGradient>
@@ -952,7 +928,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
           ) : null}
 
           {phase === 'FINISHED' && finishCeremony ? (
-            <Animated.View entering={FadeIn.duration(220).easing(Easing.out(Easing.cubic))} style={styles.centerBlock}>
+            <Animated.View entering={FadeIn.duration(220)} style={styles.centerBlock}>
               <LinearGradient {...brandGradientProps} style={styles.finishBurst} />
               <Text style={styles.finishBurstTitle}>{t('quizPlay.finishedTitle')}</Text>
               <Text style={styles.heroSub}>{t('quizPlay.quizEnded')}</Text>
@@ -1033,7 +1009,7 @@ export default function QuizRunView({ runId }: QuizRunViewProps) {
 
         <Modal visible={showCongrats} transparent animationType="fade" onRequestClose={() => setShowCongrats(false)}>
           <MobileModalFrame justify="center" onBackdropPress={() => setShowCongrats(false)}>
-            <Animated.View entering={FadeIn.duration(220).easing(Easing.out(Easing.cubic))} style={styles.congratsCard}>
+            <Animated.View entering={FadeIn.duration(220)} style={styles.congratsCard}>
               <LinearGradient {...brandGradientProps} style={styles.congratsGlow} />
               <Text style={styles.congratsTitle}>{t('quizPlay.congratsTitle')}</Text>
               <Text style={styles.congratsBody}>{t('quizPlay.congratsBody')}</Text>
